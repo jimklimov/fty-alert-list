@@ -124,12 +124,44 @@ fi
 
 was_czmq_check_lib_detected=no
 
-PKG_CHECK_MODULES([czmq], [libczmq >= 3.0.0],
+PKG_CHECK_MODULES([czmq], [libczmq >= 0.0.0],
     [
         PKGCFG_LIBS_PRIVATE="$PKGCFG_LIBS_PRIVATE $czmq_LIBS"
     ],
     [
-        AC_MSG_ERROR([Cannot find libczmq 3.0.0 or higher])
+        AC_ARG_WITH([libczmq],
+            [
+                AS_HELP_STRING([--with-libczmq],
+                [Specify libczmq prefix])
+            ],
+            [search_libczmq="yes"],
+            [])
+
+        czmq_synthetic_cflags=""
+        czmq_synthetic_libs="-lczmq"
+
+        if test "x$search_libczmq" = "xyes"; then
+            if test -r "${with_libczmq}/include/czmq.h"; then
+                czmq_synthetic_cflags="-I${with_libczmq}/include"
+                czmq_synthetic_libs="-L${with_libczmq}/lib -lczmq"
+            else
+                AC_MSG_ERROR([${with_libczmq}/include/czmq.h not found. Please check libczmq prefix])
+            fi
+        fi
+
+
+        AC_CHECK_LIB([czmq], [zhashx_test],
+            [
+                CFLAGS="${czmq_synthetic_cflags} ${CFLAGS}"
+                LDFLAGS="${czmq_synthetic_libs} ${LDFLAGS}"
+                LIBS="${czmq_synthetic_libs} ${LIBS}"
+
+                AC_SUBST([czmq_CFLAGS],[${czmq_synthetic_cflags}])
+                AC_SUBST([czmq_LIBS],[${czmq_synthetic_libs}])
+                was_czmq_check_lib_detected=yes
+                PKGCFG_LIBS_PRIVATE="$PKGCFG_LIBS_PRIVATE -lczmq"
+            ],
+            [AC_MSG_ERROR([cannot link with -lczmq, install libczmq])])
     ])
 
 if test "x$was_czmq_check_lib_detected" = "xno"; then

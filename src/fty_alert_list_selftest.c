@@ -36,7 +36,6 @@ typedef struct {
 
 static test_item_t
 all_tests [] = {
-    { "alerts_utils", alerts_utils_test },
 #ifdef FTY_ALERT_LIST_BUILD_DRAFT_API
     { "fty_alert_list_server", fty_alert_list_server_test },
 #endif // FTY_ALERT_LIST_BUILD_DRAFT_API

@@ -12,7 +12,7 @@ Name: libfty_alert_list
 Description: Provides information about active alerts.
 Version: @VERSION@
 
-Requires:libzmq libczmq >= 3.0.0 libmlm >= 1.0.0 libfty_proto >= 1.0.0
+Requires:libzmq libczmq libmlm >= 1.0.0 libfty_proto >= 1.0.0
 
 Libs: -L${libdir} -lfty_alert_list
 Cflags: -I${includedir} @pkg_config_defines@
