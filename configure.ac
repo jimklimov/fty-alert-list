@@ -275,7 +275,6 @@ case "${host_os}" in
     *mingw32*)
         AC_DEFINE(FTY_ALERT_LIST_HAVE_WINDOWS, 1, [Have Windows OS])
         AC_DEFINE(FTY_ALERT_LIST_HAVE_MINGW32, 1, [Have MinGW32])
-<<<<<<< HEAD
         AC_CHECK_HEADERS(windows.h)
         fty_alert_list_on_mingw32="yes"
         fty_alert_list_install_man="no"
@@ -289,21 +288,6 @@ case "${host_os}" in
         AC_CHECK_HEADERS(windows.h)
         fty_alert_list_on_mingw32="yes"
         fty_alert_list_install_man="no"
-=======
-        AC_CHECK_HEADERS(windows.h)
-        fty_alert_list_on_mingw32="yes"
-        fty_alert_list_install_man="no"
-        ;;
-    *mingw64*)
-        # Define on MINGW64 to enable all libeary features
-        # Disable format error due to incomplete ANSI C
-        CPPFLAGS="-Wno-error=format -D_XOPEN_SOURCE $CPPFLAGS"
-        AC_DEFINE(FTY_ALERT_LIST_HAVE_WINDOWS, 1, [Have Windows OS])
-        AC_DEFINE(FTY_ALERT_LIST_HAVE_MINGW32, 1, [Have MinGW32])
-        AC_CHECK_HEADERS(windows.h)
-        fty_alert_list_on_mingw32="yes"
-        fty_alert_list_install_man="no"
->>>>>>> 26528548ee4e504939fc99bd5c5ae07498c619b6
         ;;
     *cygwin*)
         # Define on Cygwin to enable all library features
@@ -362,7 +346,6 @@ AM_CONDITIONAL(ON_GNU, test "x$fty_alert_list_on_gnu" = "xyes")
 AM_CONDITIONAL(INSTALL_MAN, test "x$fty_alert_list_install_man" = "xyes")
 AM_CONDITIONAL(BUILD_DOC, test "x$fty_alert_list_build_doc" = "xyes")
 
-<<<<<<< HEAD
 AC_ARG_ENABLE([dist_cmakefiles],
     AS_HELP_STRING([--enable-dist_cmakefiles],
         [Distribute CMakeLists.txt and related files [default depends: on if present and not cross compiling]]),
@@ -376,8 +359,6 @@ fi
      AC_MSG_RESULT([$enable_dist_cmakefiles])])
 AM_CONDITIONAL(ENABLE_DIST_CMAKEFILES, test "x$enable_dist_cmakefiles" = "xyes")
 
-=======
->>>>>>> 26528548ee4e504939fc99bd5c5ae07498c619b6
 # Check for fty-alert-list intent
 AC_ARG_ENABLE([fty-alert-list],
     AS_HELP_STRING([--enable-fty-alert-list],
@@ -460,7 +441,6 @@ else
     AC_MSG_NOTICE([Building stable and legacy API (no draft API)])
     AC_SUBST(pkg_config_defines, "")
 fi
-<<<<<<< HEAD
 
 AC_ARG_ENABLE([Werror],
     AS_HELP_STRING([--enable-Werror],
@@ -488,8 +468,6 @@ AS_IF([test "x$enable_Werror" = "xyes" || test "x$enable_Werror" = "xauto"],
          AS_IF([test "x$enable_Werror" = "xyes"], [AC_MSG_ERROR([--enable-Werror=yes was requested and can not be satisfied for CPP: $CPP])])
         ])])
 ])
-=======
->>>>>>> 26528548ee4e504939fc99bd5c5ae07498c619b6
 
 # Specify output files
 AC_CONFIG_FILES([Makefile
@@ -538,11 +516,8 @@ echo Package version............... : $PACKAGE-$VERSION
 echo
 echo C compiler.................... : $CC
 echo C compiler flags.............. : $CFLAGS
-<<<<<<< HEAD
 echo C++ compiler.................. : $CXX
 echo C++ compiler flags............ : $CXXFLAGS
-=======
->>>>>>> 26528548ee4e504939fc99bd5c5ae07498c619b6
 echo Configure date................ : $BUILD_DATE
 echo Build architecture............ : $BUILD_ARCH
 echo Build docs.................... : $fty_alert_list_build_doc
@@ -564,11 +539,7 @@ echo
 echo '##########################################################################'
 
 echo
-<<<<<<< HEAD
 echo Configure complete! Now proceed with:
-=======
-echo Configure complete! Now procced with:
->>>>>>> 26528548ee4e504939fc99bd5c5ae07498c619b6
 echo "    - 'make'               compile the project"
 echo "    - 'make check'         run the project's selftest"
 echo "    - 'make install'       install the project to $prefix"
