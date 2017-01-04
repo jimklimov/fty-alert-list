@@ -113,89 +113,43 @@ if [ "$BUILD_TYPE" == "default" ] || [ "$BUILD_TYPE" == "default-Werror" ] || [ 
     CONFIG_OPTS+=("PKG_CONFIG_PATH=${BUILD_PREFIX}/lib/pkgconfig")
     CONFIG_OPTS+=("--prefix=${BUILD_PREFIX}")
     CONFIG_OPTS+=("--with-docs=no")
-    if [ -z "${CI_CONFIG_QUIET-}" ] || [ "${CI_CONFIG_QUIET-}" = yes ] || [ "${CI_CONFIG_QUIET-}" = true ]; then
-        CONFIG_OPTS+=("--quiet")
-    fi
-
-    if [ "$HAVE_CCACHE" = yes ] && [ "${COMPILER_FAMILY}" = GCC ]; then
-        PATH="/usr/lib/ccache:$PATH"
-        export PATH
-        if [ -n "$CC" ] && [ -x "/usr/lib/ccache/`basename "$CC"`" ]; then
-            case "$CC" in
-                *ccache*) ;;
-                */*) DIR_CC="`dirname "$CC"`" && [ -n "$DIR_CC" ] && DIR_CC="`cd "$DIR_CC" && pwd `" && [ -n "$DIR_CC" ] && [ -d "$DIR_CC" ] || DIR_CC=""
-                    [ -z "$CCACHE_PATH" ] && CCACHE_PATH="$DIR_CC" || \
-                    if echo "$CCACHE_PATH" | egrep '(^'"$DIR_CC"':.*|^'"$DIR_CC"'$|:'"$DIR_CC"':|:'"$DIR_CC"'$)' ; then
-                        CCACHE_PATH="$DIR_CC:$CCACHE_PATH"
-                    fi
-                    ;;
-            esac
-            CC="/usr/lib/ccache/`basename "$CC"`"
-        else
-            : # CC="ccache $CC"
-        fi
-        if [ -n "$CXX" ] && [ -x "/usr/lib/ccache/`basename "$CXX"`" ]; then
-            case "$CXX" in
-                *ccache*) ;;
-                */*) DIR_CXX="`dirname "$CXX"`" && [ -n "$DIR_CXX" ] && DIR_CXX="`cd "$DIR_CXX" && pwd `" && [ -n "$DIR_CXX" ] && [ -d "$DIR_CXX" ] || DIR_CXX=""
-                    [ -z "$CCACHE_PATH" ] && CCACHE_PATH="$DIR_CXX" || \
-                    if echo "$CCACHE_PATH" | egrep '(^'"$DIR_CXX"':.*|^'"$DIR_CXX"'$|:'"$DIR_CXX"':|:'"$DIR_CXX"'$)' ; then
-                        CCACHE_PATH="$DIR_CXX:$CCACHE_PATH"
-                    fi
-                    ;;
-            esac
-            CXX="/usr/lib/ccache/`basename "$CXX"`"
-        else
-            : # CXX="ccache $CXX"
-        fi
-        if [ -n "$CPP" ] && [ -x "/usr/lib/ccache/`basename "$CPP"`" ]; then
-            case "$CPP" in
-                *ccache*) ;;
-                */*) DIR_CPP="`dirname "$CPP"`" && [ -n "$DIR_CPP" ] && DIR_CPP="`cd "$DIR_CPP" && pwd `" && [ -n "$DIR_CPP" ] && [ -d "$DIR_CPP" ] || DIR_CPP=""
-                    [ -z "$CCACHE_PATH" ] && CCACHE_PATH="$DIR_CPP" || \
-                    if echo "$CCACHE_PATH" | egrep '(^'"$DIR_CPP"':.*|^'"$DIR_CPP"'$|:'"$DIR_CPP"':|:'"$DIR_CPP"'$)' ; then
-                        CCACHE_PATH="$DIR_CPP:$CCACHE_PATH"
-                    fi
-                    ;;
-            esac
-            CPP="/usr/lib/ccache/`basename "$CPP"`"
-        else
-            : # CPP="ccache $CPP"
-        fi
-
-        CONFIG_OPTS+=("CC=${CC}")
-        CONFIG_OPTS+=("CXX=${CXX}")
-        CONFIG_OPTS+=("CPP=${CPP}")
-    fi
+    CONFIG_OPTS+=("--quiet")
 
     # Clone and build dependencies
-    [ -z "$CI_TIME" ] || echo "`date`: Starting build of dependencies (if any)..."
-    if ! ((command -v dpkg-query >/dev/null 2>&1 && dpkg-query --list libzmq3-dev >/dev/null 2>&1) || \
-           (command -v brew >/dev/null 2>&1 && brew ls --versions libzmq >/dev/null 2>&1)); then
-        $CI_TIME git clone --quiet --depth 1 https://github.com/zeromq/libzmq.git libzmq
-        BASE_PWD=${PWD}
-        cd libzmq
-        CCACHE_BASEDIR=${PWD}
-        export CCACHE_BASEDIR
-        git --no-pager log --oneline -n1
-        if [ -e autogen.sh ]; then
-            $CI_TIME ./autogen.sh 2> /dev/null
-        fi
-        if [ -e buildconf ]; then
-            $CI_TIME ./buildconf 2> /dev/null
-        fi
-        if [ ! -e autogen.sh ] && [ ! -e buildconf ] && [ ! -e ./configure ] && [ -s ./configure.ac ]; then
-            $CI_TIME libtoolize --copy --force && \
-            $CI_TIME aclocal -I . && \
-            $CI_TIME autoheader && \
-            $CI_TIME automake --add-missing --copy && \
-            $CI_TIME autoconf || \
-            $CI_TIME autoreconf -fiv
-        fi
-        $CI_TIME ./configure "${CONFIG_OPTS[@]}"
-        $CI_TIME make -j4
-        $CI_TIME make install
-        cd "${BASE_PWD}"
+    git clone --quiet --depth 1 https://github.com/zeromq/libzmq.git libzmq.git
+    BASE_PWD=${PWD}
+    cd libzmq.git
+    git --no-pager log --oneline -n1
+    if [ -e autogen.sh ]; then
+        ./autogen.sh 2> /dev/null
+    fi
+    if [ -e buildconf ]; then
+        ./buildconf 2> /dev/null
+    fi
+    ./configure "${CONFIG_OPTS[@]}"
+    make -j4
+    make install
+    cd "${BASE_PWD}"
+    git clone --quiet --depth 1 -b v3.0.2 https://github.com/zeromq/czmq.git czmq.git
+    BASE_PWD=${PWD}
+    cd czmq.git
+    git --no-pager log --oneline -n1
+    if [ -e autogen.sh ]; then
+        ./autogen.sh 2> /dev/null
+    fi
+    if [ -e buildconf ]; then
+        ./buildconf 2> /dev/null
+    fi
+    ./configure "${CONFIG_OPTS[@]}"
+    make -j4
+    make install
+    cd "${BASE_PWD}"
+    git clone --quiet --depth 1 https://github.com/zeromq/malamute.git malamute.git
+    BASE_PWD=${PWD}
+    cd malamute.git
+    git --no-pager log --oneline -n1
+    if [ -e autogen.sh ]; then
+        ./autogen.sh 2> /dev/null
     fi
     if ! ((command -v dpkg-query >/dev/null 2>&1 && dpkg-query --list libczmq-dev >/dev/null 2>&1) || \
            (command -v brew >/dev/null 2>&1 && brew ls --versions czmq >/dev/null 2>&1)); then
@@ -224,32 +178,16 @@ if [ "$BUILD_TYPE" == "default" ] || [ "$BUILD_TYPE" == "default-Werror" ] || [ 
         $CI_TIME make install
         cd "${BASE_PWD}"
     fi
-    if ! ((command -v dpkg-query >/dev/null 2>&1 && dpkg-query --list libmlm-dev >/dev/null 2>&1) || \
-           (command -v brew >/dev/null 2>&1 && brew ls --versions malamute >/dev/null 2>&1)); then
-        $CI_TIME git clone --quiet --depth 1 https://github.com/zeromq/malamute.git malamute
-        BASE_PWD=${PWD}
-        cd malamute
-        CCACHE_BASEDIR=${PWD}
-        export CCACHE_BASEDIR
-        git --no-pager log --oneline -n1
-        if [ -e autogen.sh ]; then
-            $CI_TIME ./autogen.sh 2> /dev/null
-        fi
-        if [ -e buildconf ]; then
-            $CI_TIME ./buildconf 2> /dev/null
-        fi
-        if [ ! -e autogen.sh ] && [ ! -e buildconf ] && [ ! -e ./configure ] && [ -s ./configure.ac ]; then
-            $CI_TIME libtoolize --copy --force && \
-            $CI_TIME aclocal -I . && \
-            $CI_TIME autoheader && \
-            $CI_TIME automake --add-missing --copy && \
-            $CI_TIME autoconf || \
-            $CI_TIME autoreconf -fiv
-        fi
-        $CI_TIME ./configure "${CONFIG_OPTS[@]}"
-        $CI_TIME make -j4
-        $CI_TIME make install
-        cd "${BASE_PWD}"
+    ./configure "${CONFIG_OPTS[@]}"
+    make -j4
+    make install
+    cd "${BASE_PWD}"
+    git clone --quiet --depth 1 https://github.com/42ity/fty-proto fty-proto.git
+    BASE_PWD=${PWD}
+    cd fty-proto.git
+    git --no-pager log --oneline -n1
+    if [ -e autogen.sh ]; then
+        ./autogen.sh 2> /dev/null
     fi
     if ! ((command -v dpkg-query >/dev/null 2>&1 && dpkg-query --list libfty_proto-dev >/dev/null 2>&1) || \
            (command -v brew >/dev/null 2>&1 && brew ls --versions fty-proto >/dev/null 2>&1)); then
@@ -278,6 +216,10 @@ if [ "$BUILD_TYPE" == "default" ] || [ "$BUILD_TYPE" == "default-Werror" ] || [ 
         $CI_TIME make install
         cd "${BASE_PWD}"
     fi
+    ./configure "${CONFIG_OPTS[@]}"
+    make -j4
+    make install
+    cd "${BASE_PWD}"
 
     # Build and check this project; note that zprojects always have an autogen.sh
     [ -z "$CI_TIME" ] || echo "`date`: Starting build of currently tested project with DRAFT APIs..."
@@ -299,29 +241,16 @@ if [ "$BUILD_TYPE" == "default" ] || [ "$BUILD_TYPE" == "default-Werror" ] || [ 
     git status -s || true
     echo "==="
 
-    (
-        export DISTCHECK_CONFIGURE_FLAGS="--enable-drafts=yes ${CONFIG_OPTS[@]}"
-        $CI_TIME make VERBOSE=1 DISTCHECK_CONFIGURE_FLAGS="$DISTCHECK_CONFIGURE_FLAGS" distcheck
 
-        echo "=== Are GitIgnores good after 'make distcheck' with drafts? (should have no output below)"
-        git status -s || true
-        echo "==="
-    )
-
-    # Build and check this project without DRAFT APIs
-    [ -z "$CI_TIME" ] || echo "`date`: Starting build of currently tested project without DRAFT APIs..."
-    make distclean
+    make check
 
     git clean -f
     git reset --hard HEAD
     (
-        $CI_TIME ./autogen.sh 2> /dev/null
-        $CI_TIME ./configure --enable-drafts=no "${CONFIG_OPTS[@]}" --with-docs=yes
-        $CI_TIME make VERBOSE=1 all || exit $?
-        (
-            export DISTCHECK_CONFIGURE_FLAGS="--enable-drafts=no ${CONFIG_OPTS[@]} --with-docs=yes" && \
-            $CI_TIME make VERBOSE=1 DISTCHECK_CONFIGURE_FLAGS="$DISTCHECK_CONFIGURE_FLAGS" distcheck || exit $?
-        )
+        ./autogen.sh 2> /dev/null
+        ./configure --enable-drafts=no "${CONFIG_OPTS[@]}" --with-docs=yes
+        make VERBOSE=1 all || exit $?
+        make check
     ) || exit 1
     [ -z "$CI_TIME" ] || echo "`date`: Builds completed without fatal errors!"
 
