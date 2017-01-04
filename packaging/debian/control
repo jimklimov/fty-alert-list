@@ -55,7 +55,7 @@ Description: provides information about active alerts. development tools
 
 Package: fty-alert-list
 Architecture: any
-Depends: ${misc:Depends}, ${shlibs:Depends}
+Depends: ${misc:Depends}, ${shlibs:Depends},
 Description: provides information about active alerts.
  Main package for fty-alert-list: provides information about active alerts.
 

@@ -58,17 +58,17 @@ BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 %description
 fty-alert-list provides information about active alerts..
 
-%package -n libfty_alert_list1
+%package -n libfty_alert_list0
 Group:          System/Libraries
 Summary:        provides information about active alerts. shared library
 
-%description -n libfty_alert_list1
+%description -n libfty_alert_list0
 This package contains shared library for fty-alert-list: provides information about active alerts.
 
-%post -n libfty_alert_list1 -p /sbin/ldconfig
-%postun -n libfty_alert_list1 -p /sbin/ldconfig
+%post -n libfty_alert_list0 -p /sbin/ldconfig
+%postun -n libfty_alert_list0 -p /sbin/ldconfig
 
-%files -n libfty_alert_list1
+%files -n libfty_alert_list0
 %defattr(-,root,root)
 %doc COPYING
 %{_libdir}/libfty_alert_list.so.*
@@ -76,7 +76,7 @@ This package contains shared library for fty-alert-list: provides information ab
 %package devel
 Summary:        provides information about active alerts.
 Group:          System/Libraries
-Requires:       libfty_alert_list1 = %{version}
+Requires:       libfty_alert_list0 = %{version}
 Requires:       zeromq-devel
 Requires:       czmq-devel
 Requires:       malamute-devel
