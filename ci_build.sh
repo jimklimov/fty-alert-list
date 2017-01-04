@@ -5,58 +5,110 @@
 #  READ THE ZPROJECT/README.MD FOR INFORMATION ABOUT MAKING PERMANENT CHANGES. #
 ################################################################################
 
-set -x
 set -e
 
-if [ "$BUILD_TYPE" == "default" ] || [ "$BUILD_TYPE" == "default-Werror" ] ; then
+# Set this to enable verbose profiling
+[ -n "${CI_TIME-}" ] || CI_TIME=""
+case "$CI_TIME" in
+    [Yy][Ee][Ss]|[Oo][Nn]|[Tt][Rr][Uu][Ee])
+        CI_TIME="time -p " ;;
+    [Nn][Oo]|[Oo][Ff][Ff]|[Ff][Aa][Ll][Ss][Ee])
+        CI_TIME="" ;;
+esac
+
+# Set this to enable verbose tracing
+[ -n "${CI_TRACE-}" ] || CI_TRACE="no"
+case "$CI_TRACE" in
+    [Nn][Oo]|[Oo][Ff][Ff]|[Ff][Aa][Ll][Ss][Ee])
+        set +x ;;
+    [Yy][Ee][Ss]|[Oo][Nn]|[Tt][Rr][Uu][Ee])
+        set -x ;;
+esac
+
+if [ "$BUILD_TYPE" == "default" ] || [ "$BUILD_TYPE" == "default-Werror" ] || [ "$BUILD_TYPE" == "valgrind" ]; then
+    LANG=C
+    LC_ALL=C
+    export LANG LC_ALL
+
+
     if [ -d "./tmp" ]; then
         rm -rf ./tmp
     fi
     mkdir -p tmp
     BUILD_PREFIX=$PWD/tmp
 
+    PATH="`echo "$PATH" | sed -e 's,^/usr/lib/ccache/?:,,' -e 's,:/usr/lib/ccache/?:,,' -e 's,:/usr/lib/ccache/?$,,' -e 's,^/usr/lib/ccache/?$,,'2`"
+    CCACHE_PATH="$PATH"
+    CCACHE_DIR="${HOME}/.ccache"
+    export CCACHE_PATH CCACHE_DIR PATH
+    HAVE_CCACHE=no
+    if which ccache && ls -la /usr/lib/ccache ; then
+        HAVE_CCACHE=yes
+    fi
+
+    if [ "$HAVE_CCACHE" = yes ] && [ -d "$CCACHE_DIR" ]; then
+        echo "CCache stats before build:"
+        ccache -s || true
+    fi
+    mkdir -p "${HOME}/.ccache"
+
     CONFIG_OPTS=()
     COMMON_CFLAGS=""
     EXTRA_CFLAGS=""
     EXTRA_CPPFLAGS=""
     EXTRA_CXXFLAGS=""
-    if [ "$BUILD_TYPE" == "default-Werror" ] ; then
-        COMPILER_FAMILY=""
-        if [ -n "$CC" -a -n "$CXX" ]; then
-            if "$CC" --version 2>&1 | grep GCC > /dev/null && \
-               "$CXX" --version 2>&1 | grep GCC > /dev/null \
-            ; then
-                COMPILER_FAMILY="GCC"
-            fi
-        else
-            if "gcc" --version 2>&1 | grep GCC > /dev/null && \
-               "g++" --version 2>&1 | grep GCC > /dev/null \
-            ; then
-                # Autoconf would pick this by default
-                COMPILER_FAMILY="GCC"
-            elif "cc" --version 2>&1 | grep GCC > /dev/null && \
-               "c++" --version 2>&1 | grep GCC > /dev/null \
-            ; then
-                COMPILER_FAMILY="GCC"
-            fi
-        fi
 
+    is_gnucc() {
+        if [ -n "$1" ] && "$1" --version 2>&1 | grep 'Free Software Foundation' > /dev/null ; then true ; else false ; fi
+    }
+
+    COMPILER_FAMILY=""
+    if [ -n "$CC" -a -n "$CXX" ]; then
+        if is_gnucc "$CC" && is_gnucc "$CXX" ; then
+            COMPILER_FAMILY="GCC"
+            export CC CXX
+        fi
+    else
+        if is_gnucc "gcc" && is_gnucc "g++" ; then
+            # Autoconf would pick this by default
+            COMPILER_FAMILY="GCC"
+            [ -n "$CC" ] || CC=gcc
+            [ -n "$CXX" ] || CXX=g++
+            export CC CXX
+        elif is_gnucc "cc" && is_gnucc "c++" ; then
+            COMPILER_FAMILY="GCC"
+            [ -n "$CC" ] || CC=cc
+            [ -n "$CXX" ] || CXX=c++
+            export CC CXX
+        fi
+    fi
+
+    if [ -n "$CPP" ] ; then
+        [ -x "$CPP" ] && export CPP
+    else
+        if is_gnucc "cpp" ; then
+            CPP=cpp && export CPP
+        fi
+    fi
+
+    CONFIG_OPT_WERROR="--enable-Werror=no"
+    if [ "$BUILD_TYPE" == "default-Werror" ] ; then
         case "${COMPILER_FAMILY}" in
             GCC)
                 echo "NOTE: Enabling ${COMPILER_FAMILY} compiler pedantic error-checking flags for BUILD_TYPE='$BUILD_TYPE'" >&2
-                COMMON_CFLAGS="-Wall -Werror"
-                EXTRA_CFLAGS="-std=c99"
-                EXTRA_CPPFLAGS=""
-                EXTRA_CXXFLAGS="-std=c++99"
+                CONFIG_OPT_WERROR="--enable-Werror=yes"
+                CONFIG_OPTS+=("--enable-Werror=yes")
                 ;;
             *)
-                echo "WARNING: Current compiler is not GCC, not enabling pedantic error-checking flags for BUILD_TYPE='$BUILD_TYPE'" >&2
+                echo "WARNING: Current compiler is not GCC, might not enable pedantic error-checking flags for BUILD_TYPE='$BUILD_TYPE'" >&2
+                CONFIG_OPT_WERROR="--enable-Werror=auto"
                 ;;
         esac
     fi
-    CONFIG_OPTS+=("CFLAGS=-I${BUILD_PREFIX}/include ${COMMON_CFLAGS} ${EXTRA_CFLAGS}")
-    CONFIG_OPTS+=("CPPFLAGS=-I${BUILD_PREFIX}/include ${COMMON_CFLAGS} ${EXTRA_CPPFLAGS}")
-    CONFIG_OPTS+=("CXXFLAGS=-I${BUILD_PREFIX}/include ${COMMON_CFLAGS} ${EXTRA_CXXFLAGS}")
+
+    CONFIG_OPTS+=("CFLAGS=-I${BUILD_PREFIX}/include")
+    CONFIG_OPTS+=("CPPFLAGS=-I${BUILD_PREFIX}/include")
+    CONFIG_OPTS+=("CXXFLAGS=-I${BUILD_PREFIX}/include")
     CONFIG_OPTS+=("LDFLAGS=-L${BUILD_PREFIX}/lib")
     CONFIG_OPTS+=("PKG_CONFIG_PATH=${BUILD_PREFIX}/lib/pkgconfig")
     CONFIG_OPTS+=("--prefix=${BUILD_PREFIX}")
@@ -99,8 +151,32 @@ if [ "$BUILD_TYPE" == "default" ] || [ "$BUILD_TYPE" == "default-Werror" ] ; the
     if [ -e autogen.sh ]; then
         ./autogen.sh 2> /dev/null
     fi
-    if [ -e buildconf ]; then
-        ./buildconf 2> /dev/null
+    if ! ((command -v dpkg-query >/dev/null 2>&1 && dpkg-query --list libczmq-dev >/dev/null 2>&1) || \
+           (command -v brew >/dev/null 2>&1 && brew ls --versions czmq >/dev/null 2>&1)); then
+        $CI_TIME git clone --quiet --depth 1 https://github.com/zeromq/czmq.git czmq
+        BASE_PWD=${PWD}
+        cd czmq
+        CCACHE_BASEDIR=${PWD}
+        export CCACHE_BASEDIR
+        git --no-pager log --oneline -n1
+        if [ -e autogen.sh ]; then
+            $CI_TIME ./autogen.sh 2> /dev/null
+        fi
+        if [ -e buildconf ]; then
+            $CI_TIME ./buildconf 2> /dev/null
+        fi
+        if [ ! -e autogen.sh ] && [ ! -e buildconf ] && [ ! -e ./configure ] && [ -s ./configure.ac ]; then
+            $CI_TIME libtoolize --copy --force && \
+            $CI_TIME aclocal -I . && \
+            $CI_TIME autoheader && \
+            $CI_TIME automake --add-missing --copy && \
+            $CI_TIME autoconf || \
+            $CI_TIME autoreconf -fiv
+        fi
+        $CI_TIME ./configure "${CONFIG_OPTS[@]}"
+        $CI_TIME make -j4
+        $CI_TIME make install
+        cd "${BASE_PWD}"
     fi
     ./configure "${CONFIG_OPTS[@]}"
     make -j4
@@ -113,22 +189,58 @@ if [ "$BUILD_TYPE" == "default" ] || [ "$BUILD_TYPE" == "default-Werror" ] ; the
     if [ -e autogen.sh ]; then
         ./autogen.sh 2> /dev/null
     fi
-    if [ -e buildconf ]; then
-        ./buildconf 2> /dev/null
+    if ! ((command -v dpkg-query >/dev/null 2>&1 && dpkg-query --list libfty_proto-dev >/dev/null 2>&1) || \
+           (command -v brew >/dev/null 2>&1 && brew ls --versions fty-proto >/dev/null 2>&1)); then
+        $CI_TIME git clone --quiet --depth 1 https://github.com/42ity/fty-proto fty-proto
+        BASE_PWD=${PWD}
+        cd fty-proto
+        CCACHE_BASEDIR=${PWD}
+        export CCACHE_BASEDIR
+        git --no-pager log --oneline -n1
+        if [ -e autogen.sh ]; then
+            $CI_TIME ./autogen.sh 2> /dev/null
+        fi
+        if [ -e buildconf ]; then
+            $CI_TIME ./buildconf 2> /dev/null
+        fi
+        if [ ! -e autogen.sh ] && [ ! -e buildconf ] && [ ! -e ./configure ] && [ -s ./configure.ac ]; then
+            $CI_TIME libtoolize --copy --force && \
+            $CI_TIME aclocal -I . && \
+            $CI_TIME autoheader && \
+            $CI_TIME automake --add-missing --copy && \
+            $CI_TIME autoconf || \
+            $CI_TIME autoreconf -fiv
+        fi
+        $CI_TIME ./configure "${CONFIG_OPTS[@]}"
+        $CI_TIME make -j4
+        $CI_TIME make install
+        cd "${BASE_PWD}"
     fi
     ./configure "${CONFIG_OPTS[@]}"
     make -j4
     make install
     cd "${BASE_PWD}"
 
-    # Build and check this project
-    ./autogen.sh 2> /dev/null
-    ./configure --enable-drafts=yes "${CONFIG_OPTS[@]}"
-    make VERBOSE=1 all
+    # Build and check this project; note that zprojects always have an autogen.sh
+    [ -z "$CI_TIME" ] || echo "`date`: Starting build of currently tested project with DRAFT APIs..."
+    CCACHE_BASEDIR=${PWD}
+    export CCACHE_BASEDIR
+    # Only use --enable-Werror on projects that are expected to have it
+    # (and it is not our duty to check prerequisite projects anyway)
+    CONFIG_OPTS+=("${CONFIG_OPT_WERROR}")
+    $CI_TIME ./autogen.sh 2> /dev/null
+    $CI_TIME ./configure --enable-drafts=yes "${CONFIG_OPTS[@]}"
+    if [ "$BUILD_TYPE" == "valgrind" ] ; then
+        # Build and check this project
+        $CI_TIME make VERBOSE=1 memcheck
+        exit $?
+    fi
+    $CI_TIME make VERBOSE=1 all
 
     echo "=== Are GitIgnores good after 'make all' with drafts? (should have no output below)"
     git status -s || true
     echo "==="
+
 
     make check
 
@@ -140,10 +252,16 @@ if [ "$BUILD_TYPE" == "default" ] || [ "$BUILD_TYPE" == "default-Werror" ] ; the
         make VERBOSE=1 all || exit $?
         make check
     ) || exit 1
+    [ -z "$CI_TIME" ] || echo "`date`: Builds completed without fatal errors!"
 
     echo "=== Are GitIgnores good after 'make distcheck' without drafts? (should have no output below)"
     git status -s || true
     echo "==="
+
+    if [ "$HAVE_CCACHE" = yes ]; then
+        echo "CCache stats after build:"
+        ccache -s
+    fi
 
 elif [ "$BUILD_TYPE" == "bindings" ]; then
     pushd "./bindings/${BINDING}" && ./ci_build.sh

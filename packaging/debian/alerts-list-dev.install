@@ -1,3 +1,0 @@
-debian/tmp/usr/include/*
-debian/tmp/usr/lib/*/libalerts_list.so
-debian/tmp/usr/lib/*/pkgconfig/libalerts_list.pc
