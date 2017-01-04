@@ -1,7 +1,7 @@
 [Unit]
 Description=fty-alert-list service
-Requires=malamute.target
-After=malamute.target
+Requires=malamute.service
+After=malamute.service
 PartOf=bios.target
 
 [Service]
