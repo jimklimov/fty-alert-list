@@ -117,15 +117,15 @@ find %{buildroot} -name '*.la' | xargs rm -f
 %{_bindir}/generate_alert
 %{_mandir}/man1/generate_alert*
 %config(noreplace) %{_sysconfdir}/fty-alert-list/fty-alert-list.cfg
-/usr/lib/systemd/system/fty-alert-list.service
+/usr/lib/systemd/system/fty-alert-list{,@*}.{service,*}
 %dir %{_sysconfdir}/fty-alert-list
 %if 0%{?suse_version} > 1315
 %post
-%systemd_post fty-alert-list.service
+%systemd_post fty-alert-list{,@*}.{service,*}
 %preun
-%systemd_preun fty-alert-list.service
+%systemd_preun fty-alert-list{,@*}.{service,*}
 %postun
-%systemd_postun_with_restart fty-alert-list.service
+%systemd_postun_with_restart fty-alert-list{,@*}.{service,*}
 %endif
 
 %changelog
