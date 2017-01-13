@@ -302,12 +302,12 @@ test_alert_new (const char *rule,
                 ) {
     fty_proto_t *alert = fty_proto_new (FTY_PROTO_ALERT);
     assert (alert);
-    fty_proto_set_rule (alert, rule);
-    fty_proto_set_element_src (alert, element);
-    fty_proto_set_state (alert, state);
-    fty_proto_set_severity (alert, severity);
-    fty_proto_set_description (alert, description);
-    fty_proto_set_action (alert, action);
+    fty_proto_set_rule (alert, "%s", rule);
+    fty_proto_set_element_src (alert, "%s", element);
+    fty_proto_set_state (alert, "%s", state);
+    fty_proto_set_severity (alert, "%s", severity);
+    fty_proto_set_description (alert, "%s", description);
+    fty_proto_set_action (alert, "%s", action);
     if (timestamp < 0)
         fty_proto_set_time (alert, time (NULL));
     else
@@ -322,12 +322,12 @@ test_alert_copy (fty_proto_t *to, fty_proto_t *from) {
     fty_proto_set_id (to, FTY_PROTO_ALERT);
     assert (fty_proto_id (from) == FTY_PROTO_ALERT);
 
-    fty_proto_set_rule (to, fty_proto_rule (from));
-    fty_proto_set_element_src (to, fty_proto_element_src (from));
-    fty_proto_set_state (to, fty_proto_state (from));
-    fty_proto_set_severity (to, fty_proto_severity (from));
-    fty_proto_set_description (to, fty_proto_description (from));
-    fty_proto_set_action (to, fty_proto_action (from));
+    fty_proto_set_rule (to, "%s", fty_proto_rule (from));
+    fty_proto_set_element_src (to, "%s", fty_proto_element_src (from));
+    fty_proto_set_state (to, "%s", fty_proto_state (from));
+    fty_proto_set_severity (to, "%s", fty_proto_severity (from));
+    fty_proto_set_description (to, "%s", fty_proto_description (from));
+    fty_proto_set_action (to, "%s", fty_proto_action (from));
     // Don't copy time or the copied time will be expected
     // bussines requirement is that active alert pertains 
     // timestamp of when it was first published
