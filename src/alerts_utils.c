@@ -533,12 +533,12 @@ alert_new (const char *rule,
     fty_proto_t *alert = fty_proto_new (FTY_PROTO_ALERT);
     if (!alert)
         return NULL;
-    fty_proto_set_rule (alert, rule);
-    fty_proto_set_element_src (alert, element);
-    fty_proto_set_state (alert, state);
-    fty_proto_set_severity (alert, severity);
-    fty_proto_set_description (alert, description);
-    fty_proto_set_action (alert, action);
+    fty_proto_set_rule (alert,"%s", rule);
+    fty_proto_set_element_src (alert,"%s", element);
+    fty_proto_set_state (alert,"%s", state);
+    fty_proto_set_severity (alert, "%s", severity);
+    fty_proto_set_description (alert,"%s" ,description);
+    fty_proto_set_action (alert, "%s", action);
     fty_proto_set_time (alert, timestamp);
     fty_proto_aux_insert (alert,"TTL", "%"PRIi64, ttl);
     return alert;
