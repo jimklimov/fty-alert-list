@@ -691,11 +691,11 @@ test_alert_publish (
     if (handle) {
         fty_proto_t *item = (fty_proto_t *) zlistx_handle_item (handle);
 
-        fty_proto_set_rule (item, fty_proto_rule (*message));
-        fty_proto_set_element_src (item, fty_proto_element_src (*message));
-        fty_proto_set_severity (item, fty_proto_severity (*message));
-        fty_proto_set_description (item, fty_proto_description (*message));
-        fty_proto_set_action (item, fty_proto_action (*message));
+        fty_proto_set_rule (item, "%s", fty_proto_rule (*message));
+        fty_proto_set_element_src (item, "%s", fty_proto_element_src (*message));
+        fty_proto_set_severity (item, "%s", fty_proto_severity (*message));
+        fty_proto_set_description (item,"%s",  fty_proto_description (*message));
+        fty_proto_set_action (item, "%s", fty_proto_action (*message));
 
         if (str_eq (fty_proto_state (*message), "RESOLVED")) {
             if (!str_eq (fty_proto_state (item), "RESOLVED")) {
