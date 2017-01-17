@@ -160,7 +160,7 @@ fty_alert_list_server (zsock_t *pipe, void *args)
     zlistx_set_duplicator (alerts, (czmq_duplicator *) fty_proto_dup);
 
     mlm_client_t *client = mlm_client_new ();
-    mlm_client_connect (client, endpoint, 1000, "fty-alerts-list");
+    mlm_client_connect (client, endpoint, 1000, "fty-alert-list");
     mlm_client_set_consumer (client, "ALERTS", ".*");
 
     zpoller_t *poller = zpoller_new (pipe, mlm_client_msgpipe (client), NULL);
