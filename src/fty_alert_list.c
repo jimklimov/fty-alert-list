@@ -28,6 +28,13 @@
 
 #include "fty_alert_list_classes.h"
 
+static int
+s_ttl_cleanup_timer (zloop_t *loop, int timer_id, void *output)
+{
+    zstr_send (output, "TTLCLEANUP");
+    return 0;
+}
+
 int main (int argc, char *argv [])
 {
     bool verbose = false;
@@ -56,10 +63,17 @@ int main (int argc, char *argv [])
     zsys_info ("fty-alert-list starting");
     const char *endpoint = "ipc://@/malamute";
     zactor_t *alert_list_server = zactor_new (fty_alert_list_server, (void *) endpoint);
+
+    zloop_t *ttlcleanup = zloop_new ();
+    zloop_timer (ttlcleanup, 60*1000, 0, s_ttl_cleanup_timer, alert_list_server);
+    zloop_start (ttlcleanup);
+    
     // 
     while (!zsys_interrupted) {
         sleep (1000);
     }
+    
+    zloop_destroy (&ttlcleanup);
     zactor_destroy (&alert_list_server);
     return EXIT_SUCCESS;
 }
