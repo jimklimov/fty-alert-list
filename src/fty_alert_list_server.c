@@ -160,7 +160,7 @@ fty_alert_list_server (zsock_t *pipe, void *args)
     zlistx_set_duplicator (alerts, (czmq_duplicator *) fty_proto_dup);
 
     mlm_client_t *client = mlm_client_new ();
-    mlm_client_connect (client, endpoint, 1000, "ALERTS-LIST");
+    mlm_client_connect (client, endpoint, 1000, "fty-alert-list");
     mlm_client_set_consumer (client, "ALERTS", ".*");
 
     zpoller_t *poller = zpoller_new (pipe, mlm_client_msgpipe (client), NULL);
@@ -213,14 +213,14 @@ test_request_alerts_list (mlm_client_t *user_interface, const char *state) {
     zmsg_t *send = zmsg_new ();
     zmsg_addstr (send, "LIST");
     zmsg_addstr (send, state);
-    if (mlm_client_sendto (user_interface, "ALERTS-LIST", RFC_ALERTS_LIST_SUBJECT, NULL, 5000, &send) != 0) {
+    if (mlm_client_sendto (user_interface, "fty-alert-list", RFC_ALERTS_LIST_SUBJECT, NULL, 5000, &send) != 0) {
         zmsg_destroy (&send);
-        zsys_error ("mlm_client_sendto (address = 'ALERTS-LIST', subject = 'rfc-alerts-list') failed.");
+        zsys_error ("mlm_client_sendto (address = 'fty-alert-list', subject = 'rfc-alerts-list') failed.");
         return NULL;
     }
     zmsg_t *reply = mlm_client_recv (user_interface);
     assert (str_eq (mlm_client_command (user_interface), "MAILBOX DELIVER"));
-    assert (str_eq (mlm_client_sender (user_interface), "ALERTS-LIST"));
+    assert (str_eq (mlm_client_sender (user_interface), "fty-alert-list"));
     assert (str_eq (mlm_client_subject (user_interface), RFC_ALERTS_LIST_SUBJECT));
     assert (reply);
     return reply;
@@ -510,11 +510,11 @@ fty_alert_list_server_test (bool verbose)
     zmsg_t *send = zmsg_new ();
     zmsg_addstr (send, "LIST");
     zmsg_addstr (send, "RESOLVED");
-    int rv = mlm_client_sendto (ui_client, "ALERTS-LIST", RFC_ALERTS_LIST_SUBJECT, NULL, 5000, &send);
+    int rv = mlm_client_sendto (ui_client, "fty-alert-list", RFC_ALERTS_LIST_SUBJECT, NULL, 5000, &send);
     assert (rv == 0);
     reply = mlm_client_recv (ui_client);
     assert (str_eq (mlm_client_command (ui_client), "MAILBOX DELIVER"));
-    assert (str_eq (mlm_client_sender (ui_client), "ALERTS-LIST"));
+    assert (str_eq (mlm_client_sender (ui_client), "fty-alert-list"));
     assert (str_eq (mlm_client_subject (ui_client), RFC_ALERTS_LIST_SUBJECT));   
     char *part = zmsg_popstr (reply);
     assert (str_eq (part, "ERROR"));
@@ -527,11 +527,11 @@ fty_alert_list_server_test (bool verbose)
     send = zmsg_new ();
     zmsg_addstr (send, "LIST");
     zmsg_addstr (send, "Karolino");
-    rv = mlm_client_sendto (ui_client, "ALERTS-LIST", RFC_ALERTS_LIST_SUBJECT, NULL, 5000, &send);
+    rv = mlm_client_sendto (ui_client, "fty-alert-list", RFC_ALERTS_LIST_SUBJECT, NULL, 5000, &send);
     assert (rv == 0);
     reply = mlm_client_recv (ui_client);
     assert (str_eq (mlm_client_command (ui_client), "MAILBOX DELIVER"));
-    assert (str_eq (mlm_client_sender (ui_client), "ALERTS-LIST"));
+    assert (str_eq (mlm_client_sender (ui_client), "fty-alert-list"));
     assert (str_eq (mlm_client_subject (ui_client), RFC_ALERTS_LIST_SUBJECT));   
     part = zmsg_popstr (reply);
     assert (str_eq (part, "ERROR"));
@@ -544,11 +544,11 @@ fty_alert_list_server_test (bool verbose)
     send = zmsg_new ();
     zmsg_addstr (send, "Hatatitla");
     zmsg_addstr (send, "Karolino");
-    rv = mlm_client_sendto (ui_client, "ALERTS-LIST", RFC_ALERTS_LIST_SUBJECT, NULL, 5000, &send);
+    rv = mlm_client_sendto (ui_client, "fty-alert-list", RFC_ALERTS_LIST_SUBJECT, NULL, 5000, &send);
     assert (rv == 0);
     reply = mlm_client_recv (ui_client);
     assert (str_eq (mlm_client_command (ui_client), "MAILBOX DELIVER"));
-    assert (str_eq (mlm_client_sender (ui_client), "ALERTS-LIST"));
+    assert (str_eq (mlm_client_sender (ui_client), "fty-alert-list"));
     assert (str_eq (mlm_client_subject (ui_client), RFC_ALERTS_LIST_SUBJECT));
     part = zmsg_popstr (reply);
     assert (str_eq (part, "ERROR"));
