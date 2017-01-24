@@ -65,7 +65,7 @@ bin_PROGRAMS += src/fty-alert-list
 src_fty_alert_list_CPPFLAGS = ${AM_CPPFLAGS}
 src_fty_alert_list_LDADD = ${program_libs}
 src_fty_alert_list_SOURCES = src/fty_alert_list.c
-src_fty_alert_list_config_DATA = src/fty-alert-list.cfg
+src_fty_alert_list_config_DATA =
 src_fty_alert_list_configdir = $(sysconfdir)/fty-alert-list
 if WITH_SYSTEMD_UNITS
 systemdsystemunit_DATA += src/fty-alert-list.service

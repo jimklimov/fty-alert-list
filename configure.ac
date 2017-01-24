@@ -739,7 +739,6 @@ AS_IF([test "x$enable_Werror" = "xyes" || test "x$enable_Werror" = "xauto"],
 AC_CONFIG_FILES([Makefile
                  doc/Makefile
                  src/libfty_alert_list.pc
-                 src/fty-alert-list.cfg
                  ])
 
 AM_COND_IF([WITH_SYSTEMD_UNITS],
