@@ -1,3 +1,7 @@
+# This is a skeleton created by zproject.
+# You can add hand-written code here.
+save.xml
+
 # Object files
 *.o
 *.so
@@ -13,20 +17,24 @@
 
 # Shared objects (inc. Windows DLLs)
 *.dll
-*.so
 *.so.*
 *.dylib
 *.lo
 
 # Executables
-agent-alerts-list
-agent_mockup
-generate_alert
-alerts_list_selftest
+src/fty-alert-list_selftest
+src/fty-alert-list
+src/generate_alert
+src/fty_alert_list_selftest
 *.exe
 *.out
 *.app
 core
+
+ # Distcheck workspace and archives
+fty-alert-list-1.0.0/
+fty-alert-list-1.0.0.tar.gz
+fty-alert-list-1.0.0.zip
 
 # Man pages
 doc/*.1
@@ -40,6 +48,7 @@ doc/*.7
 *.trs
 Makefile
 Makefile.in
+!builds/openwrt/Makefile
 aclocal.m4
 autom4te.cache/
 config.log
@@ -58,8 +67,45 @@ src/.dirstamp
 *.cmake
 CMakeLists.txt
 
+# CMake cache
+CMakeCache.txt
+CMakeFiles/
+CTestTestfile.cmake
+cmake_install.cmake
+compile_commands.json
+DartConfiguration.tcl
+install_manifest.txt
+Testing/
+
+# Repositories downloaded by CI integration scripts
+libzmq/
+czmq/
+malamute/
+fty-proto/
+
+# Travis build area
+tmp/
+
+# Valgrind files
+callgrind*
+vgcore*
+
+# Vagrant files
+.vagrant
+
+# CLion / PyCharm
+.idea
+
+# GYP files
+project.Makefile
+*.target.mk
+out/
+
 # qt-android build results
 builds/qt-android/prefix
+
+# Android build results
+builds/android/prefix
 
 # Android - generated directories
 src/app/bin/
@@ -75,9 +121,28 @@ builds/android/e2fsprogs
 builds/android/zyre
 src/app/jni/output
 
+# Python build directory
+build/
+
+# MSVC build directories
+obj/
+bin/
+*.tlog
+
+# Qt
+*pro.user
+moc_*
+build-*
+bindings/qt/selftest/selftest
+
 # Temporary files
 *.swp
+*.bak
+.test*
+
+# editor backups
 *~
+
 
 # Other
 CMakeLists.txt
