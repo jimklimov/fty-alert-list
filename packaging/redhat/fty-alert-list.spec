@@ -1,7 +1,7 @@
 #
-#    fty-alert-list - Provides information about active alerts.
+#    fty-alert-list - Provides information about active alerts
 #
-#    Copyright (C) 2014 - 2015 Eaton                                        
+#    Copyright (C) 2014 - 2017 Eaton                                        
 #                                                                           
 #    This program is free software; you can redistribute it and/or modify   
 #    it under the terms of the GNU General Public License as published by   
@@ -31,7 +31,7 @@
 Name:           fty-alert-list
 Version:        1.0.0
 Release:        1
-Summary:        provides information about active alerts.
+Summary:        provides information about active alerts
 License:        MIT
 URL:            http://example.com/
 Source0:        %{name}-%{version}.tar.gz
@@ -56,14 +56,14 @@ BuildRequires:  fty-proto-devel
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 
 %description
-fty-alert-list provides information about active alerts..
+fty-alert-list provides information about active alerts.
 
 %package -n libfty_alert_list0
 Group:          System/Libraries
-Summary:        provides information about active alerts. shared library
+Summary:        provides information about active alerts shared library
 
 %description -n libfty_alert_list0
-This package contains shared library for fty-alert-list: provides information about active alerts.
+This package contains shared library for fty-alert-list: provides information about active alerts
 
 %post -n libfty_alert_list0 -p /sbin/ldconfig
 %postun -n libfty_alert_list0 -p /sbin/ldconfig
@@ -74,7 +74,7 @@ This package contains shared library for fty-alert-list: provides information ab
 %{_libdir}/libfty_alert_list.so.*
 
 %package devel
-Summary:        provides information about active alerts.
+Summary:        provides information about active alerts
 Group:          System/Libraries
 Requires:       libfty_alert_list0 = %{version}
 Requires:       zeromq-devel
@@ -83,8 +83,8 @@ Requires:       malamute-devel
 Requires:       fty-proto-devel
 
 %description devel
-provides information about active alerts. development tools
-This package contains development files for fty-alert-list: provides information about active alerts.
+provides information about active alerts development tools
+This package contains development files for fty-alert-list: provides information about active alerts
 
 %files devel
 %defattr(-,root,root)
@@ -92,6 +92,7 @@ This package contains development files for fty-alert-list: provides information
 %{_libdir}/libfty_alert_list.so
 %{_libdir}/pkgconfig/libfty_alert_list.pc
 %{_mandir}/man3/*
+%{_mandir}/man7/*
 
 %prep
 %setup -q
@@ -117,15 +118,15 @@ find %{buildroot} -name '*.la' | xargs rm -f
 %{_bindir}/generate_alert
 %{_mandir}/man1/generate_alert*
 %config(noreplace) %{_sysconfdir}/fty-alert-list/fty-alert-list.cfg
-/usr/lib/systemd/system/fty-alert-list{,@*}.{service,*}
+/usr/lib/systemd/system/fty-alert-list.service
 %dir %{_sysconfdir}/fty-alert-list
 %if 0%{?suse_version} > 1315
 %post
-%systemd_post fty-alert-list{,@*}.{service,*}
+%systemd_post fty-alert-list.service
 %preun
-%systemd_preun fty-alert-list{,@*}.{service,*}
+%systemd_preun fty-alert-list.service
 %postun
-%systemd_postun_with_restart fty-alert-list{,@*}.{service,*}
+%systemd_postun_with_restart fty-alert-list.service
 %endif
 
 %changelog

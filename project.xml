@@ -1,6 +1,6 @@
 <project
     name = "fty-alert-list"
-    description = "Provides information about active alerts."
+    description = "Provides information about active alerts"
     script = "zproject.gsl"
     email = "EatonIPCOpenSource@eaton.com"
     repository = "https://github.com/42ity/fty-alert-list"
@@ -24,12 +24,11 @@
         <use project = "malamute"/>
     </use>
 
-    <class name = "alerts_utils" private = "1">Helper functions</class> 
+    <class name = "alerts_utils" private = "1">Helper functions</class>
 
     <class name = "fty_alert_list_server">Providing information about active alerts</class>
 
     <main name = "fty-alert-list" service="1" no_config="1" />
     <main name = "generate_alert" />
-    
 
 </project>

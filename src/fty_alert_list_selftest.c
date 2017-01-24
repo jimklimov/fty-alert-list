@@ -4,7 +4,7 @@
     Runs all selftests.
 
     -------------------------------------------------------------------------
-    Copyright (C) 2014 - 2015 Eaton                                        
+    Copyright (C) 2014 - 2017 Eaton                                        
                                                                            
     This program is free software; you can redistribute it and/or modify   
     it under the terms of the GNU General Public License as published by   
@@ -39,6 +39,9 @@ all_tests [] = {
 #ifdef FTY_ALERT_LIST_BUILD_DRAFT_API
 // Tests for draft public classes:
     { "fty_alert_list_server", fty_alert_list_server_test },
+#endif // FTY_ALERT_LIST_BUILD_DRAFT_API
+#ifdef FTY_ALERT_LIST_BUILD_DRAFT_API
+    { "private_classes", fty_alert_list_private_selftest },
 #endif // FTY_ALERT_LIST_BUILD_DRAFT_API
     {0, 0}          //  Sentinel
 };
@@ -104,7 +107,8 @@ main (int argc, char **argv)
         if (streq (argv [argn], "--list")
         ||  streq (argv [argn], "-l")) {
             puts ("Available tests:");
-            puts ("    fty_alert_list_server\t- draft");
+            puts ("    fty_alert_list_server\t\t- draft");
+            puts ("    private_classes\t- draft");
             return 0;
         }
         else
@@ -134,6 +138,12 @@ main (int argc, char **argv)
             return 1;
         }
     }
+
+    #ifdef NDEBUG
+        printf(" !!! 'assert' macro is disabled, remove NDEBUG from your compilation definitions.\n");
+        printf(" tests will be meaningless.\n");
+    #endif //
+
     if (test) {
         printf ("Running fty-alert-list test '%s'...\n", test->testname);
         test->test (verbose);
