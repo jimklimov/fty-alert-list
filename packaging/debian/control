@@ -1,7 +1,7 @@
 #
-#    fty-alert-list - Provides information about active alerts.
+#    fty-alert-list - Provides information about active alerts
 #
-#    Copyright (C) 2014 - 2015 Eaton                                        
+#    Copyright (C) 2014 - 2017 Eaton                                        
 #                                                                           
 #    This program is free software; you can redistribute it and/or modify   
 #    it under the terms of the GNU General Public License as published by   
@@ -30,15 +30,14 @@ Build-Depends: debhelper (>= 9),
     libfty-proto-dev,
     systemd,
     dh-systemd,
+    asciidoc-base | asciidoc, xmlto,
     dh-autoreconf
-Build-Depends-Indep: asciidoc,
-                     xmlto
 
 Package: libfty-alert-list0
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: provides information about active alerts. shared library
- This package contains shared library for fty-alert-list: provides information about active alerts.
+Description: provides information about active alerts shared library
+ This package contains shared library for fty-alert-list: provides information about active alerts
 
 Package: libfty-alert-list-dev
 Architecture: any
@@ -49,14 +48,14 @@ Depends:
     libmlm-dev,
     libfty-proto-dev,
     libfty-alert-list0 (= ${binary:Version})
-Description: provides information about active alerts. development tools
- This package contains development files for fty-alert-list: provides information about active alerts.
+Description: provides information about active alerts development tools
+ This package contains development files for fty-alert-list: provides information about active alerts
 
 Package: fty-alert-list
 Architecture: any
 Depends: ${misc:Depends}, ${shlibs:Depends},
-Description: provides information about active alerts.
- Main package for fty-alert-list: provides information about active alerts.
+Description: provides information about active alerts
+ Main package for fty-alert-list: provides information about active alerts
 
 Package: fty-alert-list-dbg
 Architecture: any
@@ -65,6 +64,6 @@ Priority: extra
 Depends:
     fty-alert-list (= ${binary:Version}),
     ${misc:Depends}
-Description: provides information about active alerts. debugging symbols
- This package contains the debugging symbols for fty-alert-list : provides information about active alerts..
+Description: provides information about active alerts debugging symbols
+ This package contains the debugging symbols for fty-alert-list : provides information about active alerts.
 

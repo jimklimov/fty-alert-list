@@ -31,6 +31,11 @@ src_libfty_alert_list_la_SOURCES += \
 
 endif
 
+if ENABLE_DRAFTS
+src_libfty_alert_list_la_SOURCES += \
+    src/fty_alert_list_private_selftest.c
+endif
+
 src_libfty_alert_list_la_CPPFLAGS = ${AM_CPPFLAGS}
 
 src_libfty_alert_list_la_LDFLAGS = \
@@ -60,7 +65,7 @@ bin_PROGRAMS += src/fty-alert-list
 src_fty_alert_list_CPPFLAGS = ${AM_CPPFLAGS}
 src_fty_alert_list_LDADD = ${program_libs}
 src_fty_alert_list_SOURCES = src/fty_alert_list.c
-src_fty_alert_list_config_DATA = src/fty-alert-list.cfg
+src_fty_alert_list_config_DATA =
 src_fty_alert_list_configdir = $(sysconfdir)/fty-alert-list
 if WITH_SYSTEMD_UNITS
 systemdsystemunit_DATA += src/fty-alert-list.service
