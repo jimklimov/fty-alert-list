@@ -25,8 +25,8 @@
 int main (int argc, char **argv) {
     char *endpoint = NULL;
     
-    if (argc < 7) {
-        fprintf (stderr, "USAGE:\n\tgenerate_alert <rule_name> <element_name> <state> <severity> <description> <unixtime> <action[|action2[|...]]> [endpoint]\n");
+    if (argc < 8) {
+        fprintf (stderr, "USAGE:\n\tgenerate_alert <rule_name> <element_name> <state> <severity> <description> <unixtime> <action[|action2[|...]]> <ttl> [endpoint]\n");
         fprintf (stderr, "\nOPTIONAL ARGUMENTS:\n\tendpoint\tMalamute endpoint. Default: ipc://@/malamute.\n");
         return EXIT_FAILURE;
     }
@@ -40,8 +40,15 @@ int main (int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-    if (argc > 8)
-        endpoint = strdup (argv[8]);
+    unsigned long int ttl = strtoul (argv[8], endptr, 10);
+    if (endptr != NULL || errno != 0) {
+        zsys_error ("<ttl> parameter = '%s' is not a valid ttl", argv[8]);
+        return EXIT_FAILURE;
+    }
+
+    
+    if (argc > 9)
+        endpoint = strdup (argv[9]);
     else
         endpoint = strdup ("ipc://@/malamute");
 
@@ -67,7 +74,8 @@ int main (int argc, char **argv) {
             argv[4],
             argv[5],
             unixtime,
-            argv[7]);
+            argv[7],
+            ttl);
     if (!alert_message) {
         zsys_error ("fty_proto_encode_alert() failed");
         free (endpoint); endpoint = NULL;

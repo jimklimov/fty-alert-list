@@ -318,7 +318,7 @@ s_handle_rfc_alerts_acknowledge (mlm_client_t *client, zmsg_t **msg_p, zlistx_t 
     // change stored alert state, don't change timestamp
     zsys_debug (
             "s_handle_rfc_alerts_acknowledge (): Changing state of (%s, %s) to %s",
-            fty_proto_rule (cursor), fty_proto_element_src (cursor), state);
+            fty_proto_rule (cursor), fty_proto_name (cursor), state);
     fty_proto_set_state (cursor, "%s", state);
 
     zmsg_t *reply = zmsg_new ();
@@ -331,7 +331,7 @@ s_handle_rfc_alerts_acknowledge (mlm_client_t *client, zmsg_t **msg_p, zlistx_t 
             "%s/%s@%s",
             fty_proto_rule (cursor),
             fty_proto_severity (cursor),
-            fty_proto_element_src (cursor));
+            fty_proto_name (cursor));
     zstr_free (&rule);
     zstr_free (&element);
     zstr_free (&state);
@@ -471,7 +471,7 @@ test_print_zlistx (zlistx_t *list) {
         zsys_debug ("| %-15s %-15s %-15s %-12s  %-12" PRIu64" %s  %s  %s",
                 fty_proto_rule (cursor),
                 fty_proto_aux_string (cursor, FTY_PROTO_RULE_CLASS, ""),
-                fty_proto_element_src (cursor),
+                fty_proto_name (cursor),
                 fty_proto_state (cursor),
                 fty_proto_time (cursor),
                 fty_proto_action (cursor),
@@ -552,14 +552,14 @@ test_request_alerts_acknowledge (
         assert (decoded);
         zsys_debug ("\t ALERTS published %s %s %s %" PRIu64" %s %s %s",
                 fty_proto_rule (decoded),
-                fty_proto_element_src (decoded),
+                fty_proto_name (decoded),
                 fty_proto_state (decoded),
                 fty_proto_time (decoded),
                 fty_proto_action (decoded),
                 fty_proto_severity (decoded),
                 fty_proto_description (decoded));
         assert (streq (rule, fty_proto_rule (decoded)));
-        assert (utf8eq (element, fty_proto_element_src (decoded)) == 1 );
+        assert (utf8eq (element, fty_proto_name (decoded)) == 1 );
         assert (streq (state, fty_proto_state (decoded)));
         fty_proto_destroy (&decoded);
     }
@@ -692,7 +692,7 @@ test_alert_publish (
         fty_proto_t *item = (fty_proto_t *) zlistx_handle_item (handle);
 
         fty_proto_set_rule (item, "%s", fty_proto_rule (*message));
-        fty_proto_set_element_src (item, "%s", fty_proto_element_src (*message));
+        fty_proto_set_name (item, "%s", fty_proto_name (*message));
         fty_proto_set_severity (item, "%s", fty_proto_severity (*message));
         fty_proto_set_description (item,"%s",  fty_proto_description (*message));
         fty_proto_set_action (item, "%s", fty_proto_action (*message));
@@ -1049,7 +1049,7 @@ fty_alert_list_server_test (bool verbose)
 
     // Now, let's publish an alert as-a-byspass (i.e. we don't add it to expected)
     // and EXPECT A FAILURE (i.e. expected list != received list)
-    zmsg_t *alert_bypass = fty_proto_encode_alert (NULL, "Pattern", "rack", "ACTIVE", "high", "description", 14, "EMAIL|SMS");
+    zmsg_t *alert_bypass = fty_proto_encode_alert (NULL, "Pattern", "rack", "ACTIVE", "high", "description", 14, "EMAIL|SMS", 0);
     rv = mlm_client_send (producer, "Nobody cares", &alert_bypass);
     assert (rv == 0);
     zclock_sleep (200);
@@ -1072,7 +1072,7 @@ fty_alert_list_server_test (bool verbose)
     reply = test_request_alerts_list (ui, "ALL-ACTIVE");
     test_check_result ("ALL-ACTIVE", alerts, &reply, 1);
 
-    alert_bypass = fty_proto_encode_alert (NULL, "Pattern", "rack", "RESOLVED", "high", "description", 15, "EMAIL|SMS");
+    alert_bypass = fty_proto_encode_alert (NULL, "Pattern", "rack", "RESOLVED", "high", "description", 15, "EMAIL|SMS", 0);
     mlm_client_send (producer, "Nobody cares", &alert_bypass);
     assert (rv == 0);
     zclock_sleep (100);

@@ -257,7 +257,7 @@ alert_id_comparator (fty_proto_t *alert1, fty_proto_t *alert2) {
     }
 
     if (strcasecmp (fty_proto_rule (alert1), fty_proto_rule (alert2)) == 0 &&
-        utf8eq (fty_proto_element_src (alert1), fty_proto_element_src (alert2))) {
+        utf8eq (fty_proto_name (alert1), fty_proto_name (alert2))) {
         return 0;
     }
     else {
@@ -270,7 +270,7 @@ is_alert_identified (fty_proto_t *alert, const char *rule_name, const char *elem
     assert (alert);
     assert (rule_name);
     assert (element_name);
-    const char *element_src = fty_proto_element_src (alert);
+    const char *element_src = fty_proto_name (alert);
 
     if (strcasecmp (fty_proto_rule (alert), rule_name) == 0 &&
         utf8eq (element_src, element_name)) {
@@ -295,7 +295,7 @@ alert_comparator (fty_proto_t *alert1, fty_proto_t *alert2) {
     if (strcasecmp (fty_proto_rule (alert1), fty_proto_rule (alert2)) != 0)
         return 1;
     // element_src
-    if (!utf8eq (fty_proto_element_src (alert1), fty_proto_element_src (alert2)))
+    if (!utf8eq (fty_proto_name (alert1), fty_proto_name (alert2)))
         return 1;
     // state
     if (!str_eq (fty_proto_state (alert1), fty_proto_state (alert2)))
@@ -399,6 +399,7 @@ alert_load_state (zlistx_t *alerts, const char *path, const char *filename) {
     assert (path);
     assert (filename);
 
+    zsys_debug ("statefile: %s/%s", path, filename);
     zfile_t *file = zfile_new (path, filename);
     if (!file) {
         zsys_error ("zfile_new (path = '%s', file = '%s') failed.", path, filename);
@@ -451,7 +452,7 @@ alert_load_state (zlistx_t *alerts, const char *path, const char *filename) {
             zsys_warning (
                     "Alert id (%s, %s) already read.",
                     fty_proto_rule (alert),
-                    fty_proto_element_src (alert));
+                    fty_proto_name (alert));
         }
         fty_proto_destroy (&alert);
     }
@@ -534,7 +535,7 @@ alert_new (const char *rule,
     if (!alert)
         return NULL;
     fty_proto_set_rule (alert,"%s", rule);
-    fty_proto_set_element_src (alert,"%s", element);
+    fty_proto_set_name (alert,"%s", element);
     fty_proto_set_state (alert,"%s", state);
     fty_proto_set_severity (alert, "%s", severity);
     fty_proto_set_description (alert,"%s" ,description);
@@ -705,7 +706,7 @@ alerts_utils_test (bool verbose)
     {
     fty_proto_t *alert = alert_new ("Threshold", "ups", "ACTIVE", "high", "description", 1, "EMAIL|SMS", 0);
     assert (str_eq (fty_proto_rule (alert), "Threshold"));
-    assert (str_eq (fty_proto_element_src (alert), "ups"));
+    assert (str_eq (fty_proto_name (alert), "ups"));
     assert (str_eq (fty_proto_state (alert), "ACTIVE"));
     assert (str_eq (fty_proto_severity (alert), "high"));
     assert (str_eq (fty_proto_description (alert), "description"));
@@ -715,7 +716,7 @@ alerts_utils_test (bool verbose)
 
     alert = alert_new ("Simple@Rule@Because", "karolkove zelezo", "ACTIVE", "high Severity", "Holiday \nInn hotel 243", 10101795, "SMS|Holub|Morse code", 0);
     assert (str_eq (fty_proto_rule (alert), "Simple@Rule@Because"));
-    assert (str_eq (fty_proto_element_src (alert), "karolkove zelezo"));
+    assert (str_eq (fty_proto_name (alert), "karolkove zelezo"));
     assert (str_eq (fty_proto_state (alert), "ACTIVE"));
     assert (str_eq (fty_proto_severity (alert), "high Severity"));
     assert (str_eq (fty_proto_description (alert), "Holiday \nInn hotel 243"));
@@ -1237,7 +1238,7 @@ alerts_utils_test (bool verbose)
     // Check them one by one
     fty_proto_t *cursor = (fty_proto_t *) zlistx_first (alerts);
     assert (str_eq (fty_proto_rule (cursor), "Rule1"));
-    assert (str_eq (fty_proto_element_src (cursor), "Element1"));
+    assert (str_eq (fty_proto_name (cursor), "Element1"));
     assert (str_eq (fty_proto_state (cursor), "ACTIVE"));
     assert (str_eq (fty_proto_severity (cursor), "high"));
     assert (str_eq (fty_proto_description (cursor), "xyz"));
@@ -1246,7 +1247,7 @@ alerts_utils_test (bool verbose)
 
     cursor = (fty_proto_t *) zlistx_next (alerts);
     assert (str_eq (fty_proto_rule (cursor), "Rule1"));
-    assert (str_eq (fty_proto_element_src (cursor), "Element2"));
+    assert (str_eq (fty_proto_name (cursor), "Element2"));
     assert (str_eq (fty_proto_state (cursor), "RESOLVED"));
     assert (str_eq (fty_proto_severity (cursor), "high"));
     assert (str_eq (fty_proto_description (cursor), "xyz"));
@@ -1255,7 +1256,7 @@ alerts_utils_test (bool verbose)
 
     cursor = (fty_proto_t *) zlistx_next (alerts);
     assert (str_eq (fty_proto_rule (cursor), "Rule2"));
-    assert (str_eq (fty_proto_element_src (cursor), "Element1"));
+    assert (str_eq (fty_proto_name (cursor), "Element1"));
     assert (str_eq (fty_proto_state (cursor), "ACK-WIP"));
     assert (str_eq (fty_proto_severity (cursor), "low"));
     assert (str_eq (fty_proto_description (cursor), "this is description"));
@@ -1264,7 +1265,7 @@ alerts_utils_test (bool verbose)
 
     cursor = (fty_proto_t *) zlistx_next (alerts);
     assert (str_eq (fty_proto_rule (cursor), "Rule2"));
-    assert (str_eq (fty_proto_element_src (cursor), "Element2"));
+    assert (str_eq (fty_proto_name (cursor), "Element2"));
     assert (str_eq (fty_proto_state (cursor), "ACK-SILENCE"));
     assert (str_eq (fty_proto_severity (cursor), "high"));
     assert (str_eq (fty_proto_description (cursor), "x"));
@@ -1273,7 +1274,7 @@ alerts_utils_test (bool verbose)
 
     cursor = (fty_proto_t *) zlistx_next (alerts);
     assert (str_eq (fty_proto_rule (cursor), "Rule1"));
-    assert (str_eq (fty_proto_element_src (cursor), "Element3"));
+    assert (str_eq (fty_proto_name (cursor), "Element3"));
     assert (str_eq (fty_proto_state (cursor), "RESOLVED"));
     assert (str_eq (fty_proto_severity (cursor), "a"));
     assert (str_eq (fty_proto_description (cursor), "y"));
@@ -1282,7 +1283,7 @@ alerts_utils_test (bool verbose)
 
     cursor = (fty_proto_t *) zlistx_next (alerts);
     assert (str_eq (fty_proto_rule (cursor), "realpower.default"));
-    assert (utf8eq (fty_proto_element_src (cursor), "ŽlUťOUčKý kůň супер"));
+    assert (utf8eq (fty_proto_name (cursor), "ŽlUťOUčKý kůň супер"));
     assert (str_eq (fty_proto_state (cursor), "ACTIVE"));
     assert (str_eq (fty_proto_severity (cursor), "low"));
     assert (str_eq (fty_proto_description (cursor), "unicode test case #1"));
