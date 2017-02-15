@@ -68,14 +68,14 @@ int main (int argc, char **argv) {
 
     zmsg_t *alert_message = fty_proto_encode_alert (
             NULL,
+            unixtime, 
+            ttl,
             argv[1],
             argv[2],
             argv[3],
             argv[4],
             argv[5],
-            unixtime,
-            argv[7],
-            ttl);
+            argv[7]);
     if (!alert_message) {
         zsys_error ("fty_proto_encode_alert() failed");
         free (endpoint); endpoint = NULL;

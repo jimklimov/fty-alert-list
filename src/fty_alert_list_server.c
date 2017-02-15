@@ -1049,7 +1049,7 @@ fty_alert_list_server_test (bool verbose)
 
     // Now, let's publish an alert as-a-byspass (i.e. we don't add it to expected)
     // and EXPECT A FAILURE (i.e. expected list != received list)
-    zmsg_t *alert_bypass = fty_proto_encode_alert (NULL, "Pattern", "rack", "ACTIVE", "high", "description", 14, "EMAIL|SMS", 0);
+    zmsg_t *alert_bypass = fty_proto_encode_alert (NULL, 14, 0, "Pattern", "rack", "ACTIVE", "high", "description", "EMAIL|SMS");
     rv = mlm_client_send (producer, "Nobody cares", &alert_bypass);
     assert (rv == 0);
     zclock_sleep (200);
@@ -1072,7 +1072,7 @@ fty_alert_list_server_test (bool verbose)
     reply = test_request_alerts_list (ui, "ALL-ACTIVE");
     test_check_result ("ALL-ACTIVE", alerts, &reply, 1);
 
-    alert_bypass = fty_proto_encode_alert (NULL, "Pattern", "rack", "RESOLVED", "high", "description", 15, "EMAIL|SMS", 0);
+    alert_bypass = fty_proto_encode_alert (NULL, 15, 0, "Pattern", "rack", "RESOLVED", "high", "description", "EMAIL|SMS");
     mlm_client_send (producer, "Nobody cares", &alert_bypass);
     assert (rv == 0);
     zclock_sleep (100);
