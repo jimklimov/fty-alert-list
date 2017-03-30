@@ -432,14 +432,14 @@ alert_load_state (zlistx_t *alerts, const char *path, const char *filename) {
     zfile_close (file);
     zfile_destroy (&file);
 
-    uint64_t offset = 0;
+    size_t offset = 0;
     zsys_debug ("zfile_cursize == %d", cursize);
 
     while (offset < cursize) {
         byte *prefix = zchunk_data (chunk) + offset;
-        byte *data = zchunk_data (chunk) + offset + sizeof (uint64_t);
-        offset += (uint64_t) *prefix +  sizeof (uint64_t);
-        zsys_debug ("prefix == %d; offset = %d ", (uint64_t ) *prefix, offset);
+        byte *data = zchunk_data (chunk) + offset + sizeof (size_t);
+        offset += (size_t) *prefix +  sizeof (size_t);
+        zsys_debug ("prefix == %d; offset = %d ", (size_t) *prefix, offset);
 
         zmsg_t *zmessage = zmsg_decode (data, (size_t) *prefix);
         assert (zmessage);
@@ -496,14 +496,14 @@ alert_save_state (zlistx_t *alerts, const char *path, const char *filename) {
         assert (zmessage);
 
         byte *buffer = NULL;
-        uint64_t size = zmsg_encode (zmessage, &buffer);
+        size_t size = zmsg_encode (zmessage, &buffer);
         zmsg_destroy (&zmessage);
 
         assert (buffer);
         assert (size > 0);
 
         // prefix
-        zchunk_extend (chunk, (const void *) &size, sizeof (uint64_t));
+        zchunk_extend (chunk, (const void *) &size, sizeof (size));
         // data
         zchunk_extend (chunk, (const void *) buffer, size);
 
