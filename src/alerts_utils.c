@@ -437,11 +437,19 @@ alert_load_state (zlistx_t *alerts, const char *path, const char *filename) {
 
     while (offset < cursize) {
         byte *prefix = zchunk_data (chunk) + offset;
+#if CZMQ_VERSION_MAJOR == 3
         byte *data = zchunk_data (chunk) + offset + sizeof (size_t);
+#endif
         offset += (size_t) *prefix +  sizeof (size_t);
         zsys_debug ("prefix == %d; offset = %d ", (size_t) *prefix, offset);
 
-        zmsg_t *zmessage = zmsg_decode (data, (size_t) *prefix);
+        zmsg_t *zmessage;
+#if CZMQ_VERSION_MAJOR == 3
+        zmessage = zmsg_decode (data, (size_t) *prefix);
+#else
+/* FIXME: Someone should look at this - what do we want achieved here? */
+        zmessage = zmsg_decode (*prefix);
+#endif
         assert (zmessage);
         fty_proto_t *alert = fty_proto_decode (&zmessage); // zmessage destroyed
         assert (alert);
@@ -495,19 +503,39 @@ alert_save_state (zlistx_t *alerts, const char *path, const char *filename) {
         zmsg_t *zmessage = fty_proto_encode (&duplicate); // duplicate destroyed here
         assert (zmessage);
 
+#if CZMQ_VERSION_MAJOR == 3
         byte *buffer = NULL;
         size_t size = zmsg_encode (zmessage, &buffer);
         zmsg_destroy (&zmessage);
-
         assert (buffer);
+#else
+/* FIXME: Someone should look at this - what do we want achieved here? */
+        zframe_t *ret_frame = zmsg_encode (zmessage);
+        size_t size = zframe_size (ret_frame);
+        zmsg_destroy (&zmessage);
+        assert (ret_frame);
+#endif
+
         assert (size > 0);
 
         // prefix
         zchunk_extend (chunk, (const void *) &size, sizeof (size));
+
+#if CZMQ_VERSION_MAJOR == 3
         // data
         zchunk_extend (chunk, (const void *) buffer, size);
+#else
+/* FIXME: Someone should look at this - don't we have anything
+ * to extend for ret_frame case? */
+#endif
 
+#if CZMQ_VERSION_MAJOR == 3
         free (buffer); buffer = NULL;
+#else
+/* FIXME: Someone should look at this - don't we have anything
+ * to free for ret_frame case? */
+        zframe_destroy (&ret_frame);
+#endif
 
         cursor = (fty_proto_t *) zlistx_next (alerts);
     }
