@@ -432,24 +432,20 @@ alert_load_state (zlistx_t *alerts, const char *path, const char *filename) {
     zfile_close (file);
     zfile_destroy (&file);
 
-    size_t offset = 0;
-    zsys_debug ("zfile_cursize == %d", cursize);
+    /* Note: Protocol data uses 8-byte sized words, and zmsg_XXcode and file
+     * functions deal with platform-dependent unsigned size_t and signed off_t
+     */
+    uint64_t offset = 0;
+    zsys_debug ("zfile_cursize == %zd", cursize);
 
     while (offset < cursize) {
+#if CZMQ_VERSION_MAJOR == 3
         byte *prefix = zchunk_data (chunk) + offset;
-#if CZMQ_VERSION_MAJOR == 3
-        byte *data = zchunk_data (chunk) + offset + sizeof (size_t);
-#endif
-        offset += (size_t) *prefix +  sizeof (size_t);
-        zsys_debug ("prefix == %d; offset = %d ", (size_t) *prefix, offset);
+        byte *data = zchunk_data (chunk) + offset + sizeof (uint64_t);
+        offset += (uint64_t) *prefix +  sizeof (uint64_t);
+        zsys_debug ("prefix == %" PRIu64 "; offset = %" PRIu64 " ", (uint64_t ) *prefix, offset);
 
-        zmsg_t *zmessage;
-#if CZMQ_VERSION_MAJOR == 3
-        zmessage = zmsg_decode (data, (size_t) *prefix);
-#else
-/* FIXME: Someone should look at this - what do we want achieved here? */
-        zmessage = zmsg_decode (*prefix);
-#endif
+        zmsg_t *zmessage = zmsg_decode (data, (size_t) *prefix);
         assert (zmessage);
         fty_proto_t *alert = fty_proto_decode (&zmessage); // zmessage destroyed
         assert (alert);
@@ -463,6 +459,31 @@ alert_load_state (zlistx_t *alerts, const char *path, const char *filename) {
                     fty_proto_name (alert));
         }
         fty_proto_destroy (&alert);
+#else
+/* Assume CZMQ4 */
+/* FIXME: Someone should look at this - what do we want achieved here? */
+        byte *prefix = zchunk_data (chunk) + offset;
+//        byte *data = zchunk_data (chunk) + offset + sizeof (uint64_t);
+        offset += (uint64_t) *prefix +  sizeof (uint64_t);
+        zsys_debug ("prefix == %" PRIu64 "; offset = %" PRIu64 " ", (uint64_t ) *prefix, offset);
+
+//        zmsg_t *zmessage = zmsg_decode (data, (size_t) *prefix);
+// Data type error: zframe_t* is expected
+        zmsg_t *zmessage = zmsg_decode (*prefix);
+        assert (zmessage);
+        fty_proto_t *alert = fty_proto_decode (&zmessage); // zmessage destroyed
+        assert (alert);
+        if (s_alerts_input_checks (alerts, alert) == 0) {
+            zlistx_add_end (alerts, alert);
+        }
+        else {
+            zsys_warning (
+                    "Alert id (%s, %s) already read.",
+                    fty_proto_rule (alert),
+                    fty_proto_name (alert));
+        }
+        fty_proto_destroy (&alert);
+#endif
     }
 
     zchunk_destroy (&chunk);
@@ -498,46 +519,55 @@ alert_save_state (zlistx_t *alerts, const char *path, const char *filename) {
 
     fty_proto_t *cursor = (fty_proto_t *) zlistx_first (alerts);
     while (cursor) {
+#if CZMQ_VERSION_MAJOR == 3
         fty_proto_t *duplicate = fty_proto_dup (cursor);
         assert (duplicate);
         zmsg_t *zmessage = fty_proto_encode (&duplicate); // duplicate destroyed here
         assert (zmessage);
 
-#if CZMQ_VERSION_MAJOR == 3
         byte *buffer = NULL;
-        size_t size = zmsg_encode (zmessage, &buffer);
+        uint64_t size = zmsg_encode (zmessage, &buffer);
         zmsg_destroy (&zmessage);
-        assert (buffer);
-#else
-/* FIXME: Someone should look at this - what do we want achieved here? */
-        zframe_t *ret_frame = zmsg_encode (zmessage);
-        size_t size = zframe_size (ret_frame);
-        zmsg_destroy (&zmessage);
-        assert (ret_frame);
-#endif
 
+        assert (buffer);
         assert (size > 0);
 
         // prefix
-        zchunk_extend (chunk, (const void *) &size, sizeof (size));
-
-#if CZMQ_VERSION_MAJOR == 3
+        zchunk_extend (chunk, (const void *) &size, sizeof (uint64_t));
         // data
         zchunk_extend (chunk, (const void *) buffer, size);
-#else
-/* FIXME: Someone should look at this - don't we have anything
- * to extend for ret_frame case? */
-#endif
 
-#if CZMQ_VERSION_MAJOR == 3
         free (buffer); buffer = NULL;
-#else
-/* FIXME: Someone should look at this - don't we have anything
- * to free for ret_frame case? */
-        zframe_destroy (&ret_frame);
-#endif
 
         cursor = (fty_proto_t *) zlistx_next (alerts);
+#else
+/* Assume CZMQ4 */
+/* FIXME: Someone should look at this - what do we want achieved here? */
+        fty_proto_t *duplicate = fty_proto_dup (cursor);
+        assert (duplicate);
+        zmsg_t *zmessage = fty_proto_encode (&duplicate); // duplicate destroyed here
+        assert (zmessage);
+
+        zframe_t *frame = zmsg_encode (zmessage);
+        size_t size = zframe_size (frame);
+        zmsg_destroy (&zmessage);
+
+        assert (frame);
+        assert (size > 0);
+
+        // prefix
+        zchunk_extend (chunk, (const void *) &size, sizeof (uint64_t));
+/* FIXME: Someone should look at this - don't we have anything
+ * to extend for frame case? */
+        // data
+//        zchunk_extend (chunk, (const void *) buffer, size);
+
+/* FIXME: Someone should look at this - don't we have anything
+ * (else) to free for frame case? */
+        zframe_destroy (&frame);
+
+        cursor = (fty_proto_t *) zlistx_next (alerts);
+#endif
     }
 
     if (zchunk_write (chunk, zfile_handle (file)) == -1) {
