@@ -533,6 +533,7 @@ alert_save_state (zlistx_t *alerts, const char *path, const char *filename) {
         assert (size > 0);
 
         // prefix
+// FIXME: originally this was for uint64_t, should it be sizeof (size) instead?
         zchunk_extend (chunk, (const void *) &size, sizeof (uint64_t));
         // data
         zchunk_extend (chunk, (const void *) buffer, size);
@@ -556,6 +557,7 @@ alert_save_state (zlistx_t *alerts, const char *path, const char *filename) {
         assert (size > 0);
 
         // prefix
+// FIXME: originally this was for uint64_t, should it be sizeof (size) instead?
         zchunk_extend (chunk, (const void *) &size, sizeof (uint64_t));
 /* FIXME: Someone should look at this - don't we have anything
  * to extend for frame case? */
