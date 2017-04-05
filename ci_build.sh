@@ -210,7 +210,15 @@ if [ "$BUILD_TYPE" == "default" ] || [ "$BUILD_TYPE" == "default-Werror" ] || [ 
         echo ""
         BASE_PWD=${PWD}
         echo "`date`: INFO: Building prerequisite 'czmq' from Git repository..." >&2
+### NOTE: Manual edit
+case "$CI_CZMQ_VER" in
+3)
+        $CI_TIME git clone --quiet -b v3.0.2 --depth 1 https://github.com/42ity/czmq.git czmq
+;;
+4|*)
         $CI_TIME git clone --quiet --depth 1 https://github.com/zeromq/czmq.git czmq
+;;
+esac
         cd czmq
         CCACHE_BASEDIR=${PWD}
         export CCACHE_BASEDIR
@@ -314,6 +322,7 @@ if [ "$BUILD_TYPE" == "default" ] || [ "$BUILD_TYPE" == "default-Werror" ] || [ 
         $CI_TIME make VERBOSE=1 memcheck
         exit $?
     fi
+    $CI_TIME make VERBOSE=1 -k all || \
     $CI_TIME make VERBOSE=1 all
 
     echo "=== Are GitIgnores good after 'make all' with drafts? (should have no output below)"
@@ -339,6 +348,7 @@ if [ "$BUILD_TYPE" == "default" ] || [ "$BUILD_TYPE" == "default-Werror" ] || [ 
     (
         $CI_TIME ./autogen.sh 2> /dev/null
         $CI_TIME ./configure --enable-drafts=no "${CONFIG_OPTS[@]}" --with-docs=yes
+        $CI_TIME make VERBOSE=1 -k all || \
         $CI_TIME make VERBOSE=1 all || exit $?
         (
             export DISTCHECK_CONFIGURE_FLAGS="--enable-drafts=no ${CONFIG_OPTS[@]} --with-docs=yes" && \
