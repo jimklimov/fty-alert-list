@@ -1,18 +1,19 @@
 [Unit]
 Description=fty-alert-list service
-Requires=malamute.service
-After=malamute.service
+Requires=network.target malamute.service
+After=network.target malamute.service
 PartOf=bios.target
 
 [Service]
 Type=simple
-User=nobody
+User=bios
 EnvironmentFile=-/etc/default/bios
 EnvironmentFile=-/etc/sysconfig/bios
 EnvironmentFile=-/etc/default/bios__%n.conf
 EnvironmentFile=-/etc/sysconfig/bios__%n.conf
 Environment="prefix=@prefix@"
-ExecStart=@prefix@/bin/fty-alert-list 
+ExecStart=@prefix@/bin/fty-alert-list
+Restart=always
 
 [Install]
 WantedBy=bios.target
