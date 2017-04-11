@@ -31,7 +31,7 @@
 #define RFC_ALERTS_LIST_SUBJECT "rfc-alerts-list"
 #define RFC_ALERTS_ACKNOWLEDGE_SUBJECT  "rfc-alerts-acknowledge"
 
-static const char *STATE_PATH = "/var/lib/bios/agent-alerts-list";
+static const char *STATE_PATH = "/var/lib/fty/fty-alert-list";
 static const char *STATE_FILE = "state_file";
 
 static void
@@ -68,7 +68,7 @@ s_clear_long_time_expired (zhash_t *exp) {
 
     zlist_t *keys = zhash_keys(exp);
     int64_t now = zclock_mono ()/1000;
-    
+
     const char *rule = (char *)zlist_first (keys);
     while (rule) {
         int64_t *time = (int64_t *) zhash_lookup (exp, rule);
@@ -448,7 +448,7 @@ fty_alert_list_server (zsock_t *pipe, void *args)
             }
         }
     }
-    
+
     rv = alert_save_state (alerts, STATE_PATH, STATE_FILE);
     zsys_debug ("alert_save_state () == %d", rv);
 
