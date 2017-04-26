@@ -226,13 +226,17 @@ s_handle_rfc_alerts_list (mlm_client_t *client, zmsg_t **msg_p, zlistx_t *alerts
     fty_proto_t *cursor = (fty_proto_t *) zlistx_first (alerts);
     while (cursor) {
         if (is_state_included (state, fty_proto_state (cursor))) {
-            byte *buffer = NULL;
             fty_proto_t *duplicate = fty_proto_dup (cursor);
             zmsg_t *result = fty_proto_encode (&duplicate);
+#if CZMQ_VERSION_MAJOR == 3
+            byte *buffer = NULL;
             size_t nbytes = zmsg_encode (result, &buffer);
             zframe_t *frame = zframe_new ((void *) buffer, nbytes);
-            zmsg_destroy (&result);
             free (buffer); buffer = NULL;
+#else
+            zframe_t *frame = zmsg_encode (result);
+#endif
+            zmsg_destroy (&result);
             zmsg_append (reply, &frame);
         }
         cursor = (fty_proto_t *) zlistx_next (alerts);
@@ -643,7 +647,11 @@ test_check_result (const char *state, zlistx_t *expected, zmsg_t **reply_p, int 
     zlistx_set_comparator (received, (czmq_comparator *) alert_comparator);
     zframe_t *frame = zmsg_pop (reply);
     while (frame) {
+#if CZMQ_VERSION_MAJOR == 3
         zmsg_t *decoded_zmsg = zmsg_decode (zframe_data (frame), zframe_size (frame));
+#else
+        zmsg_t *decoded_zmsg = zmsg_decode (frame);
+#endif
         zframe_destroy (&frame);
         assert (decoded_zmsg);
         fty_proto_t *decoded = fty_proto_decode (&decoded_zmsg);
