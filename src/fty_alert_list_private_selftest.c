@@ -39,6 +39,7 @@ fty_alert_list_private_selftest (bool verbose)
 {
 // Tests for stable private classes:
     alerts_utils_test (verbose);
+    bios_proto_test (verbose);
 }
 /*
 ################################################################################
