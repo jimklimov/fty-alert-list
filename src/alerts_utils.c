@@ -44,7 +44,7 @@ codepoint_size (const char *uchar) {
         return 0;
     unsigned char start = ((unsigned char) uchar[0]) & 0xF0;
     if ((start & 0xF0) == 0xF0)
-       return 7; 
+       return 7;
     if (((start & 0xE0) == 0xE0) || ((start & 0xC0) == 0xC0))
        return 6;
     return -1;
@@ -52,14 +52,14 @@ codepoint_size (const char *uchar) {
 
 size_t
 utf8_len (const char *s)
-{   
+{
     size_t len = 0;
     for (; *s; ++s) if ((*s & 0xC0) != 0x80) ++len;
     return len;
 }
 
 //returns a pointer to the beginning of the pos'th utf8 codepoint
-const char 
+const char
 *utf8_index (const char *s, size_t pos)
 {
     ++pos;
@@ -74,7 +74,7 @@ int
 utf8_to_codepoint (const char *uchar, char **codepoint) {
     //codepoint is NOT null-terminated because it makes comparison too cumbersome
     assert(codepoint);
-    
+
     const unsigned char *uuchar = (unsigned char *) uchar;
     static const char hex[] = "0123456789abcdef";
     unsigned char start = uuchar[0] & 0xF0;
@@ -87,7 +87,7 @@ utf8_to_codepoint (const char *uchar, char **codepoint) {
             ubytes[0] = uuchar[0] & 0x7;
             for (int i = 1; i < 4; i++)
                 ubytes[i] = uuchar[i] & 0x3f;
-            
+
             codepoint_int = (ubytes[0] << 18) + (ubytes[1] << 12) + (ubytes[2] << 6) + ubytes[3];
             if (codepoint_int <= 0x10fff) {
                 for (int i = 6; i > 1; i--) {
@@ -131,7 +131,7 @@ utf8_to_codepoint (const char *uchar, char **codepoint) {
         return 2;
     }
     // ASCII; don't do anything
-    if ((uuchar[0] & 0x80) == 0) 
+    if ((uuchar[0] & 0x80) == 0)
         return 0;
     // in any other case, this is not a unicode character
     return -1;
@@ -142,13 +142,13 @@ compare_utf8_codepoint (const char *str_utf8, const char *str_codepoint) {
     assert (str_utf8);
     assert (str_codepoint);
     size_t len = utf8_len (str_utf8);
-    
+
     int j = 0;
     for (size_t i = 0; i < len; i++) {
         const char *pos = utf8_index (str_utf8, i);
         if (codepoint_size (pos) == 0) {
             zsys_debug ("Comparing '%c' with '%c'\n", *pos, str_codepoint[j]);
-            if (*pos != str_codepoint[j]) 
+            if (*pos != str_codepoint[j])
                 return 0;
             j++;
         }
@@ -170,7 +170,7 @@ compare_utf8_codepoint (const char *str_utf8, const char *str_codepoint) {
 }
 
 // 1, ..., 4 - # of utf8 octets
-// -1 - error 
+// -1 - error
 static int8_t
 utf8_octets (const char *c)
 {
@@ -218,7 +218,7 @@ utf8eq (const char *s1, const char *s2)
 {
     assert (s1);
     assert (s2);
-    
+
     if (strlen (s1) != strlen (s2))
         return 0;
 
@@ -504,6 +504,7 @@ alert_save_state (zlistx_t *alerts, const char *path, const char *filename) {
     assert (chunk);
 
     fty_proto_t *cursor = (fty_proto_t *) zlistx_first (alerts);
+    fty_proto_print (cursor);
     while (cursor) {
 #if CZMQ_VERSION_MAJOR == 3
         fty_proto_t *duplicate = fty_proto_dup (cursor);
@@ -1215,7 +1216,7 @@ alerts_utils_test (bool verbose)
     fty_proto_destroy (&alert1);
     fty_proto_destroy (&alert2);
     }
-    
+
     // unicode
     {
     fty_proto_t *alert1 = alert_new ("temperature.average@DC-Roztoky", "ŽlUťOUčKý kůň", "ACK-WIP", "low", "some description", 10, "EMAIL", 0);
@@ -1345,7 +1346,7 @@ alerts_utils_test (bool verbose)
     assert (str_eq (fty_proto_action (cursor), "EMAIL|SMS"));
     assert (fty_proto_time (cursor) == (uint64_t) 60);
     zlistx_destroy (&alerts);
-    
+
     }
 
     // Test case #2:

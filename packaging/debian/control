@@ -28,6 +28,7 @@ Build-Depends: debhelper (>= 9),
     libczmq-dev,
     libmlm-dev,
     libfty-proto-dev,
+    libbiosproto-dev,
     systemd,
     dh-systemd,
     asciidoc-base | asciidoc, xmlto,
@@ -47,6 +48,7 @@ Depends:
     libczmq-dev,
     libmlm-dev,
     libfty-proto-dev,
+    libbiosproto-dev,
     libfty-alert-list0 (= ${binary:Version})
 Description: provides information about active alerts development tools
  This package contains development files for fty-alert-list: provides information about active alerts

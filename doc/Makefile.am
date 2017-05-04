@@ -6,7 +6,7 @@
 all-local: doc
 
 # Public programs ("main" tags in project.xml), auto-regenerated:
-MAN1 = fty-alert-list.1 generate_alert.1
+MAN1 = fty-alert-list.1 generate_alert.1 fty-alert-list-convert.1
 # Public classes ("class" tags in project.xml), auto-regenerated:
 MAN3 = fty_alert_list_server.3
 # Project overview, written by a human after initial skeleton:
@@ -75,6 +75,10 @@ fty-alert-list.txt: $(top_srcdir)/src/fty_alert_list.c
 GENERATED_DOCS += generate_alert.txt generate_alert.doc
 generate_alert.txt: $(top_srcdir)/src/generate_alert.c
 	"$(srcdir)/mkman" "generate_alert" "$(builddir)/generate_alert.txt" "$(srcdir)/.."
+
+GENERATED_DOCS += fty-alert-list-convert.txt fty-alert-list-convert.doc
+fty-alert-list-convert.txt: $(top_srcdir)/src/fty_alert_list_convert.c
+	"$(srcdir)/mkman" "fty_alert_list_convert" "$(builddir)/fty-alert-list-convert.txt" "$(srcdir)/.."
 
 
 clean:

@@ -439,6 +439,93 @@ dnl END of PKG_CHECK_MODULES and/or direct tests for libfty_proto
 dnl END of enabled attempts to search for libfty_proto
 
 
+was_biosproto_check_lib_detected=no
+
+search_libbiosproto="yes"
+
+AC_ARG_WITH([libbiosproto],
+    [
+        AS_HELP_STRING([--with-libbiosproto],
+        [yes or no. Optionally specify libbiosproto prefix (directory where its include/ and lib/ are located), but that is only used if pkgconfig metadata is not found first])
+    ],
+    [
+        search_libbiosproto="yes"
+    ],
+    [])
+AS_CASE([x"${with_libbiosproto}"],
+    [xyes], [search_libbiosproto="yes"],
+    [xno],  [search_libbiosproto="no"])
+
+dnl We do not abort right now, because the maintainer/developer may have
+dnl something particular in mind, e.g. to build just parts of a project.
+AS_IF([test x"${search_libbiosproto}" = xno],
+    [AC_MSG_WARN([Required dependency on biosproto was explicitly disabled during configuration by '--with-libbiosproto=no'; subsequent full build of fty-alert-list may fail])])
+
+AS_IF([test x"${search_libbiosproto}" = xyes], [
+    # Archive previously detected and supplied flags
+    PRE_SEARCH_CFLAGS="${CFLAGS}"
+    PRE_SEARCH_LIBS="${LIBS}"
+
+    found_pkgconfig=""
+    found_linkname=""
+    PKG_CHECK_MODULES([biosproto], [libbiosproto >= 0.0.0],
+    [
+        PKGCFG_LIBS_PRIVATE="$PKGCFG_LIBS_PRIVATE $biosproto_LIBS"
+        was_biosproto_check_lib_detected=pkgcfg
+        found_pkgconfig="libbiosproto"
+    ],
+    [
+        AC_MSG_NOTICE([Package libbiosproto not found; falling back to defined compilability tests])
+
+        biosproto_synthetic_cflags=""
+        biosproto_synthetic_libs="-lbiosproto"
+
+        if test -n "${with_libbiosproto}" && test x"${with_libbiosproto}" != xyes && test x"${with_libbiosproto}" != xno; then
+            if test -r "${with_libbiosproto}/include/bios_proto.h"; then
+                biosproto_synthetic_cflags="-I${with_libbiosproto}/include"
+                biosproto_synthetic_libs="-L${with_libbiosproto}/lib -lbiosproto"
+            else
+            AC_MSG_ERROR([Header file ${with_libbiosproto}/include/bios_proto.h was not found. Please check libbiosproto prefix])
+            fi
+        else
+            AC_CHECK_HEADER([bios_proto.h], [],
+            AC_MSG_ERROR([Header file bios_proto.h was not found in default search paths])
+                )
+        fi
+
+        AC_CHECK_LIB([biosproto], [bios_proto_test],
+            [
+                was_biosproto_check_lib_detected=yes
+                PKGCFG_LIBS_PRIVATE="$PKGCFG_LIBS_PRIVATE -lbiosproto"
+                found_linkname="biosproto"
+            ],
+            [AC_MSG_ERROR([cannot link with -lbiosproto, install libbiosproto])])
+    ])
+
+dnl END of PKG_CHECK_MODULES and/or direct tests for libbiosproto
+    AS_CASE(["x${was_biosproto_check_lib_detected}"],
+        [xpkgcfg], [
+                AC_SUBST([pkgconfig_name_libbiosproto],[${found_pkgconfig}])
+                CFLAGS="${biosproto_CFLAGS} ${CFLAGS}"
+                LIBS="${biosproto_LIBS} ${LIBS}"
+            ],
+        [xyes], [
+                AC_SUBST([pkgconfig_name_libbiosproto],[${found_linkname}])
+                CFLAGS="${biosproto_synthetic_cflags} ${CFLAGS}"
+                LDFLAGS="${biosproto_synthetic_libs} ${LDFLAGS}"
+                LIBS="${biosproto_synthetic_libs} ${LIBS}"
+
+                AC_SUBST([biosproto_CFLAGS],[${biosproto_synthetic_cflags}])
+                AC_SUBST([biosproto_LIBS],[${biosproto_synthetic_libs}])
+            ],
+        [xno], [
+                AC_SUBST([pkgconfig_name_libbiosproto],[libbiosproto])
+            AC_MSG_ERROR([Cannot find pkg-config metadata for libbiosproto 0.0.0 or higher])
+    ])
+])
+dnl END of enabled attempts to search for libbiosproto
+
+
 CFLAGS="${PREVIOUS_CFLAGS}"
 LIBS="${PREVIOUS_LIBS}"
 
@@ -651,6 +738,16 @@ AC_ARG_ENABLE([generate_alert],
 AM_CONDITIONAL([ENABLE_GENERATE_ALERT], [test x$enable_generate_alert != xno])
 AM_COND_IF([ENABLE_GENERATE_ALERT], [AC_MSG_NOTICE([ENABLE_GENERATE_ALERT defined])])
 
+# Check for fty-alert-list-convert intent
+AC_ARG_ENABLE([fty-alert-list-convert],
+    AS_HELP_STRING([--enable-fty-alert-list-convert],
+        [Compile and install 'fty-alert-list-convert' [default=yes]]),
+    [enable_fty_alert_list_convert=$enableval],
+    [enable_fty_alert_list_convert=yes])
+
+AM_CONDITIONAL([ENABLE_FTY_ALERT_LIST_CONVERT], [test x$enable_fty_alert_list_convert != xno])
+AM_COND_IF([ENABLE_FTY_ALERT_LIST_CONVERT], [AC_MSG_NOTICE([ENABLE_FTY_ALERT_LIST_CONVERT defined])])
+
 # Check for fty_alert_list_selftest intent
 AC_ARG_ENABLE([fty_alert_list_selftest],
     AS_HELP_STRING([--enable-fty_alert_list_selftest],
@@ -746,7 +843,6 @@ AM_COND_IF([WITH_SYSTEMD_UNITS],
                  src/fty-alert-list.service
     ])],
     [])
-
 
 AC_OUTPUT
 
