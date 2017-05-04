@@ -17,9 +17,10 @@ AM_CPPFLAGS = \
     ${czmq_CFLAGS} \
     ${malamute_CFLAGS} \
     ${fty_proto_CFLAGS} \
+    ${biosproto_CFLAGS} \
     -I$(srcdir)/include
 
-project_libs = ${libzmq_LIBS} ${czmq_LIBS} ${malamute_LIBS} ${fty_proto_LIBS}
+project_libs = ${libzmq_LIBS} ${czmq_LIBS} ${malamute_LIBS} ${fty_proto_LIBS} ${biosproto_LIBS}
 
 SUBDIRS = doc
 DIST_SUBDIRS = doc
@@ -30,7 +31,7 @@ check_PROGRAMS =
 noinst_LTLIBRARIES =
 TESTS =
 # Prepare variables that can be populated (appended) in generated Makefiles or
-# manually maintained src/Makemodule-local.am
+# manually maintained src/Makemodules-local.am
 EXTRA_DIST =
 CLEANFILES =
 DISTCLEANFILES =
@@ -41,6 +42,7 @@ EXTRA_DIST += \
     Findczmq.cmake \
     Findmalamute.cmake \
     Findfty_proto.cmake \
+    Findbiosproto.cmake \
     CMakeLists.txt
 endif
 
@@ -49,8 +51,6 @@ EXTRA_DIST += \
     README.md \
     src/fty_alert_list_classes.h
 
-# NOTE: this "include" syntax is not a "make" but an "autotools" keyword,
-# see https://www.gnu.org/software/automake/manual/html_node/Include.html
 include $(srcdir)/src/Makemodule.am
 include $(srcdir)/src/Makemodule-local.am # Optional project-local hook
 

@@ -53,6 +53,7 @@ BuildRequires:  zeromq-devel
 BuildRequires:  czmq-devel
 BuildRequires:  malamute-devel
 BuildRequires:  fty-proto-devel
+BuildRequires:  biosproto-devel
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 
 %description
@@ -81,6 +82,7 @@ Requires:       zeromq-devel
 Requires:       czmq-devel
 Requires:       malamute-devel
 Requires:       fty-proto-devel
+Requires:       biosproto-devel
 
 %description devel
 provides information about active alerts development tools
@@ -117,6 +119,8 @@ find %{buildroot} -name '*.la' | xargs rm -f
 %{_mandir}/man1/fty-alert-list*
 %{_bindir}/generate_alert
 %{_mandir}/man1/generate_alert*
+%{_bindir}/fty-alert-list-convert
+%{_mandir}/man1/fty-alert-list-convert*
 /usr/lib/systemd/system/fty-alert-list.service
 %dir %{_sysconfdir}/fty-alert-list
 %if 0%{?suse_version} > 1315
