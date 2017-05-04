@@ -39,9 +39,14 @@
 typedef struct _alerts_utils_t alerts_utils_t;
 #define ALERTS_UTILS_T_DEFINED
 #endif
+#ifndef BIOS_PROTO_T_DEFINED
+typedef struct _bios_proto_t bios_proto_t;
+#define BIOS_PROTO_T_DEFINED
+#endif
 
 //  Internal API
 #include "alerts_utils.h"
+#include "bios_proto.h"
 
 //  *** To avoid double-definitions, only define if building without draft ***
 #ifndef FTY_ALERT_LIST_BUILD_DRAFT_API
@@ -50,6 +55,11 @@ typedef struct _alerts_utils_t alerts_utils_t;
 //  Self test of this class.
 FTY_ALERT_LIST_PRIVATE void
     alerts_utils_test (bool verbose);
+
+//  *** Draft method, defined for internal use only ***
+//  Self test of this class.
+FTY_ALERT_LIST_PRIVATE void
+    bios_proto_test (bool verbose);
 
 //  Self test for private classes
 FTY_ALERT_LIST_PRIVATE void

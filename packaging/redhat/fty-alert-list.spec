@@ -53,7 +53,6 @@ BuildRequires:  zeromq-devel
 BuildRequires:  czmq-devel
 BuildRequires:  malamute-devel
 BuildRequires:  fty-proto-devel
-BuildRequires:  biosproto-devel
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 
 %description
@@ -82,7 +81,6 @@ Requires:       zeromq-devel
 Requires:       czmq-devel
 Requires:       malamute-devel
 Requires:       fty-proto-devel
-Requires:       biosproto-devel
 
 %description devel
 provides information about active alerts development tools
