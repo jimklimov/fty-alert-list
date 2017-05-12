@@ -29,13 +29,13 @@
 #include "fty_alert_list_classes.h"
 
 int
-convert_file (const char *file_name, char *old_path, char *new_path)
+convert_file (const char *file_name, const char *old_path, const char *new_path)
 {
     assert (file_name);
     assert (old_path);
     assert (new_path);
 
-    zsys_debug ("I am converting state_file %s/%s and saving it to %s/%s.\n", old_path, file_name, new_path, file_name);
+    zsys_debug ("Converting state_file %s/%s and saving it to %s/%s.", old_path, file_name, new_path, file_name);
 
     zfile_t *file = zfile_new (old_path, file_name);
     if (!file) {
