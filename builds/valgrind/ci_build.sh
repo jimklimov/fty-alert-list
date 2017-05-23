@@ -40,7 +40,7 @@ cd ..
 ### NOTE: Manual edit
 case "$CI_CZMQ_VER" in
 3)
-git clone --quiet -b v3.0.2 --depth 1 https://github.com/42ity/czmq.git czmq.git
+git clone --quiet --depth 1 -b v3.0.2 https://github.com/42ity/czmq.git czmq.git
 ;;
 4|*)
 git clone --quiet --depth 1 https://github.com/zeromq/czmq.git czmq.git
