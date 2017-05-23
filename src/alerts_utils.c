@@ -450,7 +450,7 @@ alert_load_state (zlistx_t *alerts, const char *path, const char *filename) {
         offset += (uint64_t) *prefix +  sizeof (uint64_t);
         zsys_debug ("prefix == %" PRIu64 "; offset = %" PRIu64 " ", (uint64_t ) *prefix, offset);
 
-        zmsg_t *zmessage;
+        zmsg_t *zmessage = NULL;
 #if CZMQ_VERSION_MAJOR == 3
         zmessage = zmsg_decode (data, (size_t) *prefix);
 #else
