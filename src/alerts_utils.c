@@ -509,7 +509,6 @@ alert_save_state (zlistx_t *alerts, const char *path, const char *filename) {
     fty_proto_t *cursor = (fty_proto_t *) zlistx_first (alerts);
     fty_proto_print (cursor);
     while (cursor) {
-#if CZMQ_VERSION_MAJOR == 3
         fty_proto_t *duplicate = fty_proto_dup (cursor);
         assert (duplicate);
         zmsg_t *zmessage = fty_proto_encode (&duplicate); // duplicate destroyed here
@@ -540,35 +539,6 @@ alert_save_state (zlistx_t *alerts, const char *path, const char *filename) {
         zframe_destroy (&frame);
 
         cursor = (fty_proto_t *) zlistx_next (alerts);
-#else
-/* Assume CZMQ4 */
-/* FIXME: Someone should look at this - what do we want achieved here? */
-        fty_proto_t *duplicate = fty_proto_dup (cursor);
-        assert (duplicate);
-        zmsg_t *zmessage = fty_proto_encode (&duplicate); // duplicate destroyed here
-        assert (zmessage);
-
-        zframe_t *frame = zmsg_encode (zmessage);
-        size_t size = zframe_size (frame);
-        zmsg_destroy (&zmessage);
-
-        assert (frame);
-        assert (size > 0);
-
-        // prefix
-// FIXME: originally this was for uint64_t, should it be sizeof (size) instead?
-        zchunk_extend (chunk, (const void *) &size, sizeof (uint64_t));
-/* FIXME: Someone should look at this - don't we have anything
- * to extend for frame case? */
-        // data
-//        zchunk_extend (chunk, (const void *) buffer, size);
-
-/* FIXME: Someone should look at this - don't we have anything
- * (else) to free for frame case? */
-        zframe_destroy (&frame);
-
-        cursor = (fty_proto_t *) zlistx_next (alerts);
-#endif
     }
 
     if (zchunk_write (chunk, zfile_handle (file)) == -1) {
