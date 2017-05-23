@@ -531,7 +531,7 @@ alert_save_state (zlistx_t *alerts, const char *path, const char *filename) {
         assert (frame);
 
         // prefix
-// FIXME: originally this was for uint64_t, should it be sizeof (size) instead?
+// FIXME?: originally this was for uint64_t, should it be sizeof (size) instead?
         zchunk_extend (chunk, (const void *) &size, sizeof (uint64_t));
         // data
         zchunk_extend (chunk, (const void *) zframe_data (frame), size);
