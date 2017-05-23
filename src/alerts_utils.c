@@ -436,10 +436,13 @@ alert_load_state (zlistx_t *alerts, const char *path, const char *filename) {
     zfile_destroy (&file);
 
     /* Note: Protocol data uses 8-byte sized words, and zmsg_XXcode and file
-     * functions deal with platform-dependent unsigned size_t and signed off_t
+     * functions deal with platform-dependent unsigned size_t and signed off_t.
+     * The off_t is a difficult one to print portably, SO suggests casting to
+     * the intmax type and printing that :)
+     * https://stackoverflow.com/questions/586928/how-should-i-print-types-like-off-t-and-size-t
      */
     uint64_t offset = 0;
-    zsys_debug ("zfile_cursize == %zd", cursize);
+    zsys_debug ("zfile_cursize == %jd", (intmax_t)cursize);
 
     while (offset < cursize) {
         byte *prefix = zframe_data (frame) + offset;
