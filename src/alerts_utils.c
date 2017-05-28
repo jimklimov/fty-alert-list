@@ -450,6 +450,11 @@ alert_load_state (zlistx_t *alerts, const char *path, const char *filename) {
         offset += (uint64_t) *prefix +  sizeof (uint64_t);
         zsys_debug ("prefix == %" PRIu64 "; offset = %" PRIu64 " ", (uint64_t ) *prefix, offset);
 
+/* Note: the CZMQ_VERSION_MAJOR comparison below actually assumes versions
+ * we know and care about - v3.0.2 (our legacy default, already obsoleted
+ * by upstream), and v4.x that is in current upstream master. If the API
+ * evolves later (incompatibly), these macros will need to be amended.
+ */
         zmsg_t *zmessage = NULL;
 #if CZMQ_VERSION_MAJOR == 3
         zmessage = zmsg_decode (data, (size_t) *prefix);
@@ -509,29 +514,38 @@ alert_save_state (zlistx_t *alerts, const char *path, const char *filename) {
     fty_proto_t *cursor = (fty_proto_t *) zlistx_first (alerts);
     fty_proto_print (cursor);
     while (cursor) {
+        uint64_t size = 0;  // Note: the zmsg_encode() and zframe_size()
+                            // below return a platform-dependent size_t,
+                            // but in protocol we use fixed uint64_t
+        assert ( sizeof(size_t) <= sizeof(uint64_t) );
+        zframe_t *frame = NULL;
         fty_proto_t *duplicate = fty_proto_dup (cursor);
         assert (duplicate);
         zmsg_t *zmessage = fty_proto_encode (&duplicate); // duplicate destroyed here
         assert (zmessage);
 
 #if CZMQ_VERSION_MAJOR == 3
-        byte *buffer = NULL;
-        uint64_t size = zmsg_encode (zmessage, &buffer);
-        zmsg_destroy (&zmessage);
+        {
+            byte *buffer = NULL;
+            size = zmsg_encode (zmessage, &buffer);
 
-        assert (buffer);
-        assert (size > 0);
-        zframe_t *frame = zframe_new (buffer, size);
-        free (buffer); buffer = NULL;
+            assert (buffer);
+            assert (size > 0);
+            frame = zframe_new (buffer, size);
+            free (buffer);
+            buffer = NULL;
+        }
 #else
-        zframe_t *frame = zmsg_encode (zmessage);
-        uint64_t size = zframe_size (frame);
-        zmsg_destroy (&zmessage);
+        frame = zmsg_encode (zmessage);
+        size = zframe_size (frame);
 #endif
+        zmsg_destroy (&zmessage);
         assert (frame);
+        assert (size > 0);
 
         // prefix
 // FIXME?: originally this was for uint64_t, should it be sizeof (size) instead?
+// Also is usage of uint64_t here really warranted (e.g. dictated by protocol)? 
         zchunk_extend (chunk, (const void *) &size, sizeof (uint64_t));
         // data
         zchunk_extend (chunk, (const void *) zframe_data (frame), size);
