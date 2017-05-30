@@ -228,16 +228,30 @@ s_handle_rfc_alerts_list (mlm_client_t *client, zmsg_t **msg_p, zlistx_t *alerts
         if (is_state_included (state, fty_proto_state (cursor))) {
             fty_proto_t *duplicate = fty_proto_dup (cursor);
             zmsg_t *result = fty_proto_encode (&duplicate);
+
+/* Note: the CZMQ_VERSION_MAJOR comparison below actually assumes versions
+ * we know and care about - v3.0.2 (our legacy default, already obsoleted
+ * by upstream), and v4.x that is in current upstream master. If the API
+ * evolves later (incompatibly), these macros will need to be amended.
+ */
+            zframe_t *frame = NULL;
+// FIXME: should we check and assert(nbytes>0) here, for both API versions,
+// as we do in other similar cases?
 #if CZMQ_VERSION_MAJOR == 3
-            byte *buffer = NULL;
-            size_t nbytes = zmsg_encode (result, &buffer);
-            zframe_t *frame = zframe_new ((void *) buffer, nbytes);
-            free (buffer); buffer = NULL;
+            {
+                byte *buffer = NULL;
+                size_t nbytes = zmsg_encode (result, &buffer);
+                frame = zframe_new ((void *) buffer, nbytes);
+                free (buffer);
+                buffer = NULL;
+            }
 #else
-            zframe_t *frame = zmsg_encode (result);
+            frame = zmsg_encode (result);
 #endif
+            assert (frame);
             zmsg_destroy (&result);
             zmsg_append (reply, &frame);
+//FIXME: Should we zframe_destroy (&frame) here as we do in other similar cases?
         }
         cursor = (fty_proto_t *) zlistx_next (alerts);
     }
@@ -647,10 +661,16 @@ test_check_result (const char *state, zlistx_t *expected, zmsg_t **reply_p, int 
     zlistx_set_comparator (received, (czmq_comparator *) alert_comparator);
     zframe_t *frame = zmsg_pop (reply);
     while (frame) {
+        zmsg_t *decoded_zmsg = NULL;
+/* Note: the CZMQ_VERSION_MAJOR comparison below actually assumes versions
+ * we know and care about - v3.0.2 (our legacy default, already obsoleted
+ * by upstream), and v4.x that is in current upstream master. If the API
+ * evolves later (incompatibly), these macros will need to be amended.
+ */
 #if CZMQ_VERSION_MAJOR == 3
-        zmsg_t *decoded_zmsg = zmsg_decode (zframe_data (frame), zframe_size (frame));
+        decoded_zmsg = zmsg_decode (zframe_data (frame), zframe_size (frame));
 #else
-        zmsg_t *decoded_zmsg = zmsg_decode (frame);
+        decoded_zmsg = zmsg_decode (frame);
 #endif
         zframe_destroy (&frame);
         assert (decoded_zmsg);
