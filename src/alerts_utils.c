@@ -448,7 +448,7 @@ alert_load_state (zlistx_t *alerts, const char *path, const char *filename) {
         byte *prefix = zframe_data (frame) + offset;
         byte *data = zframe_data (frame) + offset + sizeof (uint64_t);
         offset += (uint64_t) *prefix +  sizeof (uint64_t);
-        zsys_debug ("prefix == %" PRIu64 "; offset = %" PRIu64 " ", (uint64_t ) *prefix, offset);
+        zsys_debug ("prefix == %" PRIu64 "; offset = %jd ", (uint64_t ) *prefix, (intmax_t)offset);
 
 /* Note: the CZMQ_VERSION_MAJOR comparison below actually assumes versions
  * we know and care about - v3.0.2 (our legacy default, already obsoleted
