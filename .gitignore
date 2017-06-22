@@ -25,6 +25,7 @@ save.xml
 src/fty-alert-list_selftest
 src/fty-alert-list
 src/generate_alert
+src/fty-alert-list-convert
 src/fty_alert_list_selftest
 *.exe
 *.out
@@ -55,6 +56,7 @@ config.log
 config.status
 config/
 configure
+configure.lineno
 libtool
 src/platform.h
 src/platform.h.in
@@ -62,10 +64,6 @@ src/platform.h.in~
 src/stamp-h1
 src/test-suite.log
 src/.dirstamp
-
-# Cmake
-*.cmake
-CMakeLists.txt
 
 # CMake cache
 CMakeCache.txt
@@ -145,7 +143,6 @@ bindings/qt/selftest/selftest
 
 # editor backups
 *~
-
 
 # Other
 CMakeLists.txt
