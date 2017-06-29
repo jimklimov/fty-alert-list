@@ -512,7 +512,9 @@ alert_save_state (zlistx_t *alerts, const char *path, const char *filename) {
     assert (chunk);
 
     fty_proto_t *cursor = (fty_proto_t *) zlistx_first (alerts);
-    fty_proto_print (cursor);
+    if (cursor)
+        fty_proto_print (cursor);
+
     while (cursor) {
         uint64_t size = 0;  // Note: the zmsg_encode() and zframe_size()
                             // below return a platform-dependent size_t,
