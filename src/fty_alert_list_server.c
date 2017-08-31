@@ -1,21 +1,21 @@
 /*  =========================================================================
     fty_alert_list_server - Providing information about active alerts
 
-    Copyright (C) 2014 - 2017 Eaton                                        
-                                                                           
-    This program is free software; you can redistribute it and/or modify   
-    it under the terms of the GNU General Public License as published by   
-    the Free Software Foundation; either version 2 of the License, or      
-    (at your option) any later version.                                    
-                                                                           
-    This program is distributed in the hope that it will be useful,        
-    but WITHOUT ANY WARRANTY; without even the implied warranty of         
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          
-    GNU General Public License for more details.                           
-                                                                           
+    Copyright (C) 2014 - 2017 Eaton
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
     You should have received a copy of the GNU General Public License along
     with this program; if not, write to the Free Software Foundation, Inc.,
-    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.            
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
     =========================================================================
 */
 
@@ -38,7 +38,7 @@ static void
 s_set_alert_lifetime (zhash_t *exp, fty_proto_t *msg)
 {
     if (!exp || !msg) return;
-    int64_t ttl = fty_proto_aux_number (msg, "TTL", 0);
+    int64_t ttl = fty_proto_ttl (msg);
     if (!ttl) return;
     const char *rule = fty_proto_rule (msg);
     if (!rule) return;
@@ -46,6 +46,7 @@ s_set_alert_lifetime (zhash_t *exp, fty_proto_t *msg)
     if (!time) return;
     *time = zclock_mono()/1000 + ttl;
     zhash_update (exp, rule, time);
+    zsys_debug (" ##### rule %s with ttl %"PRIi64, rule, ttl);
     zhash_freefn (exp, rule, free);
 }
 
@@ -88,6 +89,8 @@ s_resolve_expired_alerts (zhash_t *exp, zlistx_t *alerts)
     while (cursor) {
         if (s_alert_expired (exp, cursor) && streq (fty_proto_state (cursor), "ACTIVE")) {
             fty_proto_set_state (cursor, "%s", "RESOLVED");
+            zsys_info ("resolving alert:");
+            fty_proto_print (cursor);
         }
         cursor = (fty_proto_t *) zlistx_next (alerts);
     }
@@ -116,7 +119,8 @@ s_handle_stream_deliver (mlm_client_t *client, zmsg_t** msg_p, zlistx_t *alerts,
         zsys_warning ("s_handle_stream_deliver (): Message state not ACTIVE or RESOLVED. Not publishing any further.");
         return;
     }
-
+    zsys_debug ("----> printing alert ");
+    fty_proto_print (alert);
     fty_proto_t *cursor = (fty_proto_t *) zlistx_first (alerts);
     int found = 0;
 
@@ -1305,4 +1309,3 @@ fty_alert_list_server_test (bool verbose)
 
     printf ("OK\n");
 }
-
