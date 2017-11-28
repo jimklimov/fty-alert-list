@@ -47,7 +47,7 @@ s_set_alert_lifetime(zhash_t *exp, fty_proto_t *msg) {
     if (!time) return;
     *time = zclock_mono() / 1000 + ttl;
     zhash_update(exp, rule, time);
-    zsys_debug(" ##### rule %s with ttl %"PRIi64, rule, ttl);
+    zsys_debug(" ##### rule %s with ttl %" PRIi64, rule, ttl);
     zhash_freefn(exp, rule, free);
 }
 
@@ -849,7 +849,7 @@ fty_alert_list_server_test(bool verbose) {
     printf(" * fty_alerts_list_server: ");
 
     // Malamute
-    zactor_t *server = zactor_new(mlm_server, "Malamute");
+    zactor_t *server = zactor_new(mlm_server,(void *) "Malamute");
     zstr_sendx(server, "BIND", endpoint, NULL);
     if (verbose)
         zstr_send(server, "VERBOSE");
@@ -901,8 +901,8 @@ fty_alert_list_server_test(bool verbose) {
     // add new alert
     zlist_t *actions1 = zlist_new();
     zlist_autofree(actions1);
-    zlist_append(actions1, "EMAIL");
-    zlist_append(actions1, "SMS");
+    zlist_append(actions1, (void *) ACTION_EMAIL);
+    zlist_append(actions1, (void *) ACTION_SMS);
     fty_proto_t *alert = alert_new("Threshold", "ups", "ACTIVE", "high", "description", 1, &actions1, 0);
     test_alert_publish(producer, consumer, alerts, &alert);
 
@@ -924,8 +924,8 @@ fty_alert_list_server_test(bool verbose) {
     // add new alert
     zlist_t *actions2 = zlist_new();
     zlist_autofree(actions2);
-    zlist_append(actions2, "EMAIL");
-    zlist_append(actions2, "SMS");
+    zlist_append(actions2, (void *) ACTION_EMAIL);
+    zlist_append(actions2, (void *) ACTION_SMS);
     alert = alert_new("Threshold", "epdu", "ACTIVE", "high", "description", 2, &actions2, 0);
     test_alert_publish(producer, consumer, alerts, &alert);
 
@@ -938,8 +938,8 @@ fty_alert_list_server_test(bool verbose) {
     // add new alert
     zlist_t *actions3 = zlist_new();
     zlist_autofree(actions3);
-    zlist_append(actions3, "EMAIL");
-    zlist_append(actions3, "SMS");
+    zlist_append(actions3, (void *) ACTION_EMAIL);
+    zlist_append(actions3, (void *) ACTION_SMS);
     alert = alert_new("SimpleRule", "ups", "ACTIVE", "high", "description", 3, &actions3, 0);
     test_alert_publish(producer, consumer, alerts, &alert);
 
@@ -952,8 +952,8 @@ fty_alert_list_server_test(bool verbose) {
     // add new alert
     zlist_t *actions4 = zlist_new();
     zlist_autofree(actions4);
-    zlist_append(actions4, "EMAIL");
-    zlist_append(actions4, "SMS");
+    zlist_append(actions4, (void *) ACTION_EMAIL);
+    zlist_append(actions4, (void *) ACTION_SMS);
     alert = alert_new("SimpleRule", "ŽlUťOUčKý kůň супер", "ACTIVE", "high", "description", 4, &actions4, 0);
     test_alert_publish(producer, consumer, alerts, &alert);
 
@@ -972,8 +972,8 @@ fty_alert_list_server_test(bool verbose) {
     // add new alert
     zlist_t *actions5 = zlist_new();
     zlist_autofree(actions5);
-    zlist_append(actions5, "EMAIL");
-    zlist_append(actions5, "SMS");
+    zlist_append(actions5, (void *) ACTION_EMAIL);
+    zlist_append(actions5, (void *) ACTION_SMS);
     alert = alert_new("Threshold", "ŽlUťOUčKý kůň супер", "RESOLVED", "high", "description", 4, &actions5, 0);
     test_alert_publish(producer, consumer, alerts, &alert);
 
@@ -1080,8 +1080,8 @@ fty_alert_list_server_test(bool verbose) {
     // resolve alert
     zlist_t *actions6 = zlist_new();
     zlist_autofree(actions6);
-    zlist_append(actions6, "EMAIL");
-    zlist_append(actions6, "SMS");
+    zlist_append(actions6, (void *) ACTION_EMAIL);
+    zlist_append(actions6, (void *) ACTION_SMS);
     alert = alert_new("SimpleRule", "Žluťoučký kůň супер", "RESOLVED", "high", "description", 13, &actions6, 0);
     test_alert_publish(producer, consumer, alerts, &alert);
 
@@ -1097,8 +1097,8 @@ fty_alert_list_server_test(bool verbose) {
     // test: For non-RESOLVED alerts timestamp of when first published is stored
     zlist_t *actions7 = zlist_new();
     zlist_autofree(actions7);
-    zlist_append(actions7, "EMAIL");
-    zlist_append(actions7, "SMS");
+    zlist_append(actions7, (void *) ACTION_EMAIL);
+    zlist_append(actions7, (void *) ACTION_SMS);
     alert = alert_new("#1549", "epdu", "ACTIVE", "high", "description", time(NULL), &actions7, 0);
     test_alert_publish(producer, consumer, alerts, &alert);
 
@@ -1145,8 +1145,8 @@ fty_alert_list_server_test(bool verbose) {
 
     zlist_t *actions8 = zlist_new();
     zlist_autofree(actions8);
-    zlist_append(actions8, "EMAIL");
-    zlist_append(actions8, "SMS");
+    zlist_append(actions8, (void *) ACTION_EMAIL);
+    zlist_append(actions8, (void *) ACTION_SMS);
     alert = alert_new("#1549", "epdu", "RESOLVED", "high", "description", time(NULL) + 8, &actions8, 0);
     test_alert_publish(producer, consumer, alerts, &alert);
 
@@ -1164,8 +1164,8 @@ fty_alert_list_server_test(bool verbose) {
 
     zlist_t *actions9 = zlist_new();
     zlist_autofree(actions9);
-    zlist_append(actions9, "EMAIL");
-    zlist_append(actions9, "SMS");
+    zlist_append(actions9, (void *) ACTION_EMAIL);
+    zlist_append(actions9, (void *) ACTION_SMS);
     alert = alert_new("#1549", "epdu", "ACTIVE", "high", "description", time(NULL) + 9, &actions9, 0);
     test_alert_publish(producer, consumer, alerts, &alert);
 
@@ -1190,8 +1190,8 @@ fty_alert_list_server_test(bool verbose) {
     // and EXPECT A FAILURE (i.e. expected list != received list)
     zlist_t *actions10 = zlist_new();
     zlist_autofree(actions10);
-    zlist_append(actions10, "EMAIL");
-    zlist_append(actions10, "SMS");
+    zlist_append(actions10, (void *) ACTION_EMAIL);
+    zlist_append(actions10, (void *) ACTION_SMS);
     zmsg_t *alert_bypass = fty_proto_encode_alert(NULL, 14, 0, "Pattern", "rack", "ACTIVE", "high", "description", actions10);
     rv = mlm_client_send(producer, "Nobody cares", &alert_bypass);
     assert(rv == 0);
@@ -1217,8 +1217,8 @@ fty_alert_list_server_test(bool verbose) {
 
     zlist_t *actions11 = zlist_new();
     zlist_autofree(actions11);
-    zlist_append(actions11, "EMAIL");
-    zlist_append(actions11, "SMS");
+    zlist_append(actions11, (void *) ACTION_EMAIL);
+    zlist_append(actions11, (void *) ACTION_SMS);
     alert_bypass = fty_proto_encode_alert(NULL, 15, 0, "Pattern", "rack", "RESOLVED", "high", "description", actions11);
     mlm_client_send(producer, "Nobody cares", &alert_bypass);
     assert(rv == 0);
@@ -1244,8 +1244,8 @@ fty_alert_list_server_test(bool verbose) {
 
     zlist_t *actions12 = zlist_new();
     zlist_autofree(actions12);
-    zlist_append(actions12, "EMAIL");
-    zlist_append(actions12, "SMS");
+    zlist_append(actions12, (void *) ACTION_EMAIL);
+    zlist_append(actions12, (void *) ACTION_SMS);
     alert = alert_new("BlackBooks", "store", "ACTIVE", "high", "description", 16, &actions12, 2);
     test_alert_publish(producer, consumer, alerts, &alert);
 

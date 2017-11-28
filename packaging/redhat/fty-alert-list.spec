@@ -49,6 +49,7 @@ BuildRequires:  systemd-devel
 BuildRequires:  systemd
 %{?systemd_requires}
 BuildRequires:  xmlto
+BuildRequires:  gcc-c++
 BuildRequires:  zeromq-devel
 BuildRequires:  czmq-devel
 BuildRequires:  malamute-devel
@@ -95,6 +96,7 @@ This package contains development files for fty-alert-list: provides information
 %{_mandir}/man7/*
 
 %prep
+
 %setup -q
 
 %build

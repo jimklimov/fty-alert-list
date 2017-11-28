@@ -65,19 +65,19 @@ GENERATED_DOCS =
 	@true
 
 GENERATED_DOCS += fty_alert_list_server.txt fty_alert_list_server.doc
-fty_alert_list_server.txt: $(top_srcdir)/src/fty_alert_list_server.c
+fty_alert_list_server.txt: $(top_srcdir)/src/fty_alert_list_server.cc
 	"$(srcdir)/mkman" "fty_alert_list_server" "$(builddir)/fty_alert_list_server.txt" "$(srcdir)/.."
 
 GENERATED_DOCS += fty-alert-list.txt fty-alert-list.doc
-fty-alert-list.txt: $(top_srcdir)/src/fty_alert_list.c
+fty-alert-list.txt: $(top_srcdir)/src/fty_alert_list.cc
 	"$(srcdir)/mkman" "fty_alert_list" "$(builddir)/fty-alert-list.txt" "$(srcdir)/.."
 
 GENERATED_DOCS += generate_alert.txt generate_alert.doc
-generate_alert.txt: $(top_srcdir)/src/generate_alert.c
+generate_alert.txt: $(top_srcdir)/src/generate_alert.cc
 	"$(srcdir)/mkman" "generate_alert" "$(builddir)/generate_alert.txt" "$(srcdir)/.."
 
 GENERATED_DOCS += fty-alert-list-convert.txt fty-alert-list-convert.doc
-fty-alert-list-convert.txt: $(top_srcdir)/src/fty_alert_list_convert.c
+fty-alert-list-convert.txt: $(top_srcdir)/src/fty_alert_list_convert.cc
 	"$(srcdir)/mkman" "fty_alert_list_convert" "$(builddir)/fty-alert-list-convert.txt" "$(srcdir)/.."
 
 

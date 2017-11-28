@@ -79,7 +79,7 @@ convert_file (const char *file_name, const char *old_path, const char *new_path)
     * the intmax type and printing that :)
     * https://stackoverflow.com/questions/586928/how-should-i-print-types-like-off-t-and-size-t
     */
-    uint64_t offset = 0;
+    off_t offset = 0;
     zsys_debug ("zfile_cursize == %jd", (intmax_t)cursize);
 
     //chunk for new state file

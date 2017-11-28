@@ -446,7 +446,7 @@ alert_load_state (zlistx_t *alerts, const char *path, const char *filename) {
      * the intmax type and printing that :)
      * https://stackoverflow.com/questions/586928/how-should-i-print-types-like-off-t-and-size-t
      */
-    uint64_t offset = 0;
+    off_t offset = 0;
     zsys_debug ("zfile_cursize == %jd", (intmax_t)cursize);
 
     while (offset < cursize) {
@@ -591,7 +591,7 @@ alert_new (const char *rule,
     fty_proto_set_description (alert,"%s" ,description);
     fty_proto_set_action (alert, action);
     fty_proto_set_time (alert, timestamp);
-    fty_proto_aux_insert (alert,"TTL", "%"PRIi64, ttl);
+    fty_proto_aux_insert (alert,"TTL", "%" PRIi64, ttl);
     return alert;
 }
 
@@ -756,8 +756,8 @@ alerts_utils_test (bool verbose)
     {
     zlist_t *actions = zlist_new ();
     zlist_autofree (actions);
-    zlist_append(actions, "EMAIL");
-    zlist_append(actions, "SMS");
+    zlist_append(actions,(void *) ACTION_EMAIL);
+    zlist_append(actions,(void *) ACTION_SMS);
     fty_proto_t *alert = alert_new ("Threshold", "ups", "ACTIVE", "high", "description", 1, &actions, 0);
     assert (str_eq (fty_proto_rule (alert), "Threshold"));
     assert (str_eq (fty_proto_name (alert), "ups"));
@@ -774,9 +774,9 @@ alerts_utils_test (bool verbose)
 
     actions = zlist_new ();
     zlist_autofree (actions);
-    zlist_append(actions, "SMS");
-    zlist_append(actions, "Holub");
-    zlist_append(actions, "Morse code");
+    zlist_append(actions, (void *) ACTION_SMS);
+    zlist_append(actions,(void *) "Holub");
+    zlist_append(actions,(void *) "Morse code");
     alert = alert_new ("Simple@Rule@Because", "karolkove zelezo", "ACTIVE", "high Severity", "Holiday \nInn hotel 243", 10101795, &actions, 0);
     assert (str_eq (fty_proto_rule (alert), "Simple@Rule@Because"));
     assert (str_eq (fty_proto_name (alert), "karolkove zelezo"));
@@ -803,12 +803,12 @@ alerts_utils_test (bool verbose)
     {
     zlist_t *actions1 = zlist_new ();
     zlist_autofree (actions1);
-    zlist_append(actions1, "EMAIL");
+    zlist_append(actions1, (void *) ACTION_EMAIL);
     fty_proto_t *alert1 = alert_new ("temperature.average@DC-Roztoky", "ups-9", "ACTIVE", "some description", "low", 10, &actions1, 0);
     assert (alert1);
     zlist_t *actions2 = zlist_new ();
     zlist_autofree (actions2);
-    zlist_append(actions2, "EMAIL");
+    zlist_append(actions2, (void *) ACTION_EMAIL);
     fty_proto_t *alert2 = alert_new ("temperature.average@DC-Roztoky", "ups-9", "ACTIVE", "some description", "low", 10, &actions2, 0);
     assert (alert2);
 
@@ -829,12 +829,12 @@ alerts_utils_test (bool verbose)
     {
     zlist_t *actions1 = zlist_new ();
     zlist_autofree (actions1);
-    zlist_append(actions1, "EMAIL");
+    zlist_append(actions1, (void *) ACTION_EMAIL);
     fty_proto_t *alert1 = alert_new ("temperature.average@DC-Roztoky", "ups-9", "ACTIVE", "some description", "low", 10, &actions1, 0);
     assert (alert1);
     zlist_t *actions2 = zlist_new ();
     zlist_autofree (actions2);
-    zlist_append(actions2, "SMS");
+    zlist_append(actions2, (void *) ACTION_SMS);
     fty_proto_t *alert2 = alert_new ("temperature.average@DC-Roztoky", "ups-9", "ACK-IGNORE", "some description", "high", 10, &actions2, 0);
     assert (alert2);
 
@@ -854,7 +854,7 @@ alerts_utils_test (bool verbose)
     {
     zlist_t *actions1 = zlist_new ();
     zlist_autofree (actions1);
-    zlist_append(actions1, "EMAIL");
+    zlist_append(actions1, (void *) ACTION_EMAIL);
     fty_proto_t *alert1 = alert_new ("temperature.average@DC-Roztoky", "ups-9", "ACK-WIP", NULL, "high", 10, &actions1, 0);
     assert (alert1);
     zlist_t *actions2 = zlist_new ();
@@ -878,7 +878,7 @@ alerts_utils_test (bool verbose)
     {
     zlist_t *actions1 = zlist_new ();
     zlist_autofree (actions1);
-    zlist_append(actions1, "EMAIL");
+    zlist_append(actions1, (void *) ACTION_EMAIL);
     fty_proto_t *alert1 = alert_new ("temperature.average@DC-Roztoky", "ups-9", "ACK-WIP", NULL, "high", 10, &actions1, 0);
     assert (alert1);
     zlist_t *actions2 = zlist_new ();
@@ -992,13 +992,13 @@ alerts_utils_test (bool verbose)
     {
     zlist_t *actions1 = zlist_new ();
     zlist_autofree (actions1);
-    zlist_append(actions1, "EMAIL");
+    zlist_append(actions1, (void *) ACTION_EMAIL);
     fty_proto_t *alert1 = alert_new ("realpower.DeFault", "ŽlUťOUčKý kůň супер", "ACTIVE", "some description", "low", 10, &actions1, 0);
     assert (alert1);
     zlist_t *actions2 = zlist_new ();
     zlist_autofree (actions2);
-    zlist_append(actions2, "EMAIL");
-    zlist_append(actions2, "SMS");
+    zlist_append(actions2, (void *) ACTION_EMAIL);
+    zlist_append(actions2, (void *) ACTION_SMS);
     fty_proto_t *alert2 = alert_new ("realpower.default", "\u017dlu\u0165ou\u010dk\xc3\xbd K\u016f\xc5\x88 супер", "ACK-SILENCE",
                                       "some description 2", "high", 100, &actions2, 0);
     assert (alert2);
@@ -1016,13 +1016,13 @@ alerts_utils_test (bool verbose)
     {
     zlist_t *actions1 = zlist_new ();
     zlist_autofree (actions1);
-    zlist_append(actions1, "EMAIL");
+    zlist_append(actions1, (void *) ACTION_EMAIL);
     fty_proto_t *alert1 = alert_new ("realpower.DeFault", "Žluťoučký kůň супер ", "ACTIVE", "some description", "low", 10, &actions1, 0);
     assert (alert1);
     zlist_t *actions2 = zlist_new ();
     zlist_autofree (actions2);
-    zlist_append(actions2, "EMAIL");
-    zlist_append(actions2, "SMS");
+    zlist_append(actions2, (void *) ACTION_EMAIL);
+    zlist_append(actions2, (void *) ACTION_SMS);
     fty_proto_t *alert2 = alert_new ("realpower.default", "Žluťoučký kůň супер", "ACK-SILENCE",
                                       "some description 2", "high", 100, &actions2, 0);
     assert (alert2);
@@ -1043,7 +1043,7 @@ alerts_utils_test (bool verbose)
     {
     zlist_t *actions = zlist_new ();
     zlist_autofree (actions);
-    zlist_append(actions, "EMAIL");
+    zlist_append(actions, (void *) ACTION_EMAIL);
     fty_proto_t *alert = alert_new ("temperature.average@DC-Roztoky", "ups-9", "ACTIVE", "some description", "low", 10, &actions, 0);
     assert (alert);
     assert (is_alert_identified (alert, "temperature.average@DC-Roztoky", "ups-9") == 1);
@@ -1061,7 +1061,7 @@ alerts_utils_test (bool verbose)
     {
     zlist_t *actions = zlist_new ();
     zlist_autofree (actions);
-    zlist_append(actions, "EMAIL");
+    zlist_append(actions, (void *) ACTION_EMAIL);
     fty_proto_t *alert = alert_new ("temperature.average@DC-Roztoky", "ta2€супер14159", "ACTIVE", "some description", "low", 10, &actions, 0);
     assert (alert);
     assert (is_alert_identified (alert, "temperature.average@DC-Roztoky", "ups-9") == 0);
@@ -1074,7 +1074,7 @@ alerts_utils_test (bool verbose)
     {
     zlist_t *actions = zlist_new ();
     zlist_autofree (actions);
-    zlist_append(actions, "EMAIL");
+    zlist_append(actions, (void *) ACTION_EMAIL);
     fty_proto_t *alert = alert_new ("temperature.average@DC-Roztoky", "ŽlUťOUčKý kůň", "ACTIVE", "some description", "low", 10, &actions, 0);
     assert (alert);
     assert (is_alert_identified (alert, "temperature.average@dc-roztoky", "ŽlUťOUčKý kůň") == 1);
@@ -1093,12 +1093,12 @@ alerts_utils_test (bool verbose)
     {
     zlist_t *actions1 = zlist_new ();
     zlist_autofree (actions1);
-    zlist_append(actions1, "SMS");
+    zlist_append(actions1, (void *) ACTION_SMS);
     fty_proto_t *alert1 = alert_new ("temperature.average@DC-Roztoky", "ups-9", "ACTIVE", "low", "some description", 10,  &actions1, 0);
     assert (alert1);
     zlist_t *actions2 = zlist_new ();
     zlist_autofree (actions2);
-    zlist_append(actions2, "SMS");
+    zlist_append(actions2, (void *) ACTION_SMS);
     fty_proto_t *alert2 = alert_new ("temperature.average@DC-Roztoky", "ups-9", "ACTIVE", "low", "some description", 10,  &actions2, 0);
     assert (alert2);
 
@@ -1117,12 +1117,12 @@ alerts_utils_test (bool verbose)
     {
     zlist_t *actions1 = zlist_new ();
     zlist_autofree (actions1);
-    zlist_append(actions1, "SMS");
+    zlist_append(actions1, (void *) ACTION_SMS);
     fty_proto_t *alert1 = alert_new ("temperature.average@DC-Roztoky", "ups-9", "ACTIVE", "low", "some description", 10, &actions1, 0);
     assert (alert1);
     zlist_t *actions2 = zlist_new ();
     zlist_autofree (actions2);
-    zlist_append(actions2, "SMS");
+    zlist_append(actions2, (void *) ACTION_SMS);
     fty_proto_t *alert2 = alert_new ("temperature.average@dC-Roztoky", "ups-9", "ACTIVE", "low", "some description", 10, &actions2, 0);
     assert (alert2);
 
@@ -1143,12 +1143,12 @@ alerts_utils_test (bool verbose)
     {
     zlist_t *actions1 = zlist_new ();
     zlist_autofree (actions1);
-    zlist_append(actions1, "SMS");
+    zlist_append(actions1, (void *) ACTION_SMS);
     fty_proto_t *alert1 = alert_new ("temperature.average@DC-Roztoky", "ups-9", "ACTIVE", "low", "some description", 10, &actions1, 0);
     assert (alert1);
     zlist_t *actions2 = zlist_new ();
     zlist_autofree (actions2);
-    zlist_append(actions2, "SMS");
+    zlist_append(actions2, (void *) ACTION_SMS);
     fty_proto_t *alert2 = alert_new ("temperature.average@DC-Roztoky", "ups-9", "ACTIVE", "lOw", "some description", 10, &actions2, 0);
     assert (alert2);
 
@@ -1166,12 +1166,12 @@ alerts_utils_test (bool verbose)
     {
     zlist_t *actions1 = zlist_new ();
     zlist_autofree (actions1);
-    zlist_append(actions1, "SMS");
+    zlist_append(actions1, (void *) ACTION_SMS);
     fty_proto_t *alert1 = alert_new ("temperature.average@DC-Roztoky", "ups-9", "aCTIVE", "low", "some description", 10, &actions1, 0);
     assert (alert1);
     zlist_t *actions2 = zlist_new ();
     zlist_autofree (actions2);
-    zlist_append(actions2, "SMS");
+    zlist_append(actions2, (void *) ACTION_SMS);
     fty_proto_t *alert2 = alert_new ("temperature.average@DC-Roztoky", "ups-9", "ACTIVE", "low", "some description", 10, &actions2, 0);
     assert (alert2);
 
@@ -1189,12 +1189,12 @@ alerts_utils_test (bool verbose)
     {
     zlist_t *actions1 = zlist_new ();
     zlist_autofree (actions1);
-    zlist_append(actions1, "SMS");
+    zlist_append(actions1, (void *) ACTION_SMS);
     fty_proto_t *alert1 = alert_new ("temperature.average@DC-Roztoky", "ups-9", "ACTIVE", "low", "some description", 10, &actions1, 0);
     assert (alert1);
     zlist_t *actions2 = zlist_new ();
     zlist_autofree (actions2);
-    zlist_append(actions2, "SMS");
+    zlist_append(actions2, (void *) ACTION_SMS);
     fty_proto_t *alert2 = alert_new ("temperature.average@DC-Roztoky", "Ups-9", "ACTIVE", "low", "some description", 10, &actions2, 0);
     assert (alert2);
 
@@ -1212,12 +1212,12 @@ alerts_utils_test (bool verbose)
     {
     zlist_t *actions1 = zlist_new ();
     zlist_autofree (actions1);
-    zlist_append(actions1, "SMS");
+    zlist_append(actions1, (void *) ACTION_SMS);
     fty_proto_t *alert1 = alert_new ("temperature.average@DC-Roztoky", "ups-9", "ACTIVE", "low", "some description", 10, &actions1, 0);
     assert (alert1);
     zlist_t *actions2 = zlist_new ();
     zlist_autofree (actions2);
-    zlist_append(actions2, "SMS");
+    zlist_append(actions2, (void *) ACTION_SMS);
     fty_proto_t *alert2 = alert_new ("temperature.average@DC-Roztoky", "ups-9", "ACTIVE", "low", "some Description", 10, &actions2, 0);
     assert (alert2);
 
@@ -1235,12 +1235,12 @@ alerts_utils_test (bool verbose)
     {
     zlist_t *actions1 = zlist_new ();
     zlist_autofree (actions1);
-    zlist_append(actions1, "SMS");
+    zlist_append(actions1, (void *) ACTION_SMS);
     fty_proto_t *alert1 = alert_new ("temperature.average@DC-Roztoky", "ups-9", "ACTIVE", "low", "some description", 10, &actions1, 0);
     assert (alert1);
     zlist_t *actions2 = zlist_new ();
     zlist_autofree (actions2);
-    zlist_append(actions2, "SMS");
+    zlist_append(actions2, (void *) ACTION_SMS);
     fty_proto_t *alert2 = alert_new ("temperature.average@DC-Roztoky", "ups-9", "ACTIVE", "low", "some description", 35, &actions2, 0);
     assert (alert2);
 
@@ -1259,12 +1259,12 @@ alerts_utils_test (bool verbose)
     {
     zlist_t *actions1 = zlist_new ();
     zlist_autofree (actions1);
-    zlist_append(actions1, "SMS");
+    zlist_append(actions1, (void *) ACTION_SMS);
     fty_proto_t *alert1 = alert_new ("temperature.average@DC-Roztoky", "ups-9", "ACTIVE", "low", "some description", 10, &actions1, 0);
     assert (alert1);
     zlist_t *actions2 = zlist_new ();
     zlist_autofree (actions2);
-    zlist_append(actions2, "sms");
+    zlist_append(actions2,(void *) "sms");
     fty_proto_t *alert2 = alert_new ("temperature.average@DC-Roztoky", "ups-9", "ACTIVE", "low", "some description", 10, &actions2, 0);
     assert (alert2);
 
@@ -1305,12 +1305,12 @@ alerts_utils_test (bool verbose)
     {
     zlist_t *actions1 = zlist_new ();
     zlist_autofree (actions1);
-    zlist_append(actions1, "SMS");
+    zlist_append(actions1, (void *) ACTION_SMS);
     fty_proto_t *alert1 = alert_new ("temperature.average@DC-Roztoky", "ups-9", "ACTIVE", "low", NULL, 10, &actions1, 0);
     assert (alert1);
     zlist_t *actions2 = zlist_new ();
     zlist_autofree (actions2);
-    zlist_append(actions2, "SMS");
+    zlist_append(actions2, (void *) ACTION_SMS);
     fty_proto_t *alert2 = alert_new ("temperature.average@DC-Roztoky", "ups-9", "ACTIVE", "low", "some description", 10, &actions2, 0);
     assert (alert2);
 
@@ -1327,12 +1327,12 @@ alerts_utils_test (bool verbose)
     {
     zlist_t *actions1 = zlist_new ();
     zlist_autofree (actions1);
-    zlist_append(actions1, "SMS");
+    zlist_append(actions1, (void *) ACTION_SMS);
     fty_proto_t *alert1 = alert_new ("temperature.average@DC-Roztoky", "ups-9", "ACTIVE", "low", "some description", 10, &actions1, 0);
     assert (alert1);
     zlist_t *actions2 = zlist_new ();
     zlist_autofree (actions2);
-    zlist_append(actions2, "SMS");
+    zlist_append(actions2, (void *) ACTION_SMS);
     fty_proto_t *alert2 = alert_new (NULL,"ups-9", "ACTIVE", "low", "some description", 10, &actions2, 0);
     assert (alert2);
 
@@ -1349,12 +1349,12 @@ alerts_utils_test (bool verbose)
     {
     zlist_t *actions1 = zlist_new ();
     zlist_autofree (actions1);
-    zlist_append(actions1, "SMS");
+    zlist_append(actions1, (void *) ACTION_SMS);
     fty_proto_t *alert1 = alert_new ("temperature.average@DC-Roztoky", NULL, "ACTIVE", "low", "some description", 10, &actions1, 0);
     assert (alert1);
     zlist_t *actions2 = zlist_new ();
     zlist_autofree (actions2);
-    zlist_append(actions2, "SMS");
+    zlist_append(actions2, (void *) ACTION_SMS);
     fty_proto_t *alert2 = alert_new ("temperature.average@DC-Roztoky", "ups-9", "ACTIVE", "low", "some description", 10, &actions2, 0);
     assert (alert2);
 
@@ -1373,12 +1373,12 @@ alerts_utils_test (bool verbose)
     {
     zlist_t *actions1 = zlist_new ();
     zlist_autofree (actions1);
-    zlist_append(actions1, "SMS");
+    zlist_append(actions1, (void *) ACTION_SMS);
     fty_proto_t *alert1 = alert_new ("temperature.average@DC-Roztoky", "ups-9", "ACTIVE", "low", "some description", 10, &actions1, 0);
     assert (alert1);
     zlist_t *actions2 = zlist_new ();
     zlist_autofree (actions2);
-    zlist_append(actions2, "SMS");
+    zlist_append(actions2, (void *) ACTION_SMS);
     fty_proto_t *alert2 = alert_new ("temperature.humidity@DC-Roztoky", "ups-9", "ACTIVE", "low", "some description", 10, &actions2, 0);
     assert (alert2);
 
@@ -1395,12 +1395,12 @@ alerts_utils_test (bool verbose)
     {
     zlist_t *actions1 = zlist_new ();
     zlist_autofree (actions1);
-    zlist_append(actions1, "SMS");
+    zlist_append(actions1, (void *) ACTION_SMS);
     fty_proto_t *alert1 = alert_new ("temperature.average@DC-Roztoky", "ups-9", "ACTIVE", "low", "some description", 10, &actions1, 0);
     assert (alert1);
     zlist_t *actions2 = zlist_new ();
     zlist_autofree (actions2);
-    zlist_append(actions2, "SMS");
+    zlist_append(actions2, (void *) ACTION_SMS);
     fty_proto_t *alert2 = alert_new ("temperature.average@DC-Roztoky", "epdu", "ACTIVE", "low", "some description", 10, &actions2, 0);
     assert (alert2);
 
@@ -1417,12 +1417,12 @@ alerts_utils_test (bool verbose)
     {
     zlist_t *actions1 = zlist_new ();
     zlist_autofree (actions1);
-    zlist_append(actions1, "SMS");
+    zlist_append(actions1, (void *) ACTION_SMS);
     fty_proto_t *alert1 = alert_new ("temperature.average@DC-Roztoky", "epdu", "ACTIVE", "hugh", "some description", 10, &actions1, 0);
     assert (alert1);
     zlist_t *actions2 = zlist_new ();
     zlist_autofree (actions2);
-    zlist_append(actions2, "SMS");
+    zlist_append(actions2, (void *) ACTION_SMS);
     fty_proto_t *alert2 = alert_new ("temperature.average@DC-Roztoky", "epdu", "ACTIVE", "low", "some description", 10, &actions2, 0);
     assert (alert2);
 
@@ -1439,12 +1439,12 @@ alerts_utils_test (bool verbose)
     {
     zlist_t *actions1 = zlist_new ();
     zlist_autofree (actions1);
-    zlist_append(actions1, "SMS");
+    zlist_append(actions1, (void *) ACTION_SMS);
     fty_proto_t *alert1 = alert_new ("temperature.average@DC-Roztoky", "epdu", "ACTIVE", "low", "some description", 10, &actions1, 0);
     assert (alert1);
     zlist_t *actions2 = zlist_new ();
     zlist_autofree (actions2);
-    zlist_append(actions2, "SMS");
+    zlist_append(actions2, (void *) ACTION_SMS);
     fty_proto_t *alert2 = alert_new ("temperature.average@DC-Roztoky", "epdu", "ACK-WIP", "low", "some description", 10, &actions2, 0);
     assert (alert2);
 
@@ -1461,12 +1461,12 @@ alerts_utils_test (bool verbose)
     {
     zlist_t *actions1 = zlist_new ();
     zlist_autofree (actions1);
-    zlist_append(actions1, "SMS");
+    zlist_append(actions1, (void *) ACTION_SMS);
     fty_proto_t *alert1 = alert_new ("temperature.average@DC-Roztoky", "epdu", "ACK-WIP", "low", "shitty description", 10, &actions1, 0);
     assert (alert1);
     zlist_t *actions2 = zlist_new ();
     zlist_autofree (actions2);
-    zlist_append(actions2, "SMS");
+    zlist_append(actions2, (void *) ACTION_SMS);
     fty_proto_t *alert2 = alert_new ("temperature.average@DC-Roztoky", "epdu", "ACK-WIP", "low", "some description", 10, &actions2, 0);
     assert (alert2);
 
@@ -1483,12 +1483,12 @@ alerts_utils_test (bool verbose)
     {
     zlist_t *actions1 = zlist_new ();
     zlist_autofree (actions1);
-    zlist_append(actions1, "SMS");
+    zlist_append(actions1, (void *) ACTION_SMS);
     fty_proto_t *alert1 = alert_new ("temperature.average@DC-Roztoky", "epdu", "ACK-WIP", "low", "some description", 1, &actions1, 0);
     assert (alert1);
     zlist_t *actions2 = zlist_new ();
     zlist_autofree (actions2);
-    zlist_append(actions2, "SMS");
+    zlist_append(actions2, (void *) ACTION_SMS);
     fty_proto_t *alert2 = alert_new ("temperature.average@DC-Roztoky", "epdu", "ACK-WIP", "low", "some description", 10, &actions2, 0);
     assert (alert2);
 
@@ -1505,12 +1505,12 @@ alerts_utils_test (bool verbose)
     {
     zlist_t *actions1 = zlist_new ();
     zlist_autofree (actions1);
-    zlist_append(actions1, "EMAIL");
+    zlist_append(actions1, (void *) ACTION_EMAIL);
     fty_proto_t *alert1 = alert_new ("temperature.average@DC-Roztoky", "epdu", "ACK-WIP", "low", "some description", 10, &actions1, 0);
     assert (alert1);
     zlist_t *actions2 = zlist_new ();
     zlist_autofree (actions2);
-    zlist_append(actions2, "SMS");
+    zlist_append(actions2, (void *) ACTION_SMS);
     fty_proto_t *alert2 = alert_new ("temperature.average@DC-Roztoky", "epdu", "ACK-WIP", "low", "some description", 10, &actions2, 0);
     assert (alert2);
 
@@ -1528,12 +1528,12 @@ alerts_utils_test (bool verbose)
     {
     zlist_t *actions1 = zlist_new ();
     zlist_autofree (actions1);
-    zlist_append(actions1, "EMAIL");
+    zlist_append(actions1, (void *) ACTION_EMAIL);
     fty_proto_t *alert1 = alert_new ("temperature.average@DC-Roztoky", "ŽlUťOUčKý kůň", "ACK-WIP", "low", "some description", 10, &actions1, 0);
     assert (alert1);
     zlist_t *actions2 = zlist_new ();
     zlist_autofree (actions2);
-    zlist_append(actions2, "SMS");
+    zlist_append(actions2, (void *) ACTION_SMS);
     fty_proto_t *alert2 = alert_new ("temperature.average@DC-Roztoky", "\u017dlu\u0165ou\u010dk\xc3\xbd K\u016f\xc5\x88", "ACK-WIP", "low", "some description", 10, &actions2, 0);
     assert (alert2);
 
@@ -1566,8 +1566,8 @@ alerts_utils_test (bool verbose)
 
     zlist_t *actions1 = zlist_new ();
     zlist_autofree (actions1);
-    zlist_append(actions1, "EMAIL");
-    zlist_append(actions1, "SMS");
+    zlist_append(actions1,(void *) ACTION_EMAIL);
+    zlist_append(actions1,(void *) ACTION_SMS);
     fty_proto_t *alert = alert_new ("Rule1", "Element1", "ACTIVE", "high", "xyz", 1, &actions1, 0);
     assert (alert);
     zlistx_add_end (alerts, alert);
@@ -1575,8 +1575,8 @@ alerts_utils_test (bool verbose)
 
     zlist_t *actions2 = zlist_new ();
     zlist_autofree (actions2);
-    zlist_append(actions2, "EMAIL");
-    zlist_append(actions2, "SMS");
+    zlist_append(actions2,(void *) ACTION_EMAIL);
+    zlist_append(actions2,(void *) ACTION_SMS);
     alert = alert_new ("Rule1", "Element2", "RESOLVED", "high", "xyz", 20, &actions2, 0);
     assert (alert);
     zlistx_add_end (alerts, alert);
@@ -1584,7 +1584,7 @@ alerts_utils_test (bool verbose)
 
     zlist_t *actions3 = zlist_new ();
     zlist_autofree (actions3);
-    zlist_append(actions3, "SMS");
+    zlist_append(actions3,(void *) ACTION_SMS);
     alert = alert_new ("Rule2", "Element1", "ACK-WIP", "low", "this is description", 152452412, &actions3, 0);
     assert (alert);
     zlistx_add_end (alerts, alert);
@@ -1592,7 +1592,7 @@ alerts_utils_test (bool verbose)
 
     zlist_t *actions4 = zlist_new ();
     zlist_autofree (actions4);
-    zlist_append(actions4, "EMAIL");
+    zlist_append(actions4,(void *) ACTION_EMAIL);
     alert = alert_new ("Rule2", "Element2", "ACK-SILENCE", "high", "x", 5, &actions4, 0);
     assert (alert);
     zlistx_add_end (alerts, alert);
@@ -1600,8 +1600,8 @@ alerts_utils_test (bool verbose)
 
     zlist_t *actions5 = zlist_new ();
     zlist_autofree (actions5);
-    zlist_append(actions5, "EMAIL");
-    zlist_append(actions5, "SMS");
+    zlist_append(actions5,(void *) ACTION_EMAIL);
+    zlist_append(actions5,(void *) ACTION_SMS);
     alert = alert_new ("Rule1", "Element3", "RESOLVED", "a", "y", 50, &actions5, 0);
     assert (alert);
     zlistx_add_end (alerts, alert);
@@ -1609,8 +1609,8 @@ alerts_utils_test (bool verbose)
 
     zlist_t *actions6 = zlist_new ();
     zlist_autofree (actions6);
-    zlist_append(actions6, "EMAIL");
-    zlist_append(actions6, "SMS");
+    zlist_append(actions6,(void *) ACTION_EMAIL);
+    zlist_append(actions6,(void *) ACTION_SMS);
     alert = alert_new ("realpower.default", "ŽlUťOUčKý kůň супер", "ACTIVE", "low", "unicode test case #1", 60, &actions6, 0);
     assert (alert);
     zlistx_add_end (alerts, alert);
