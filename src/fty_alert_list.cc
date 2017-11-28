@@ -17,70 +17,67 @@
     with this program; if not, write to the Free Software Foundation, Inc.,
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.            
     =========================================================================
-*/
+ */
 
 /*
 @header
     fty_alert_list -
 @discuss
 @end
-*/
+ */
 
 #include "fty_alert_list_classes.h"
 
 static int
-s_ttl_cleanup_timer (zloop_t *loop, int timer_id, void *output)
-{
-    zstr_send (output, "TTLCLEANUP");
+s_ttl_cleanup_timer(zloop_t *loop, int timer_id, void *output) {
+    zstr_send(output, "TTLCLEANUP");
     return 0;
 }
 
-int main (int argc, char *argv [])
-{
+int main(int argc, char *argv []) {
     bool verbose = false;
     int argn;
     for (argn = 1; argn < argc; argn++) {
-        if (streq (argv [argn], "--help") ||
-            streq (argv [argn], "-h")) {
-            puts ("fty-alert-list [options] ...");
-            puts ("  --verbose / -v         verbose test output");
-            puts ("  --help / -h            this information");
+        if (streq(argv [argn], "--help") ||
+                streq(argv [argn], "-h")) {
+            puts("fty-alert-list [options] ...");
+            puts("  --verbose / -v         verbose test output");
+            puts("  --help / -h            this information");
             return 0;
-        }
-        else if (streq (argv [argn], "--verbose") ||
-                 streq (argv [argn], "-v")) {
+        } else if (streq(argv [argn], "--verbose") ||
+                streq(argv [argn], "-v")) {
             verbose = true;
-        } 
+        }
         else {
-            printf ("Unknown option: %s\n", argv [argn]);
+            printf("Unknown option: %s\n", argv [argn]);
             return 1;
         }
     }
     //  Insert main code here
-    if (verbose)
-        zsys_info ("fty-alert-list - Agent providing information about active alerts"); // TODO: rewite alerts_list_server to accept VERBOSE
-
-    zsys_info ("fty-alert-list starting");
+    if (verbose) {
+        zsys_info("fty-alert-list - Agent providing information about active alerts"); // TODO: rewite alerts_list_server to accept VERBOSE
+    }
+    zsys_info("fty-alert-list starting");
     const char *endpoint = "ipc://@/malamute";
+    //init the alert list (common with stream and mailbox traitement
+    init_alert(verbose);
 
-    zactor_t *alert_list_server_stream = zactor_new (fty_alert_list_server_stream, (void *) endpoint);
-    zloop_t *ttlcleanup_stream = zloop_new ();
-    zloop_timer (ttlcleanup_stream, 60*1000, 0, s_ttl_cleanup_timer, alert_list_server_stream);
-    zloop_start (ttlcleanup_stream);
-    
-    zactor_t *alert_list_server_mailbox = zactor_new (fty_alert_list_server_mailbox, (void *) endpoint);
-    zloop_t *ttlcleanup_mailbox = zloop_new ();
-    zloop_timer (ttlcleanup_mailbox, 60*1000, 0, s_ttl_cleanup_timer, alert_list_server_mailbox);
-    zloop_start (ttlcleanup_mailbox);
-    
-    // 
+    //initialize actor and timer for stream
+    zactor_t *alert_list_server_stream = zactor_new(fty_alert_list_server_stream, (void *) endpoint);
+    zloop_t *ttlcleanup_stream = zloop_new();
+    zloop_timer(ttlcleanup_stream, 60 * 1000, 0, s_ttl_cleanup_timer, alert_list_server_stream);
+    zloop_start(ttlcleanup_stream);
+
+    zactor_t *alert_list_server_mailbox = zactor_new(fty_alert_list_server_mailbox, (void *) endpoint);
+
     while (!zsys_interrupted) {
-        sleep (1000);
+        sleep(1000);
     }
     
-    zloop_destroy (&ttlcleanup_stream);
-    zactor_destroy (&alert_list_server_stream);
-    zloop_destroy (&ttlcleanup_mailbox);
-    zactor_destroy (&alert_list_server_mailbox);
+    zloop_destroy(&ttlcleanup_stream);
+    zactor_destroy(&alert_list_server_stream);
+    zactor_destroy(&alert_list_server_mailbox);
+    destroy_alert();
+    
     return EXIT_SUCCESS;
 }

@@ -33,6 +33,12 @@ FTY_ALERT_LIST_EXPORT void
     fty_alert_list_server_stream (zsock_t *pipe, void *args);
 
 FTY_ALERT_LIST_EXPORT void
+    init_alert (bool verb);
+
+FTY_ALERT_LIST_EXPORT void
+    destroy_alert ();
+
+FTY_ALERT_LIST_EXPORT void
     fty_alert_list_server_mailbox (zsock_t *pipe, void *args);
 
 FTY_ALERT_LIST_EXPORT void
