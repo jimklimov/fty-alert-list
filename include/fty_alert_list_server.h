@@ -30,7 +30,10 @@ extern "C" {
 
 //  zactor ready fnction
 FTY_ALERT_LIST_EXPORT void
-    fty_alert_list_server (zsock_t *pipe, void *args);
+    fty_alert_list_server_stream (zsock_t *pipe, void *args);
+
+FTY_ALERT_LIST_EXPORT void
+    fty_alert_list_server_mailbox (zsock_t *pipe, void *args);
 
 FTY_ALERT_LIST_EXPORT void
     fty_alert_list_server_test (bool verbose);

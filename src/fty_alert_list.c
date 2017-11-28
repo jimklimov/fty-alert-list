@@ -62,18 +62,25 @@ int main (int argc, char *argv [])
 
     zsys_info ("fty-alert-list starting");
     const char *endpoint = "ipc://@/malamute";
-    zactor_t *alert_list_server = zactor_new (fty_alert_list_server, (void *) endpoint);
 
-    zloop_t *ttlcleanup = zloop_new ();
-    zloop_timer (ttlcleanup, 60*1000, 0, s_ttl_cleanup_timer, alert_list_server);
-    zloop_start (ttlcleanup);
+    zactor_t *alert_list_server_stream = zactor_new (fty_alert_list_server_stream, (void *) endpoint);
+    zloop_t *ttlcleanup_stream = zloop_new ();
+    zloop_timer (ttlcleanup_stream, 60*1000, 0, s_ttl_cleanup_timer, alert_list_server_stream);
+    zloop_start (ttlcleanup_stream);
+    
+    zactor_t *alert_list_server_mailbox = zactor_new (fty_alert_list_server_mailbox, (void *) endpoint);
+    zloop_t *ttlcleanup_mailbox = zloop_new ();
+    zloop_timer (ttlcleanup_mailbox, 60*1000, 0, s_ttl_cleanup_timer, alert_list_server_mailbox);
+    zloop_start (ttlcleanup_mailbox);
     
     // 
     while (!zsys_interrupted) {
         sleep (1000);
     }
     
-    zloop_destroy (&ttlcleanup);
-    zactor_destroy (&alert_list_server);
+    zloop_destroy (&ttlcleanup_stream);
+    zactor_destroy (&alert_list_server_stream);
+    zloop_destroy (&ttlcleanup_mailbox);
+    zactor_destroy (&alert_list_server_mailbox);
     return EXIT_SUCCESS;
 }
