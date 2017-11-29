@@ -63,12 +63,12 @@ int main(int argc, char *argv []) {
     init_alert(verbose);
 
     //initialize actor and timer for stream
+    zactor_t *alert_list_server_mailbox = zactor_new(fty_alert_list_server_mailbox, (void *) endpoint);
+
     zactor_t *alert_list_server_stream = zactor_new(fty_alert_list_server_stream, (void *) endpoint);
     zloop_t *ttlcleanup_stream = zloop_new();
     zloop_timer(ttlcleanup_stream, 60 * 1000, 0, s_ttl_cleanup_timer, alert_list_server_stream);
     zloop_start(ttlcleanup_stream);
-
-    zactor_t *alert_list_server_mailbox = zactor_new(fty_alert_list_server_mailbox, (void *) endpoint);
 
     while (!zsys_interrupted) {
         sleep(1000);
