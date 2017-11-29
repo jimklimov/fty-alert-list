@@ -313,10 +313,10 @@ alert_comparator(fty_proto_t *alert1, fty_proto_t *alert2) {
 
 int
 is_acknowledge_state(const char *state) {
-    if (streq(state, "ACK-WIP") ||
+    if (NULL != state && (streq(state, "ACK-WIP") ||
             streq(state, "ACK-IGNORE") ||
             streq(state, "ACK-PAUSE") ||
-            streq(state, "ACK-SILENCE")) {
+            streq(state, "ACK-SILENCE"))) {
         return 1;
     }
     return 0;
@@ -324,9 +324,9 @@ is_acknowledge_state(const char *state) {
 
 int
 is_alert_state(const char *state) {
-    if (streq(state, "ACTIVE") ||
+    if (NULL != state && (streq(state, "ACTIVE") ||
             streq(state, "RESOLVED") ||
-            is_acknowledge_state(state)) {
+            is_acknowledge_state(state))) {
         return 1;
     }
     return 0;
@@ -334,9 +334,9 @@ is_alert_state(const char *state) {
 
 int
 is_list_request_state(const char *state) {
-    if (streq(state, "ALL") ||
+    if (NULL != state && (streq(state, "ALL") ||
             streq(state, "ALL-ACTIVE") ||
-            is_alert_state(state)) {
+            is_alert_state(state))) {
         return 1;
     }
     return 0;
@@ -358,8 +358,8 @@ is_state_included(const char *list_request_state, const char *alert) {
 
 int
 is_acknowledge_request_state(const char *state) {
-    if (streq(state, "ACTIVE") ||
-            is_acknowledge_state(state)) {
+    if (NULL != state && (streq(state, "ACTIVE") ||
+            is_acknowledge_state(state))) {
         return 1;
     }
     return 0;
@@ -593,7 +593,7 @@ alerts_utils_test(bool verbose) {
 
     //  @selftest
 
-    printf(" * alerts_utils: ");
+    zsys_debug(" * alerts_utils: ");
 
     //  **********************
     //  *****   utf8eq   *****
@@ -604,18 +604,7 @@ alerts_utils_test(bool verbose) {
     assert(utf8eq("Ka\xcc\x81rol", "K\xc3\xa1rol") == 0);
     assert(utf8eq("супер test", "\u0441\u0443\u043f\u0435\u0440 Test") == 1);
     assert(utf8eq("ŽlUťOUčKý kůň", "ŽlUťOUčKý kůn") == 0);
-
-    //  **********************
-    //  *****   streq   *****
-    //  **********************
-
-    assert(streq(NULL, NULL) == 1);
-    assert(streq("", "") == 1);
-    assert(streq(NULL, "") == 0);
-    assert(streq("", NULL) == 0);
-    assert(streq("a", "a") == 1);
-    assert(streq("a", "A") == 0);
-    assert(streq("A", "a") == 0);
+    zsys_debug("utf8eq: OK");
 
     //  ************************************
     //  *****   is_acknowledge_state   *****
@@ -642,6 +631,7 @@ alerts_utils_test(bool verbose) {
     assert(is_acknowledge_state("aCK-WIP") == 0);
     assert(is_acknowledge_state("ACKWIP") == 0);
     assert(is_acknowledge_state("somethign") == 0);
+    zsys_debug("is_acknowledge_state: OK");
 
 
     //  ******************************
@@ -664,6 +654,7 @@ alerts_utils_test(bool verbose) {
     assert(is_alert_state("ACK") == 0);
     assert(is_alert_state("ack-wip") == 0);
     assert(is_alert_state("resolved") == 0);
+    zsys_debug("is_alert_state: OK");
 
     //  *************************************
     //  *****   is_list_request_state   *****
@@ -687,6 +678,7 @@ alerts_utils_test(bool verbose) {
     assert(is_list_request_state("") == 0);
     assert(is_list_request_state(NULL) == 0);
     assert(is_list_request_state("sdfsd") == 0);
+    zsys_debug("is_list_request_state: OK");
 
 
     //  *********************************
@@ -721,6 +713,7 @@ alerts_utils_test(bool verbose) {
     assert(is_state_included("ALL", "ALL") == 0);
     assert(is_state_included("ACK-WIP", "ACTIVE") == 0);
     assert(is_state_included("ACK-IGNORE", "ACK-WIP") == 0);
+    zsys_debug("is_state_included: OK");
 
     //  *********************************************
     //  *****   is_acknowledge_request_state    *****
@@ -738,6 +731,7 @@ alerts_utils_test(bool verbose) {
     assert(is_acknowledge_request_state("active") == 0);
     assert(is_acknowledge_request_state("") == 0);
     assert(is_acknowledge_request_state(NULL) == 0);
+    zsys_debug("is_acknowledge_request_state: OK");
 
     //  **************************
     //  *****   alert_new    *****

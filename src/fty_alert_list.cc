@@ -74,6 +74,7 @@ int main(int argc, char *argv []) {
         sleep(1000);
     }
     
+    save_alerts();
     zloop_destroy(&ttlcleanup_stream);
     zactor_destroy(&alert_list_server_stream);
     zactor_destroy(&alert_list_server_mailbox);

@@ -83,7 +83,7 @@ s_clear_long_time_expired(zhash_t *exp) {
 }
 
 static void
-s_resolve_expired_alerts(zhash_t *exp) {
+s_resolve_expired_alerts(zhash_t *exp, zlistx_t *alerts) {
     if (!exp || !alerts) return;
 
     alertMtx.lock();
@@ -103,7 +103,7 @@ s_resolve_expired_alerts(zhash_t *exp) {
 }
 
 static void
-s_handle_stream_deliver(mlm_client_t *client, zmsg_t** msg_p, zhash_t *expirations) {
+s_handle_stream_deliver(mlm_client_t *client, zmsg_t** msg_p, zlistx_t *alerts, zhash_t *expirations) {
     assert(client);
     assert(msg_p);
 
@@ -128,7 +128,7 @@ s_handle_stream_deliver(mlm_client_t *client, zmsg_t** msg_p, zhash_t *expiratio
         zsys_debug("----> printing alert ");
         fty_proto_print(newAlert);
     }
-    
+
     alertMtx.lock();
     fty_proto_t *cursor = (fty_proto_t *) zlistx_first(alerts);
     int found = 0;
@@ -216,7 +216,7 @@ s_send_error_response(mlm_client_t *client, const char *subject, const char *rea
 }
 
 static void
-s_handle_rfc_alerts_list(mlm_client_t *client, zmsg_t **msg_p) {
+s_handle_rfc_alerts_list(mlm_client_t *client, zmsg_t **msg_p, zlistx_t *alerts) {
     assert(client);
     assert(msg_p && *msg_p);
     assert(alerts);
@@ -289,7 +289,7 @@ s_handle_rfc_alerts_list(mlm_client_t *client, zmsg_t **msg_p) {
 }
 
 static void
-s_handle_rfc_alerts_acknowledge(mlm_client_t *client, zmsg_t **msg_p) {
+s_handle_rfc_alerts_acknowledge(mlm_client_t *client, zmsg_t **msg_p, zlistx_t *alerts) {
     assert(client);
     assert(msg_p);
     assert(alerts);
@@ -422,16 +422,16 @@ s_handle_rfc_alerts_acknowledge(mlm_client_t *client, zmsg_t **msg_p) {
 }
 
 static void
-s_handle_mailbox_deliver(mlm_client_t *client, zmsg_t** msg_p) {
+s_handle_mailbox_deliver(mlm_client_t *client, zmsg_t** msg_p, zlistx_t *alerts) {
     assert(client);
     assert(msg_p && *msg_p);
     assert(alerts);
 
     if (streq(mlm_client_subject(client), RFC_ALERTS_LIST_SUBJECT)) {
-        s_handle_rfc_alerts_list(client, msg_p);
+        s_handle_rfc_alerts_list(client, msg_p, alerts);
     } else
         if (streq(mlm_client_subject(client), RFC_ALERTS_ACKNOWLEDGE_SUBJECT)) {
-        s_handle_rfc_alerts_acknowledge(client, msg_p);
+        s_handle_rfc_alerts_acknowledge(client, msg_p, alerts);
     } else {
         s_send_error_response(client, mlm_client_subject(client), "UNKNOWN_PROTOCOL");
         zsys_error("Unknown protocol. Subject: '%s', Sender: '%s'.",
@@ -466,7 +466,7 @@ fty_alert_list_server_stream(zsock_t *pipe, void *args) {
                 zmsg_destroy(&msg);
                 break;
             } else if (streq(cmd, "TTLCLEANUP")) {
-                s_resolve_expired_alerts(expirations);
+                s_resolve_expired_alerts(expirations, alerts);
             }
             zstr_free(&cmd);
             zmsg_destroy(&msg);
@@ -475,7 +475,7 @@ fty_alert_list_server_stream(zsock_t *pipe, void *args) {
             if (!msg) {
                 break;
             } else if (streq(mlm_client_command(client), "STREAM DELIVER")) {
-                s_handle_stream_deliver(client, &msg, expirations);
+                s_handle_stream_deliver(client, &msg, alerts, expirations);
             } else {
                 zsys_warning("Unknown command '%s'. Subject: '%s', Sender: '%s'.",
                         mlm_client_command(client), mlm_client_subject(client), mlm_client_sender(client));
@@ -483,9 +483,6 @@ fty_alert_list_server_stream(zsock_t *pipe, void *args) {
             }
         }
     }
-
-    int rv = alert_save_state(alerts, STATE_PATH, STATE_FILE, verbose);
-    zsys_debug("alert_save_state () == %d", rv);
 
     mlm_client_destroy(&client);
     zpoller_destroy(&poller);
@@ -523,7 +520,7 @@ fty_alert_list_server_mailbox(zsock_t *pipe, void *args) {
                 break;
             }
             if (streq(mlm_client_command(client), "MAILBOX DELIVER")) {
-                s_handle_mailbox_deliver(client, &msg);
+                s_handle_mailbox_deliver(client, &msg, alerts);
             } else {
                 zsys_warning("Unknown command '%s'. Subject: '%s', Sender: '%s'.",
                         mlm_client_command(client), mlm_client_subject(client), mlm_client_sender(client));
@@ -531,13 +528,15 @@ fty_alert_list_server_mailbox(zsock_t *pipe, void *args) {
             }
         }
     }
-
-    int rv = alert_save_state(alerts, STATE_PATH, STATE_FILE, verbose);
-    zsys_debug("alert_save_state () == %d", rv);
-
+   
     mlm_client_destroy(&client);
     zpoller_destroy(&poller);
 }
+void save_alerts() {
+    int rv = alert_save_state(alerts, STATE_PATH, STATE_FILE, verbose);
+    zsys_debug("alert_save_state () == %d", rv);
+}
+
 
 void
 init_alert(bool verb) {
@@ -552,7 +551,7 @@ init_alert(bool verb) {
 
 void
 destroy_alert() {
-        zlistx_destroy(&alerts);
+    zlistx_destroy(&alerts);
 }
 
 //  --------------------------------------------------------------------------
@@ -717,14 +716,16 @@ test_zlistx_same(const char *state, zlistx_t *expected, zlistx_t *received) {
     while (cursor) {
         if (is_state_included(state, fty_proto_state(cursor))) {
             void *handle = zlistx_find(received, cursor);
-            if (!handle)
+            if (!handle) {
                 return 0;
+            }
             zlistx_delete(received, handle);
         }
         cursor = (fty_proto_t *) zlistx_next(expected);
     }
-    if (zlistx_size(received) != 0)
+    if (zlistx_size(received) != 0) {
         return 0;
+    }
     return 1;
 }
 
@@ -857,8 +858,8 @@ test_alert_publish(
 }
 
 void
-fty_alert_list_server_test(bool verbose) {
-
+fty_alert_list_server_test(bool verb) {
+    verbose = verb;
     static const char* endpoint = "inproc://fty-lm-server-test";
 
     //  @selftest
@@ -893,323 +894,324 @@ fty_alert_list_server_test(bool verbose) {
     // Alert Lists
     zactor_t *fty_al_server_stream = zactor_new(fty_alert_list_server_stream, (void *) endpoint);
     zactor_t *fty_al_server_mailbox = zactor_new(fty_alert_list_server_mailbox, (void *) endpoint);
-
+    init_alert(verb);
+    
     // maintain a list of active alerts (that serves as "expected results")
-    alerts = zlistx_new();
-    zlistx_set_destructor(alerts, (czmq_destructor *) fty_proto_destroy);
-    zlistx_set_duplicator(alerts, (czmq_duplicator *) fty_proto_dup);
-    zlistx_set_comparator(alerts, (czmq_comparator *) alert_id_comparator);
+    zlistx_t *testAlerts = zlistx_new();
+    zlistx_set_destructor(testAlerts, (czmq_destructor *) fty_proto_destroy);
+    zlistx_set_duplicator(testAlerts, (czmq_duplicator *) fty_proto_dup);
+    zlistx_set_comparator(testAlerts, (czmq_comparator *) alert_id_comparator);
 
     zmsg_t *reply = test_request_alerts_list(ui, "ALL");
     assert(reply);
-    test_check_result("ALL", alerts, &reply, 0);
+    test_check_result("ALL", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "ACK-WIP");
-    test_check_result("ACK-WIP", alerts, &reply, 0);
+    test_check_result("ACK-WIP", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "ACK-IGNORE");
-    test_check_result("ACK-IGNORE", alerts, &reply, 0);
+    test_check_result("ACK-IGNORE", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "ALL-ACTIVE");
-    test_check_result("ALL-ACTIVE", alerts, &reply, 0);
+    test_check_result("ALL-ACTIVE", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "RESOLVED");
-    test_check_result("RESOLVED", alerts, &reply, 0);
+    test_check_result("RESOLVED", testAlerts, &reply, 0);
 
     // add new alert
     zlist_t *actions1 = zlist_new();
     zlist_autofree(actions1);
-    zlist_append(actions1, (void *) ACTION_EMAIL);
-    zlist_append(actions1, (void *) ACTION_SMS);
+    zlist_append(actions1, (void *) "EMAIL");
+    zlist_append(actions1, (void *) "SMS");
     fty_proto_t *alert = alert_new("Threshold", "ups", "ACTIVE", "high", "description", 1, &actions1, 0);
-    test_alert_publish(producer, consumer, alerts, &alert);
+    test_alert_publish(producer, consumer, testAlerts, &alert);
 
     reply = test_request_alerts_list(ui, "ALL");
-    test_check_result("ALL", alerts, &reply, 0);
+    test_check_result("ALL", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "ACK-PAUSE");
-    test_check_result("ACK-PAUSE", alerts, &reply, 0);
+    test_check_result("ACK-PAUSE", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "ALL-ACTIVE");
-    test_check_result("ALL-ACTIVE", alerts, &reply, 0);
+    test_check_result("ALL-ACTIVE", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "RESOLVED");
-    test_check_result("RESOLVED", alerts, &reply, 0);
+    test_check_result("RESOLVED", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "ACTIVE");
-    test_check_result("ACTIVE", alerts, &reply, 0);
+    test_check_result("ACTIVE", testAlerts, &reply, 0);
 
     // add new alert
     zlist_t *actions2 = zlist_new();
     zlist_autofree(actions2);
-    zlist_append(actions2, (void *) ACTION_EMAIL);
-    zlist_append(actions2, (void *) ACTION_SMS);
+    zlist_append(actions2, (void *) "EMAIL");
+    zlist_append(actions2, (void *) "SMS");
     alert = alert_new("Threshold", "epdu", "ACTIVE", "high", "description", 2, &actions2, 0);
-    test_alert_publish(producer, consumer, alerts, &alert);
+    test_alert_publish(producer, consumer, testAlerts, &alert);
 
     reply = test_request_alerts_list(ui, "ALL");
-    test_check_result("ALL", alerts, &reply, 0);
+    test_check_result("ALL", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "ACTIVE");
-    test_check_result("ACTIVE", alerts, &reply, 0);
+    test_check_result("ACTIVE", testAlerts, &reply, 0);
 
     // add new alert
     zlist_t *actions3 = zlist_new();
     zlist_autofree(actions3);
-    zlist_append(actions3, (void *) ACTION_EMAIL);
-    zlist_append(actions3, (void *) ACTION_SMS);
+    zlist_append(actions3, (void *) "EMAIL");
+    zlist_append(actions3, (void *) "SMS");
     alert = alert_new("SimpleRule", "ups", "ACTIVE", "high", "description", 3, &actions3, 0);
-    test_alert_publish(producer, consumer, alerts, &alert);
+    test_alert_publish(producer, consumer, testAlerts, &alert);
 
     reply = test_request_alerts_list(ui, "ALL");
-    test_check_result("ALL", alerts, &reply, 0);
+    test_check_result("ALL", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "ACTIVE");
-    test_check_result("ACTIVE", alerts, &reply, 0);
+    test_check_result("ACTIVE", testAlerts, &reply, 0);
 
     // add new alert
     zlist_t *actions4 = zlist_new();
     zlist_autofree(actions4);
-    zlist_append(actions4, (void *) ACTION_EMAIL);
-    zlist_append(actions4, (void *) ACTION_SMS);
+    zlist_append(actions4, (void *) "EMAIL");
+    zlist_append(actions4, (void *) "SMS");
     alert = alert_new("SimpleRule", "ŽlUťOUčKý kůň супер", "ACTIVE", "high", "description", 4, &actions4, 0);
-    test_alert_publish(producer, consumer, alerts, &alert);
+    test_alert_publish(producer, consumer, testAlerts, &alert);
 
     reply = test_request_alerts_list(ui, "ALL");
-    test_check_result("ALL", alerts, &reply, 0);
+    test_check_result("ALL", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "ACTIVE");
-    test_check_result("ACTIVE", alerts, &reply, 0);
+    test_check_result("ACTIVE", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "ALL-ACTIVE");
-    test_check_result("ALL-ACTIVE", alerts, &reply, 0);
+    test_check_result("ALL-ACTIVE", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "RESOLVED");
-    test_check_result("RESOLVED", alerts, &reply, 0);
+    test_check_result("RESOLVED", testAlerts, &reply, 0);
 
     // add new alert
     zlist_t *actions5 = zlist_new();
     zlist_autofree(actions5);
-    zlist_append(actions5, (void *) ACTION_EMAIL);
-    zlist_append(actions5, (void *) ACTION_SMS);
+    zlist_append(actions5, (void *) "EMAIL");
+    zlist_append(actions5, (void *) "SMS");
     alert = alert_new("Threshold", "ŽlUťOUčKý kůň супер", "RESOLVED", "high", "description", 4, &actions5, 0);
-    test_alert_publish(producer, consumer, alerts, &alert);
+    test_alert_publish(producer, consumer, testAlerts, &alert);
 
     reply = test_request_alerts_list(ui, "ALL");
-    test_check_result("ALL", alerts, &reply, 0);
+    test_check_result("ALL", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "ALL-ACTIVE");
-    test_check_result("ALL-ACTIVE", alerts, &reply, 0);
+    test_check_result("ALL-ACTIVE", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "RESOLVED");
-    test_check_result("RESOLVED", alerts, &reply, 0);
+    test_check_result("RESOLVED", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "ACTIVE");
-    test_check_result("ACTIVE", alerts, &reply, 0);
+    test_check_result("ACTIVE", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "ACK-SILENCE");
-    test_check_result("ACK-SILENCE", alerts, &reply, 0);
+    test_check_result("ACK-SILENCE", testAlerts, &reply, 0);
 
     // change state (rfc-alerts-acknowledge)
-    test_request_alerts_acknowledge(ui, consumer, "Threshold", "epdu", "ACK-WIP", alerts, 0);
+    test_request_alerts_acknowledge(ui, consumer, "Threshold", "epdu", "ACK-WIP", testAlerts, 0);
 
     reply = test_request_alerts_list(ui, "ALL");
-    test_check_result("ALL", alerts, &reply, 0);
+    test_check_result("ALL", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "ALL-ACTIVE");
-    test_check_result("ALL-ACTIVE", alerts, &reply, 0);
+    test_check_result("ALL-ACTIVE", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "RESOLVED");
-    test_check_result("RESOLVED", alerts, &reply, 0);
+    test_check_result("RESOLVED", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "ACK-WIP");
-    test_check_result("ACK-WIP", alerts, &reply, 0);
+    test_check_result("ACK-WIP", testAlerts, &reply, 0);
 
     // change state back
-    test_request_alerts_acknowledge(ui, consumer, "Threshold", "epdu", "ACTIVE", alerts, 0);
+    test_request_alerts_acknowledge(ui, consumer, "Threshold", "epdu", "ACTIVE", testAlerts, 0);
 
     reply = test_request_alerts_list(ui, "ALL");
-    test_check_result("ALL", alerts, &reply, 0);
+    test_check_result("ALL", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "ALL-ACTIVE");
-    test_check_result("ALL-ACTIVE", alerts, &reply, 0);
+    test_check_result("ALL-ACTIVE", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "RESOLVED");
-    test_check_result("RESOLVED", alerts, &reply, 0);
+    test_check_result("RESOLVED", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "ACTIVE");
-    test_check_result("ACTIVE", alerts, &reply, 0);
+    test_check_result("ACTIVE", testAlerts, &reply, 0);
 
     // change state of two alerts
-    test_request_alerts_acknowledge(ui, consumer, "Threshold", "ups", "ACK-PAUSE", alerts, 0);
-    test_request_alerts_acknowledge(ui, consumer, "SimpleRule", "ups", "ACK-PAUSE", alerts, 0);
+    test_request_alerts_acknowledge(ui, consumer, "Threshold", "ups", "ACK-PAUSE", testAlerts, 0);
+    test_request_alerts_acknowledge(ui, consumer, "SimpleRule", "ups", "ACK-PAUSE", testAlerts, 0);
 
     reply = test_request_alerts_list(ui, "ALL");
-    test_check_result("ALL", alerts, &reply, 0);
+    test_check_result("ALL", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "ALL-ACTIVE");
-    test_check_result("ALL-ACTIVE", alerts, &reply, 0);
+    test_check_result("ALL-ACTIVE", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "RESOLVED");
-    test_check_result("RESOLVED", alerts, &reply, 0);
+    test_check_result("RESOLVED", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "ACK-PAUSE");
-    test_check_result("ACK-PAUSE", alerts, &reply, 0);
+    test_check_result("ACK-PAUSE", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "ACK-SILENCE");
-    test_check_result("ACK-SILENCE", alerts, &reply, 0);
+    test_check_result("ACK-SILENCE", testAlerts, &reply, 0);
 
     // some more state changes
-    test_request_alerts_acknowledge(ui, consumer, "SimpleRule", "ups", "ACK-WIP", alerts, 0);
-    test_request_alerts_acknowledge(ui, consumer, "Threshold", "ups", "ACK-SILENCE", alerts, 0);
-    test_request_alerts_acknowledge(ui, consumer, "SimpleRule", "ŽlUťOučKý Kůň супер", "ACK-SILENCE", alerts, 0);
-    test_request_alerts_acknowledge(ui, consumer, "Threshold", "epdu", "ACK-PAUSE", alerts, 0);
+    test_request_alerts_acknowledge(ui, consumer, "SimpleRule", "ups", "ACK-WIP", testAlerts, 0);
+    test_request_alerts_acknowledge(ui, consumer, "Threshold", "ups", "ACK-SILENCE", testAlerts, 0);
+    test_request_alerts_acknowledge(ui, consumer, "SimpleRule", "ŽlUťOučKý Kůň супер", "ACK-SILENCE", testAlerts, 0);
+    test_request_alerts_acknowledge(ui, consumer, "Threshold", "epdu", "ACK-PAUSE", testAlerts, 0);
     // alerts/ack RESOLVED->anything must fail
-    test_request_alerts_acknowledge(ui, consumer, "Threshold", "ŽlUťOUčKý Kůň супер", "ACTIVE", alerts, 1);
-    test_request_alerts_acknowledge(ui, consumer, "Threshold", "ŽlUťOUčKý kůň супер", "ACK-WIP", alerts, 1);
-    test_request_alerts_acknowledge(ui, consumer, "Threshold", "ŽLuťOUčKý kůň супер", "ACK-IGNORE", alerts, 1);
-    test_request_alerts_acknowledge(ui, consumer, "Threshold", "ŽlUťOUčKý kůň супер", "ACK-SILENCE", alerts, 1);
-    test_request_alerts_acknowledge(ui, consumer, "Threshold", "ŽlUťOUčKý kůň супер", "ACK-PAUSE", alerts, 1);
+    test_request_alerts_acknowledge(ui, consumer, "Threshold", "ŽlUťOUčKý Kůň супер", "ACTIVE", testAlerts, 1);
+    test_request_alerts_acknowledge(ui, consumer, "Threshold", "ŽlUťOUčKý kůň супер", "ACK-WIP", testAlerts, 1);
+    test_request_alerts_acknowledge(ui, consumer, "Threshold", "ŽLuťOUčKý kůň супер", "ACK-IGNORE", testAlerts, 1);
+    test_request_alerts_acknowledge(ui, consumer, "Threshold", "ŽlUťOUčKý kůň супер", "ACK-SILENCE", testAlerts, 1);
+    test_request_alerts_acknowledge(ui, consumer, "Threshold", "ŽlUťOUčKý kůň супер", "ACK-PAUSE", testAlerts, 1);
 
     reply = test_request_alerts_list(ui, "ALL");
-    test_check_result("ALL", alerts, &reply, 0);
+    test_check_result("ALL", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "ALL-ACTIVE");
-    test_check_result("ALL-ACTIVE", alerts, &reply, 0);
+    test_check_result("ALL-ACTIVE", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "ACTIVE");
-    test_check_result("ACTIVE", alerts, &reply, 0);
+    test_check_result("ACTIVE", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "ACK-WIP");
-    test_check_result("ACK-WIP", alerts, &reply, 0);
+    test_check_result("ACK-WIP", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "ACK-IGNORE");
-    test_check_result("ACK-IGNORE", alerts, &reply, 0);
+    test_check_result("ACK-IGNORE", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "ACK-PAUSE");
-    test_check_result("ACK-PAUSE", alerts, &reply, 0);
+    test_check_result("ACK-PAUSE", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "ACK-SILENCE");
-    test_check_result("ACK-SILENCE", alerts, &reply, 0);
+    test_check_result("ACK-SILENCE", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "RESOLVED");
-    test_check_result("RESOLVED", alerts, &reply, 0);
+    test_check_result("RESOLVED", testAlerts, &reply, 0);
 
     // resolve alert
     zlist_t *actions6 = zlist_new();
     zlist_autofree(actions6);
-    zlist_append(actions6, (void *) ACTION_EMAIL);
-    zlist_append(actions6, (void *) ACTION_SMS);
+    zlist_append(actions6, (void *) "EMAIL");
+    zlist_append(actions6, (void *) "SMS");
     alert = alert_new("SimpleRule", "Žluťoučký kůň супер", "RESOLVED", "high", "description", 13, &actions6, 0);
-    test_alert_publish(producer, consumer, alerts, &alert);
+    test_alert_publish(producer, consumer, testAlerts, &alert);
 
     reply = test_request_alerts_list(ui, "ALL");
-    test_check_result("ALL", alerts, &reply, 0);
+    test_check_result("ALL", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "ALL-ACTIVE");
-    test_check_result("ALL-ACTIVE", alerts, &reply, 0);
+    test_check_result("ALL-ACTIVE", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "RESOLVED");
-    test_check_result("RESOLVED", alerts, &reply, 0);
+    test_check_result("RESOLVED", testAlerts, &reply, 0);
 
     // test: For non-RESOLVED alerts timestamp of when first published is stored
     zlist_t *actions7 = zlist_new();
     zlist_autofree(actions7);
-    zlist_append(actions7, (void *) ACTION_EMAIL);
-    zlist_append(actions7, (void *) ACTION_SMS);
+    zlist_append(actions7, (void *) "EMAIL");
+    zlist_append(actions7, (void *) "SMS");
     alert = alert_new("#1549", "epdu", "ACTIVE", "high", "description", time(NULL), &actions7, 0);
-    test_alert_publish(producer, consumer, alerts, &alert);
+    test_alert_publish(producer, consumer, testAlerts, &alert);
 
     reply = test_request_alerts_list(ui, "ALL");
-    test_check_result("ALL", alerts, &reply, 0);
+    test_check_result("ALL", testAlerts, &reply, 0);
 
-    test_request_alerts_acknowledge(ui, consumer, "#1549", "epdu", "ACTIVE", alerts, 0);
-
-    reply = test_request_alerts_list(ui, "ALL");
-    test_check_result("ALL", alerts, &reply, 0);
-
-    test_request_alerts_acknowledge(ui, consumer, "#1549", "epdu", "ACTIVE", alerts, 0);
+    test_request_alerts_acknowledge(ui, consumer, "#1549", "epdu", "ACTIVE", testAlerts, 0);
 
     reply = test_request_alerts_list(ui, "ALL");
-    test_check_result("ALL", alerts, &reply, 0);
+    test_check_result("ALL", testAlerts, &reply, 0);
 
-    test_request_alerts_acknowledge(ui, consumer, "#1549", "epdu", "ACK-WIP", alerts, 0);
-
-    reply = test_request_alerts_list(ui, "ALL");
-    test_check_result("ALL", alerts, &reply, 0);
-
-    test_request_alerts_acknowledge(ui, consumer, "#1549", "epdu", "ACK-IGNORE", alerts, 0);
+    test_request_alerts_acknowledge(ui, consumer, "#1549", "epdu", "ACTIVE", testAlerts, 0);
 
     reply = test_request_alerts_list(ui, "ALL");
-    test_check_result("ALL", alerts, &reply, 0);
+    test_check_result("ALL", testAlerts, &reply, 0);
 
-    test_request_alerts_acknowledge(ui, consumer, "#1549", "epdu", "ACK-PAUSE", alerts, 0);
-
-    reply = test_request_alerts_list(ui, "ALL");
-    test_check_result("ALL", alerts, &reply, 0);
-
-    test_request_alerts_acknowledge(ui, consumer, "#1549", "epdu", "ACK-SILENCE", alerts, 0);
+    test_request_alerts_acknowledge(ui, consumer, "#1549", "epdu", "ACK-WIP", testAlerts, 0);
 
     reply = test_request_alerts_list(ui, "ALL");
-    test_check_result("ALL", alerts, &reply, 0);
+    test_check_result("ALL", testAlerts, &reply, 0);
 
-    test_request_alerts_acknowledge(ui, consumer, "#1549", "epdu", "ACTIVE", alerts, 0);
+    test_request_alerts_acknowledge(ui, consumer, "#1549", "epdu", "ACK-IGNORE", testAlerts, 0);
 
     reply = test_request_alerts_list(ui, "ALL");
-    test_check_result("ALL", alerts, &reply, 0);
+    test_check_result("ALL", testAlerts, &reply, 0);
+
+    test_request_alerts_acknowledge(ui, consumer, "#1549", "epdu", "ACK-PAUSE", testAlerts, 0);
+
+    reply = test_request_alerts_list(ui, "ALL");
+    test_check_result("ALL", testAlerts, &reply, 0);
+
+    test_request_alerts_acknowledge(ui, consumer, "#1549", "epdu", "ACK-SILENCE", testAlerts, 0);
+
+    reply = test_request_alerts_list(ui, "ALL");
+    test_check_result("ALL", testAlerts, &reply, 0);
+
+    test_request_alerts_acknowledge(ui, consumer, "#1549", "epdu", "ACTIVE", testAlerts, 0);
+
+    reply = test_request_alerts_list(ui, "ALL");
+    test_check_result("ALL", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "ACTIVE");
-    test_check_result("ACTIVE", alerts, &reply, 0);
+    test_check_result("ACTIVE", testAlerts, &reply, 0);
 
     zlist_t *actions8 = zlist_new();
     zlist_autofree(actions8);
-    zlist_append(actions8, (void *) ACTION_EMAIL);
-    zlist_append(actions8, (void *) ACTION_SMS);
+    zlist_append(actions8, (void *) "EMAIL");
+    zlist_append(actions8, (void *) "SMS");
     alert = alert_new("#1549", "epdu", "RESOLVED", "high", "description", time(NULL) + 8, &actions8, 0);
-    test_alert_publish(producer, consumer, alerts, &alert);
+    test_alert_publish(producer, consumer, testAlerts, &alert);
 
     reply = test_request_alerts_list(ui, "ALL");
-    test_check_result("ALL", alerts, &reply, 0);
+    test_check_result("ALL", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "ACTIVE");
-    test_check_result("ACTIVE", alerts, &reply, 0);
+    test_check_result("ACTIVE", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "RESOLVED");
-    test_check_result("RESOLVED", alerts, &reply, 0);
+    test_check_result("RESOLVED", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "ALL-ACTIVE");
-    test_check_result("ALL-ACTIVE", alerts, &reply, 0);
+    test_check_result("ALL-ACTIVE", testAlerts, &reply, 0);
 
     zlist_t *actions9 = zlist_new();
     zlist_autofree(actions9);
-    zlist_append(actions9, (void *) ACTION_EMAIL);
-    zlist_append(actions9, (void *) ACTION_SMS);
+    zlist_append(actions9, (void *) "EMAIL");
+    zlist_append(actions9, (void *) "SMS");
     alert = alert_new("#1549", "epdu", "ACTIVE", "high", "description", time(NULL) + 9, &actions9, 0);
-    test_alert_publish(producer, consumer, alerts, &alert);
+    test_alert_publish(producer, consumer, testAlerts, &alert);
 
     reply = test_request_alerts_list(ui, "ALL");
-    test_check_result("ALL", alerts, &reply, 0);
+    test_check_result("ALL", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "ACTIVE");
-    test_check_result("ACTIVE", alerts, &reply, 0);
+    test_check_result("ACTIVE", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "RESOLVED");
-    test_check_result("RESOLVED", alerts, &reply, 0);
+    test_check_result("RESOLVED", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "ALL-ACTIVE");
-    test_check_result("ALL-ACTIVE", alerts, &reply, 0);
+    test_check_result("ALL-ACTIVE", testAlerts, &reply, 0);
 
-    test_request_alerts_acknowledge(ui, consumer, "#1549", "epdu", "ACK-IGNORE", alerts, 0);
+    test_request_alerts_acknowledge(ui, consumer, "#1549", "epdu", "ACK-IGNORE", testAlerts, 0);
 
     reply = test_request_alerts_list(ui, "ALL");
-    test_check_result("ALL", alerts, &reply, 0);
+    test_check_result("ALL", testAlerts, &reply, 0);
 
     // Now, let's publish an alert as-a-byspass (i.e. we don't add it to expected)
     // and EXPECT A FAILURE (i.e. expected list != received list)
     zlist_t *actions10 = zlist_new();
     zlist_autofree(actions10);
-    zlist_append(actions10, (void *) ACTION_EMAIL);
-    zlist_append(actions10, (void *) ACTION_SMS);
+    zlist_append(actions10, (void *) "EMAIL");
+    zlist_append(actions10, (void *) "SMS");
     zmsg_t *alert_bypass = fty_proto_encode_alert(NULL, 14, 0, "Pattern", "rack", "ACTIVE", "high", "description", actions10);
     rv = mlm_client_send(producer, "Nobody cares", &alert_bypass);
     assert(rv == 0);
@@ -1219,24 +1221,24 @@ fty_alert_list_server_test(bool verbose) {
     zmsg_destroy(&alert_bypass);
 
     reply = test_request_alerts_list(ui, "ALL");
-    test_check_result("ALL", alerts, &reply, 1);
+    test_check_result("ALL", testAlerts, &reply, 1);
 
     reply = test_request_alerts_list(ui, "ACTIVE");
-    test_check_result("ACTIVE", alerts, &reply, 1);
+    test_check_result("ACTIVE", testAlerts, &reply, 1);
 
     reply = test_request_alerts_list(ui, "RESOLVED");
-    test_check_result("RESOLVED", alerts, &reply, 0);
+    test_check_result("RESOLVED", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "ACK-WIP");
-    test_check_result("ACK-WIP", alerts, &reply, 0);
+    test_check_result("ACK-WIP", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "ALL-ACTIVE");
-    test_check_result("ALL-ACTIVE", alerts, &reply, 1);
+    test_check_result("ALL-ACTIVE", testAlerts, &reply, 1);
 
     zlist_t *actions11 = zlist_new();
     zlist_autofree(actions11);
-    zlist_append(actions11, (void *) ACTION_EMAIL);
-    zlist_append(actions11, (void *) ACTION_SMS);
+    zlist_append(actions11, (void *) "EMAIL");
+    zlist_append(actions11, (void *) "SMS");
     alert_bypass = fty_proto_encode_alert(NULL, 15, 0, "Pattern", "rack", "RESOLVED", "high", "description", actions11);
     mlm_client_send(producer, "Nobody cares", &alert_bypass);
     assert(rv == 0);
@@ -1246,41 +1248,41 @@ fty_alert_list_server_test(bool verbose) {
     zmsg_destroy(&alert_bypass);
 
     reply = test_request_alerts_list(ui, "ALL");
-    test_check_result("ALL", alerts, &reply, 1);
+    test_check_result("ALL", testAlerts, &reply, 1);
 
     reply = test_request_alerts_list(ui, "ACTIVE");
-    test_check_result("ACTIVE", alerts, &reply, 0);
+    test_check_result("ACTIVE", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "RESOLVED");
-    test_check_result("RESOLVED", alerts, &reply, 1);
+    test_check_result("RESOLVED", testAlerts, &reply, 1);
 
     reply = test_request_alerts_list(ui, "ACK-WIP");
-    test_check_result("ACK-WIP", alerts, &reply, 0);
+    test_check_result("ACK-WIP", testAlerts, &reply, 0);
 
     reply = test_request_alerts_list(ui, "ALL-ACTIVE");
-    test_check_result("ALL-ACTIVE", alerts, &reply, 0);
+    test_check_result("ALL-ACTIVE", testAlerts, &reply, 0);
 
     zlist_t *actions12 = zlist_new();
     zlist_autofree(actions12);
-    zlist_append(actions12, (void *) ACTION_EMAIL);
-    zlist_append(actions12, (void *) ACTION_SMS);
+    zlist_append(actions12, (void *) "EMAIL");
+    zlist_append(actions12, (void *) "SMS");
     alert = alert_new("BlackBooks", "store", "ACTIVE", "high", "description", 16, &actions12, 2);
-    test_alert_publish(producer, consumer, alerts, &alert);
+    test_alert_publish(producer, consumer, testAlerts, &alert);
 
     reply = test_request_alerts_list(ui, "ACTIVE");
-    test_check_result("ACTIVE", alerts, &reply, 0);
+    test_check_result("ACTIVE", testAlerts, &reply, 0);
 
     // early cleanup should not change the alert
     zstr_send(fty_al_server_stream, "TTLCLEANUP");
     reply = test_request_alerts_list(ui, "ACTIVE");
-    test_check_result("ACTIVE", alerts, &reply, 0);
+    test_check_result("ACTIVE", testAlerts, &reply, 0);
 
     zclock_sleep(3000);
 
     // cleanup should resolv alert
     zstr_send(fty_al_server_stream, "TTLCLEANUP");
     reply = test_request_alerts_list(ui, "RESOLVED");
-    test_check_result("RESOLVED", alerts, &reply, 1);
+    test_check_result("RESOLVED", testAlerts, &reply, 1);
 
 
     // RESOLVED used to be an error response, but it's no more true
@@ -1435,8 +1437,7 @@ fty_alert_list_server_test(bool verbose) {
     zstr_free(&part);
     zmsg_destroy(&reply);
 
-    zlistx_destroy(&alerts);
-
+    zlistx_destroy(&testAlerts);
     mlm_client_destroy(&ui);
     mlm_client_destroy(&producer);
     mlm_client_destroy(&consumer);
@@ -1444,6 +1445,8 @@ fty_alert_list_server_test(bool verbose) {
     zactor_destroy(&fty_al_server_stream);
     zactor_destroy(&fty_al_server_mailbox);
     zactor_destroy(&server);
+    save_alerts();
+    destroy_alert();
 
 
     if (NULL != actions1)
