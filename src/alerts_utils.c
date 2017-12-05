@@ -472,7 +472,10 @@ alert_load_state (zlistx_t *alerts, const char *path, const char *filename) {
 #endif
         assert (zmessage);
         fty_proto_t *alert = fty_proto_decode (&zmessage); // zmessage destroyed
-        assert (alert);
+        if (!alert) {
+            zsys_warning ("Ignoring malformed alert in %s/%s", path, filename);
+            continue;
+        }
         if (s_alerts_input_checks (alerts, alert) == 0) {
             zlistx_add_end (alerts, alert);
         }
@@ -1719,6 +1722,18 @@ alerts_utils_test (bool verbose)
     zlistx_set_duplicator (alerts, (czmq_duplicator *) fty_proto_dup);
     int rv = alert_load_state (alerts, ".", "does_not_exist");
     assert  (rv == -1);
+    zlistx_destroy (&alerts);
+    }
+
+    // State file with old format
+    {
+    zlistx_t *alerts = zlistx_new ();
+    assert (alerts);
+    zlistx_set_destructor (alerts, (czmq_destructor *) fty_proto_destroy);
+    zlistx_set_duplicator (alerts, (czmq_duplicator *) fty_proto_dup);
+    int rv = alert_load_state (alerts, "src/selftest-ro", "old_state_file");
+    assert (rv == 0);
+    assert (zlistx_size(alerts) == 0);
     zlistx_destroy (&alerts);
     }
 
