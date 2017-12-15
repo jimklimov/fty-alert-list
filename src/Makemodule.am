@@ -22,22 +22,23 @@ include_HEADERS += \
 
 endif
 src_libfty_alert_list_la_SOURCES = \
-    src/alerts_utils.c \
-    src/bios_proto.c \
+    src/alerts_utils.cc \
+    src/bios_proto.cc \
     src/platform.h
 
 if ENABLE_DRAFTS
 src_libfty_alert_list_la_SOURCES += \
-    src/fty_alert_list_server.c
+    src/fty_alert_list_server.cc
 
 endif
 
 if ENABLE_DRAFTS
 src_libfty_alert_list_la_SOURCES += \
-    src/fty_alert_list_private_selftest.c
+    src/fty_alert_list_private_selftest.cc
 endif
 
 src_libfty_alert_list_la_CPPFLAGS = ${AM_CPPFLAGS}
+src_libfty_alert_list_la_CXXFLAGS = ${AM_CXXFLAGS}
 
 src_libfty_alert_list_la_LDFLAGS = \
     -version-info @LTVER@ \
@@ -65,7 +66,7 @@ if ENABLE_FTY_ALERT_LIST
 bin_PROGRAMS += src/fty-alert-list
 src_fty_alert_list_CPPFLAGS = ${AM_CPPFLAGS}
 src_fty_alert_list_LDADD = ${program_libs}
-src_fty_alert_list_SOURCES = src/fty_alert_list.c
+src_fty_alert_list_SOURCES = src/fty_alert_list.cc
 src_fty_alert_list_config_DATA =
 src_fty_alert_list_configdir = $(sysconfdir)/fty-alert-list
 if WITH_SYSTEMD_UNITS
@@ -77,14 +78,14 @@ if ENABLE_GENERATE_ALERT
 bin_PROGRAMS += src/generate_alert
 src_generate_alert_CPPFLAGS = ${AM_CPPFLAGS}
 src_generate_alert_LDADD = ${program_libs}
-src_generate_alert_SOURCES = src/generate_alert.c
+src_generate_alert_SOURCES = src/generate_alert.cc
 endif #ENABLE_GENERATE_ALERT
 
 if ENABLE_FTY_ALERT_LIST_CONVERT
 bin_PROGRAMS += src/fty-alert-list-convert
 src_fty_alert_list_convert_CPPFLAGS = ${AM_CPPFLAGS}
 src_fty_alert_list_convert_LDADD = ${program_libs}
-src_fty_alert_list_convert_SOURCES = src/fty_alert_list_convert.c
+src_fty_alert_list_convert_SOURCES = src/fty_alert_list_convert.cc
 endif #ENABLE_FTY_ALERT_LIST_CONVERT
 
 if ENABLE_FTY_ALERT_LIST_SELFTEST
@@ -92,7 +93,7 @@ check_PROGRAMS += src/fty_alert_list_selftest
 noinst_PROGRAMS += src/fty_alert_list_selftest
 src_fty_alert_list_selftest_CPPFLAGS = ${AM_CPPFLAGS}
 src_fty_alert_list_selftest_LDADD = ${program_libs}
-src_fty_alert_list_selftest_SOURCES = src/fty_alert_list_selftest.c
+src_fty_alert_list_selftest_SOURCES = src/fty_alert_list_selftest.cc
 endif #ENABLE_FTY_ALERT_LIST_SELFTEST
 
 # define custom target for all products of /src

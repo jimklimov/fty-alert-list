@@ -26,6 +26,9 @@
 extern "C" {
 #endif
 
+#define ACTION_EMAIL  "EMAIL"
+#define ACTION_SMS    "SMS"
+    
 // load alert state from disk
 // 0 - success, -1 - error
 FTY_ALERT_LIST_EXPORT int
@@ -34,7 +37,7 @@ FTY_ALERT_LIST_EXPORT int
 // save alert state to disk
 // 0 - success, -1 - error
 FTY_ALERT_LIST_EXPORT int
-    alert_save_state (zlistx_t *alerts, const char *path, const char *filename);
+    alert_save_state (zlistx_t *alerts, const char *path, const char *filename, bool verbose);
 
 // create new alert
 // returns new alert on success, NULL on failure
@@ -92,11 +95,6 @@ FTY_ALERT_LIST_EXPORT int
 // 1 - valid request state, 0 - NOT valid request state
 FTY_ALERT_LIST_EXPORT int
     is_acknowledge_request_state (const char *state);
-
-// null-safe streq; returns true for two NULLs as well
-// 1 - equal, 0 - NOT equal
-FTY_ALERT_LIST_EXPORT int
-    str_eq (const char *s1, const char *s2);
 
 //  Self test of this class
 FTY_ALERT_LIST_EXPORT void
