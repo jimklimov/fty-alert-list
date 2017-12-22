@@ -97,8 +97,11 @@ s_resolve_expired_alerts(zhash_t *exp) {
     while (cursor) {
         if (s_alert_expired(exp, cursor) && streq(fty_proto_state(cursor), "ACTIVE")) {
             fty_proto_set_state(cursor, "%s", "RESOLVED");
+            char *new_desc = zsys_sprintf("%s - %s", fty_proto_description (cursor), "TTLCLEANUP");
+            fty_proto_set_description (cursor, "%s", new_desc);
+
             if (verbose) {
-                zsys_info("resolving expired alert:");
+                zsys_info("s_resolve_expired_alerts: resolving alert");
                 fty_proto_print(cursor);
             }
         }
