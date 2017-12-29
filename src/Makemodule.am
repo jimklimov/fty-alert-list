@@ -124,11 +124,12 @@ $(top_builddir)/$(SELFTEST_DIR_RW):
 	rm -rf "$@"
 	mkdir -p "$@"
 
+# Note: for some reason "$<" misfired in rule below on Travis, so be explicit
 if USING_VPATH
 $(abs_top_builddir)/$(SELFTEST_DIR_RO): $(abs_top_srcdir)/$(SELFTEST_DIR_RO)
-	echo "   COPYDIR  $(SELFTEST_DIR_RO)"; \
+	@echo "   COPYDIR  $(SELFTEST_DIR_RO)"; \
 	rm -rf "$@"; \
-	cp -r "$<" "$@"
+	cp -r "$(abs_top_srcdir)/$(SELFTEST_DIR_RO)" "$@"
 
 $(top_builddir)/$(SELFTEST_DIR_RO): $(abs_top_builddir)/$(SELFTEST_DIR_RO)
 endif
@@ -232,7 +233,7 @@ coverage: src/fty_alert_list_selftest $(top_builddir)/$(SELFTEST_DIR_RW) $(top_b
 	$(MAKE) check
 	lcov --base-directory . --directory . --capture -o coverage.info
 	lcov --remove coverage.info "/usr*" -o coverage.info
-	lcov --remove coverage.info "fty_alert_list_selftest.c" -o coverage.info
+	lcov --remove coverage.info "fty_alert_list_selftest.cc" -o coverage.info
 	$(RM) -rf coverage/*
 	genhtml -o coverage/ -t "fty-alert-list test coverage" --num-spaces 4 coverage.info
 else
