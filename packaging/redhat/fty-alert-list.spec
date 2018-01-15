@@ -109,6 +109,7 @@ make %{_smp_mflags}
 
 %install
 make install DESTDIR=%{buildroot} %{?_smp_mflags}
+mkdir -p %{buildroot}/%{_sysconfdir}/fty-alert-list
 
 # remove static libraries
 find %{buildroot} -name '*.a' | xargs rm -f
