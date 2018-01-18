@@ -115,6 +115,7 @@ static void
 s_handle_stream_deliver(mlm_client_t *client, zmsg_t** msg_p, zhash_t *expirations) {
     assert(client);
     assert(msg_p);
+    bool send = true;
 
     if (!is_fty_proto(*msg_p)) {
         zsys_error("s_handle_stream_deliver (): Message not fty_proto");
@@ -167,7 +168,7 @@ s_handle_stream_deliver(mlm_client_t *client, zmsg_t** msg_p, zhash_t *expiratio
         // Wasn't specified, but common sense applied, it should be:
         // RESOLVED comes from _ALERTS_SYS
         //  * if stored !RESOLVED -> update stored time/state, publish original
-        //  * if stored RESOLVED -> don't update stored time, publish original
+        //  * if stored RESOLVED -> don't update stored time, don't publish original
         //
         //  ACTIVE comes form _ALERTS_SYS
         //  * if stored ACTIVE -> don't update time, publish original
@@ -177,7 +178,10 @@ s_handle_stream_deliver(mlm_client_t *client, zmsg_t** msg_p, zhash_t *expiratio
             if (!streq(fty_proto_state(cursor), "RESOLVED")) {
                 fty_proto_set_state(cursor, "%s", fty_proto_state(newAlert));
                 fty_proto_set_time(cursor, fty_proto_time(newAlert));
+            } else {
+                send = false;
             }
+
         } else { // state (alert) == ACTIVE
             s_set_alert_lifetime(expirations, newAlert);
             if (streq(fty_proto_state(cursor), "RESOLVED")) {
@@ -190,15 +194,18 @@ s_handle_stream_deliver(mlm_client_t *client, zmsg_t** msg_p, zhash_t *expiratio
     }
     alertMtx.unlock();
 
-    fty_proto_t *alert_dup = fty_proto_dup(newAlert);
-    zmsg_t *encoded = fty_proto_encode(&alert_dup);
-    assert(encoded);
+    if (send) {
+        fty_proto_t *alert_dup = fty_proto_dup(newAlert);
+        zmsg_t *encoded = fty_proto_encode(&alert_dup);
+        assert(encoded);
 
-    int rv = mlm_client_send(client, mlm_client_subject(client), &encoded);
-    if (rv == -1) {
-        zsys_error("mlm_client_send (subject = '%s') failed",
-                mlm_client_subject(client));
-        zmsg_destroy(&encoded);
+        int rv = mlm_client_send(client, mlm_client_subject(client), &encoded);
+        if (rv == -1) {
+            zsys_error("mlm_client_send (subject = '%s') failed",
+                    mlm_client_subject(client));
+            zmsg_destroy(&encoded);
+        }
+        fty_proto_destroy(&alert_dup);
     }
     fty_proto_destroy(&newAlert);
 }
