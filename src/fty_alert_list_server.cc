@@ -97,8 +97,8 @@ s_resolve_expired_alerts(zhash_t *exp) {
     while (cursor) {
         if (s_alert_expired(exp, cursor) && streq(fty_proto_state(cursor), "ACTIVE")) {
             fty_proto_set_state(cursor, "%s", "RESOLVED");
-            char *new_desc = zsys_sprintf("%s - %s", fty_proto_description (cursor), "TTLCLEANUP");
-            fty_proto_set_description (cursor, "%s", new_desc);
+            char *new_desc = zsys_sprintf("%s - %s", fty_proto_description(cursor), "TTLCLEANUP");
+            fty_proto_set_description(cursor, "%s", new_desc);
 
             if (verbose) {
                 zsys_info("s_resolve_expired_alerts: resolving alert");
@@ -154,6 +154,7 @@ s_handle_stream_deliver(mlm_client_t *client, zmsg_t** msg_p, zhash_t *expiratio
         zlistx_add_end(alerts, newAlert);
         s_set_alert_lifetime(expirations, newAlert);
     } else {
+        bool sameSeverity = streq(fty_proto_severity(newAlert), fty_proto_severity(cursor));
         fty_proto_set_severity(cursor, "%s", fty_proto_severity(newAlert));
         fty_proto_set_description(cursor, "%s", fty_proto_description(newAlert));
         zlist_t *actions;
@@ -171,9 +172,10 @@ s_handle_stream_deliver(mlm_client_t *client, zmsg_t** msg_p, zhash_t *expiratio
         //  * if stored RESOLVED -> don't update stored time, don't publish original
         //
         //  ACTIVE comes form _ALERTS_SYS
-        //  * if stored ACTIVE -> don't update time, publish original
-        //  * if stored RESOLVED -> update stored time/state, publish original
-        //  * if stored ACK-XXX -> update original state, publish modified
+        //  * if stored RESOLVED -> update stored time/state, publish modified
+        //  * if stored ACK-XXX -> Don't change state or time, don't publish
+        //  * if stored ACTIVE -> update time 
+        //                      -> if severity change => publish else don't publish
         if (streq(fty_proto_state(newAlert), "RESOLVED")) {
             if (!streq(fty_proto_state(cursor), "RESOLVED")) {
                 fty_proto_set_state(cursor, "%s", fty_proto_state(newAlert));
@@ -184,11 +186,21 @@ s_handle_stream_deliver(mlm_client_t *client, zmsg_t** msg_p, zhash_t *expiratio
 
         } else { // state (alert) == ACTIVE
             s_set_alert_lifetime(expirations, newAlert);
+
             if (streq(fty_proto_state(cursor), "RESOLVED")) {
-                fty_proto_set_state(cursor, "%s", fty_proto_state(newAlert));
                 fty_proto_set_time(cursor, fty_proto_time(newAlert));
-            } else if (!streq(fty_proto_state(cursor), "ACTIVE")) { // state (cursor) == ACK-XXX
-                fty_proto_set_state(newAlert, "%s", fty_proto_state(cursor));
+                fty_proto_set_state(cursor, "%s", fty_proto_state(newAlert));
+            } else if (!streq(fty_proto_state(cursor), "ACTIVE")) {
+                // fty_proto_state(cursor) ==  ACK-XXXX
+                if (sameSeverity) {
+                    send = false;
+                }
+            } else { // state (cursor) == ACTIVE
+                fty_proto_set_time(cursor, fty_proto_time(newAlert));
+                //Always active and same  severity => don't publish
+                if (sameSeverity) {
+                    send = false;
+                }
             }
         }
     }
