@@ -1,3 +1,5 @@
+# NOTE: File was edited below (to install the delivered etc dir in the build root)
+
 #
 #    fty-alert-list - Provides information about active alerts
 #
@@ -107,7 +109,7 @@ sh autogen.sh
 %{configure} --enable-drafts=%{DRAFTS} --with-systemd-units
 make %{_smp_mflags}
 
-# Note: seems manually amended - the mkdir below
+# NOTE: File was edited below (to install the delivered etc dir in the build root)
 %install
 make install DESTDIR=%{buildroot} %{?_smp_mflags}
 mkdir -p %{buildroot}/%{_sysconfdir}/fty-alert-list
