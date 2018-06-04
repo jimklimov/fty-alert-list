@@ -4,7 +4,7 @@
     Runs all private classes selftests.
 
     -------------------------------------------------------------------------
-    Copyright (C) 2014 - 2017 Eaton
+    Copyright (C) 2014 - 2018 Eaton
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -35,11 +35,13 @@
 //
 
 void
-fty_alert_list_private_selftest (bool verbose)
+fty_alert_list_private_selftest (bool verbose, const char *subtest)
 {
 // Tests for stable private classes:
-    alerts_utils_test (verbose);
-    bios_proto_test (verbose);
+    if (streq (subtest, "$ALL") || streq (subtest, "alerts_utils_test"))
+        alerts_utils_test (verbose);
+    if (streq (subtest, "$ALL") || streq (subtest, "bios_proto_test"))
+        bios_proto_test (verbose);
 }
 /*
 ################################################################################

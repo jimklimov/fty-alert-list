@@ -1,7 +1,7 @@
 /*  =========================================================================
     fty-alert-list - generated layer of public API
 
-    Copyright (C) 2014 - 2017 Eaton
+    Copyright (C) 2014 - 2018 Eaton
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -63,11 +63,12 @@
 #   define FTY_ALERT_LIST_EXPORT
 #   define FTY_ALERT_LIST_PRIVATE
 #else
-#   define FTY_ALERT_LIST_EXPORT
 #   if (defined __GNUC__ && __GNUC__ >= 4) || defined __INTEL_COMPILER
 #       define FTY_ALERT_LIST_PRIVATE __attribute__ ((visibility ("hidden")))
+#       define FTY_ALERT_LIST_EXPORT __attribute__ ((visibility ("default")))
 #   else
 #       define FTY_ALERT_LIST_PRIVATE
+#       define FTY_ALERT_LIST_EXPORT
 #   endif
 #endif
 
@@ -90,9 +91,18 @@ typedef struct _fty_alert_list_server_t fty_alert_list_server_t;
 #endif // FTY_ALERT_LIST_BUILD_DRAFT_API
 
 #ifdef FTY_ALERT_LIST_BUILD_DRAFT_API
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 //  Self test for private classes
 FTY_ALERT_LIST_EXPORT void
-    fty_alert_list_private_selftest (bool verbose);
+    fty_alert_list_private_selftest (bool verbose, const char *subtest);
+
+#ifdef __cplusplus
+}
+#endif
 #endif // FTY_ALERT_LIST_BUILD_DRAFT_API
 
 #endif

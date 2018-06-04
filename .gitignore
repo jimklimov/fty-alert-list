@@ -34,10 +34,10 @@ src/fty_alert_list_selftest
 *.app
 core
 
- # Distcheck workspace and archives
-fty-alert-list-1.0.0/
-fty-alert-list-1.0.0.tar.gz
-fty-alert-list-1.0.0.zip
+# Distcheck workspace and archives
+fty-alert-list-*/
+fty-alert-list-*.tar.gz
+fty-alert-list-*.zip
 
 # Man pages
 doc/*.1
@@ -83,6 +83,7 @@ CMake*
 *.cmake
 
 # Repositories downloaded by CI integration scripts
+libsodium/
 libzmq/
 czmq/
 malamute/
@@ -106,9 +107,6 @@ project.Makefile
 *.target.mk
 out/
 
-# qt-android build results
-builds/qt-android/prefix
-
 # Android build results
 builds/android/prefix
 
@@ -118,12 +116,7 @@ src/app/gen/
 src/app/obj/
 src/app/local.properties
 
-# Android -dependencies
-builds/android/libsodium
-builds/android/libzmq
-builds/android/czmq
-builds/android/e2fsprogs
-builds/android/zyre
+# Android - dependencies
 src/app/jni/output
 
 # Python build directory
@@ -145,16 +138,8 @@ bindings/qt/selftest/selftest
 *.bak
 .test*
 
+# Netbeans directory
+nbproject/
+
 # editor backups
 *~
-
-# Other
-CMakeLists.txt
-builds/msvc/
-builds/android/
-builds/cygwin/
-builds/mingw32/
-builds/qt-android/
-
-# Bindings
-bindings/
