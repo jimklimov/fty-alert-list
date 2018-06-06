@@ -26,6 +26,7 @@
 @end
  */
 #include <string.h>
+#include <map>
 #include <mutex>
 #include "fty_alert_list_classes.h"
 
@@ -36,6 +37,7 @@ static const char *STATE_PATH = "/var/lib/fty/fty-alert-list";
 static const char *STATE_FILE = "state_file";
 
 static zlistx_t *alerts = NULL;
+static std::map<fty_proto_t*, time_t> alertsLastSent;
 static std::mutex alertMtx;
 static bool verbose = false;
 
@@ -152,9 +154,12 @@ s_handle_stream_deliver(mlm_client_t *client, zmsg_t** msg_p, zhash_t *expiratio
     }
     if (!found) {
         zlistx_add_end(alerts, newAlert);
+        cursor = (fty_proto_t *) zlistx_last(alerts);
+        alertsLastSent[cursor] = 0;
         s_set_alert_lifetime(expirations, newAlert);
     } else {
         bool sameSeverity = streq(fty_proto_severity(newAlert), fty_proto_severity(cursor));
+        time_t lastSent = alertsLastSent[cursor];
         fty_proto_set_severity(cursor, "%s", fty_proto_severity(newAlert));
         fty_proto_set_description(cursor, "%s", fty_proto_description(newAlert));
         zlist_t *actions;
@@ -197,9 +202,12 @@ s_handle_stream_deliver(mlm_client_t *client, zmsg_t** msg_p, zhash_t *expiratio
                 }
             } else { // state (cursor) == ACTIVE
                 fty_proto_set_time(cursor, fty_proto_time(newAlert));
-                //Always active and same  severity => don't publish
+                // Always active and same severity => don't publish...
                 if (sameSeverity) {
-                    send = false;
+                    // ... if we're not at risk of timing out
+                    if ((zclock_mono()/1000) < (lastSent + fty_proto_ttl(cursor)/2)) {
+                        send = false;
+                    }
                 }
             }
         }
@@ -216,6 +224,10 @@ s_handle_stream_deliver(mlm_client_t *client, zmsg_t** msg_p, zhash_t *expiratio
             zsys_error("mlm_client_send (subject = '%s') failed",
                     mlm_client_subject(client));
             zmsg_destroy(&encoded);
+        }
+        else {
+            // Update last sent time
+            alertsLastSent[cursor] = zclock_mono()/1000;
         }
         fty_proto_destroy(&alert_dup);
     }
