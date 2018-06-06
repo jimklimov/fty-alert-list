@@ -17,6 +17,7 @@
         <option name = "test_cppcheck" value = "1" />
         <option name = "build_docs" value = "1" />
         <option name = "dist_docs" value = "1" />
+        <option name = "use_test_timeout" value = "30" />
     </target>
 
     <include filename = "license.xml" />
