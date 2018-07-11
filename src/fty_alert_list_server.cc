@@ -153,11 +153,17 @@ s_handle_stream_deliver(mlm_client_t *client, zmsg_t** msg_p, zhash_t *expiratio
         cursor = (fty_proto_t *) zlistx_next(alerts);
     }
     if (!found) {
+        // Record creation time
+        fty_proto_aux_insert(newAlert, "ctime", "%" PRIu64, fty_proto_time(newAlert));
+
         zlistx_add_end(alerts, newAlert);
         cursor = (fty_proto_t *) zlistx_last(alerts);
         alertsLastSent[cursor] = 0;
         s_set_alert_lifetime(expirations, newAlert);
     } else {
+        // Append creation time to new alert
+        fty_proto_aux_insert(newAlert, "ctime", "%" PRIu64, fty_proto_aux_number(cursor, "ctime", 0));
+
         bool sameSeverity = streq(fty_proto_severity(newAlert), fty_proto_severity(cursor));
         time_t lastSent = alertsLastSent[cursor];
         fty_proto_set_severity(cursor, "%s", fty_proto_severity(newAlert));
@@ -183,6 +189,10 @@ s_handle_stream_deliver(mlm_client_t *client, zmsg_t** msg_p, zhash_t *expiratio
         //                      -> if severity change => publish else don't publish
         if (streq(fty_proto_state(newAlert), "RESOLVED")) {
             if (!streq(fty_proto_state(cursor), "RESOLVED")) {
+                // Record resolved time
+                fty_proto_aux_insert(cursor,   "ctime", "%" PRIu64, fty_proto_time(newAlert));
+                fty_proto_aux_insert(newAlert, "ctime", "%" PRIu64, fty_proto_time(newAlert));
+
                 fty_proto_set_state(cursor, "%s", fty_proto_state(newAlert));
                 fty_proto_set_time(cursor, fty_proto_time(newAlert));
             } else {
@@ -193,6 +203,10 @@ s_handle_stream_deliver(mlm_client_t *client, zmsg_t** msg_p, zhash_t *expiratio
             s_set_alert_lifetime(expirations, newAlert);
 
             if (streq(fty_proto_state(cursor), "RESOLVED")) {
+                // Record reactivation time
+                fty_proto_aux_insert(cursor,   "ctime", "%" PRIu64, fty_proto_time(newAlert));
+                fty_proto_aux_insert(newAlert, "ctime", "%" PRIu64, fty_proto_time(newAlert));
+
                 fty_proto_set_time(cursor, fty_proto_time(newAlert));
                 fty_proto_set_state(cursor, "%s", fty_proto_state(newAlert));
             } else if (!streq(fty_proto_state(cursor), "ACTIVE")) {
@@ -208,6 +222,11 @@ s_handle_stream_deliver(mlm_client_t *client, zmsg_t** msg_p, zhash_t *expiratio
                     if ((zclock_mono()/1000) < (lastSent + fty_proto_ttl(cursor)/2)) {
                         send = false;
                     }
+                }
+                // Severity changed => update creation time
+                else {
+                    fty_proto_aux_insert(cursor,   "ctime", "%" PRIu64, fty_proto_time(newAlert));
+                    fty_proto_aux_insert(newAlert, "ctime", "%" PRIu64, fty_proto_time(newAlert));
                 }
             }
         }
