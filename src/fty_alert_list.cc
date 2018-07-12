@@ -1,21 +1,21 @@
 /*  =========================================================================
     fty_alert_list - description
 
-    Copyright (C) 2014 - 2017 Eaton                                        
-                                                                           
-    This program is free software; you can redistribute it and/or modify   
-    it under the terms of the GNU General Public License as published by   
-    the Free Software Foundation; either version 2 of the License, or      
-    (at your option) any later version.                                    
-                                                                           
-    This program is distributed in the hope that it will be useful,        
-    but WITHOUT ANY WARRANTY; without even the implied warranty of         
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          
-    GNU General Public License for more details.                           
-                                                                           
+    Copyright (C) 2014 - 2017 Eaton
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
     You should have received a copy of the GNU General Public License along
     with this program; if not, write to the Free Software Foundation, Inc.,
-    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.            
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
     =========================================================================
  */
 
@@ -53,11 +53,12 @@ int main(int argc, char *argv []) {
             return 1;
         }
     }
+    ManageFtyLog::setInstanceFtylog ("fty-alert-list","/etc/fty/ftylog.cfg");
     //  Insert main code here
     if (verbose) {
-        zsys_info("fty-alert-list - Agent providing information about active alerts"); // TODO: rewite alerts_list_server to accept VERBOSE
+        log_info("fty-alert-list - Agent providing information about active alerts"); // TODO: rewite alerts_list_server to accept VERBOSE
     }
-    zsys_info("fty-alert-list starting");
+    log_info("fty-alert-list starting");
     const char *endpoint = "ipc://@/malamute";
     //init the alert list (common with stream and mailbox traitement
     init_alert(verbose);
@@ -73,12 +74,12 @@ int main(int argc, char *argv []) {
     while (!zsys_interrupted) {
         sleep(1000);
     }
-    
+
     save_alerts();
     zloop_destroy(&ttlcleanup_stream);
     zactor_destroy(&alert_list_server_stream);
     zactor_destroy(&alert_list_server_mailbox);
     destroy_alert();
-    
+
     return EXIT_SUCCESS;
 }

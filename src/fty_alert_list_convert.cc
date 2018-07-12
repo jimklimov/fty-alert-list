@@ -35,15 +35,15 @@ convert_file (const char *file_name, const char *old_path, const char *new_path)
     assert (old_path);
     assert (new_path);
 
-    zsys_debug ("Converting state_file %s/%s and saving it to %s/%s.", old_path, file_name, new_path, file_name);
+    log_debug ("Converting state_file %s/%s and saving it to %s/%s.", old_path, file_name, new_path, file_name);
 
     zfile_t *file = zfile_new (old_path, file_name);
     if (!file) {
-        zsys_error ("zfile_new (path = '%s', file = '%s') failed.", old_path, file_name);
+        log_error ("zfile_new (path = '%s', file = '%s') failed.", old_path, file_name);
         return -1;
     }
     if (!zfile_is_regular (file)) {
-        zsys_error ("zfile_is_regular () == false");
+        log_error ("zfile_is_regular () == false");
         zfile_close (file);
         zfile_destroy (&file);
         return -1;
@@ -51,13 +51,13 @@ convert_file (const char *file_name, const char *old_path, const char *new_path)
     if (zfile_input (file) == -1) {
         zfile_close (file);
         zfile_destroy (&file);
-        zsys_error ("zfile_input () failed; filename = '%s'", zfile_filename (file, NULL));
+        log_error ("zfile_input () failed; filename = '%s'", zfile_filename (file, NULL));
         return -1;
     }
 
     off_t cursize = zfile_cursize (file);
     if (cursize == 0) {
-        zsys_debug ("state file '%s' is empty", zfile_filename (file, NULL));
+        log_debug ("state file '%s' is empty", zfile_filename (file, NULL));
         zfile_close (file);
         zfile_destroy (&file);
         return 0;
@@ -80,7 +80,7 @@ convert_file (const char *file_name, const char *old_path, const char *new_path)
     * https://stackoverflow.com/questions/586928/how-should-i-print-types-like-off-t-and-size-t
     */
     off_t offset = 0;
-    zsys_debug ("zfile_cursize == %jd", (intmax_t)cursize);
+    log_debug ("zfile_cursize == %jd", (intmax_t)cursize);
 
     //chunk for new state file
     zchunk_t *nchunk = zchunk_new (NULL, 0);
@@ -90,7 +90,7 @@ convert_file (const char *file_name, const char *old_path, const char *new_path)
         byte *prefix = zframe_data (frame) + offset;
         byte *data = zframe_data (frame) + offset + sizeof (uint64_t);
         offset += (uint64_t) *prefix +  sizeof (uint64_t);
-        zsys_debug ("prefix == %" PRIu64 "; offset = %jd ", (uint64_t ) *prefix, (intmax_t)offset);
+        log_debug ("prefix == %" PRIu64 "; offset = %jd ", (uint64_t ) *prefix, (intmax_t)offset);
 
 /* Note: the CZMQ_VERSION_MAJOR comparisons below actually assume versions
  * we know and care about - v3.0.2 (our legacy default, already obsoleted
@@ -179,7 +179,7 @@ convert_file (const char *file_name, const char *old_path, const char *new_path)
 
     zfile_t *nfile = zfile_new (new_path, file_name);
     if (!nfile) {
-        zsys_error ("zfile_new (path = '%s', file = '%s') failed.", new_path, file_name);
+        log_error ("zfile_new (path = '%s', file = '%s') failed.", new_path, file_name);
         return -1;
     }
 
@@ -187,7 +187,7 @@ convert_file (const char *file_name, const char *old_path, const char *new_path)
     assert (rv != -1);
 
     if (zchunk_write (nchunk, zfile_handle (nfile)) == -1) {
-        zsys_error ("zchunk_write () failed.");
+        log_error ("zchunk_write () failed.");
     }
 
     zchunk_destroy (&nchunk);

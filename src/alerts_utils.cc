@@ -136,7 +136,7 @@ compare_utf8_codepoint(const char *str_utf8, const char *str_codepoint) {
     for (size_t i = 0; i < len; i++) {
         const char *pos = utf8_index(str_utf8, i);
         if (codepoint_size(pos) == 0) {
-            zsys_debug("Comparing '%c' with '%c'\n", *pos, str_codepoint[j]);
+            log_debug("Comparing '%c' with '%c'\n", *pos, str_codepoint[j]);
             if (*pos != str_codepoint[j])
                 return 0;
             j++;
@@ -144,9 +144,9 @@ compare_utf8_codepoint(const char *str_utf8, const char *str_codepoint) {
             char *codepoint = (char *) malloc(codepoint_size(pos) * sizeof (char));
             int rv = utf8_to_codepoint(pos, &codepoint);
             if (rv == -1)
-                zsys_error("Error while converting alert name '%s' for comparison with alert name '%s'\n", str_utf8, str_codepoint);
+                log_error("Error while converting alert name '%s' for comparison with alert name '%s'\n", str_utf8, str_codepoint);
             for (int k = 0; k < codepoint_size(pos); k++) {
-                zsys_debug("codepoint : Comparing '%c' with '%c'\n", codepoint[k], str_codepoint[j]);
+                log_debug("codepoint : Comparing '%c' with '%c'\n", codepoint[k], str_codepoint[j]);
                 if (tolower(codepoint[k]) != tolower(str_codepoint[j]))
                     return 0;
                 j++;
@@ -175,7 +175,7 @@ utf8_octets(const char *c) {
         if ((*c & 0xF8) == 0xF0) // 1111 0xxx (4 octets)
         return 4;
     else
-        zsys_error("Unrecognized utf8 lead byte '%x' in string '%s'", *c, c);
+        log_error("Unrecognized utf8 lead byte '%x' in string '%s'", *c, c);
     return -1;
 }
 
@@ -392,14 +392,14 @@ alert_load_state(zlistx_t *alerts, const char *path, const char *filename) {
     assert(path);
     assert(filename);
 
-    zsys_debug("statefile: %s/%s", path, filename);
+    log_debug("statefile: %s/%s", path, filename);
     zfile_t *file = zfile_new(path, filename);
     if (!file) {
-        zsys_error("zfile_new (path = '%s', file = '%s') failed.", path, filename);
+        log_error("zfile_new (path = '%s', file = '%s') failed.", path, filename);
         return -1;
     }
     if (!zfile_is_regular(file)) {
-        zsys_error("zfile_is_regular () == false");
+        log_error("zfile_is_regular () == false");
         zfile_close(file);
         zfile_destroy(&file);
         return -1;
@@ -407,13 +407,13 @@ alert_load_state(zlistx_t *alerts, const char *path, const char *filename) {
     if (zfile_input(file) == -1) {
         zfile_close(file);
         zfile_destroy(&file);
-        zsys_error("zfile_input () failed; filename = '%s'", zfile_filename(file, NULL));
+        log_error("zfile_input () failed; filename = '%s'", zfile_filename(file, NULL));
         return -1;
     }
 
     off_t cursize = zfile_cursize(file);
     if (cursize == 0) {
-        zsys_debug("state file '%s' is empty", zfile_filename(file, NULL));
+        log_debug("state file '%s' is empty", zfile_filename(file, NULL));
         zfile_close(file);
         zfile_destroy(&file);
         return 0;
@@ -435,13 +435,13 @@ alert_load_state(zlistx_t *alerts, const char *path, const char *filename) {
      * https://stackoverflow.com/questions/586928/how-should-i-print-types-like-off-t-and-size-t
      */
     off_t offset = 0;
-    zsys_debug("zfile_cursize == %jd", (intmax_t) cursize);
+    log_debug("zfile_cursize == %jd", (intmax_t) cursize);
 
     while (offset < cursize) {
         byte *prefix = zframe_data(frame) + offset;
         byte *data = zframe_data(frame) + offset + sizeof (uint64_t);
         offset += (uint64_t) * prefix + sizeof (uint64_t);
-        zsys_debug("prefix == %" PRIu64 "; offset = %jd ", (uint64_t) * prefix, (intmax_t) offset);
+        log_debug("prefix == %" PRIu64 "; offset = %jd ", (uint64_t) * prefix, (intmax_t) offset);
 
         /* Note: the CZMQ_VERSION_MAJOR comparison below actually assumes versions
          * we know and care about - v3.0.2 (our legacy default, already obsoleted
@@ -461,14 +461,14 @@ alert_load_state(zlistx_t *alerts, const char *path, const char *filename) {
         assert (zmessage);
         fty_proto_t *alert = fty_proto_decode (&zmessage); // zmessage destroyed
         if (!alert) {
-            zsys_warning ("Ignoring malformed alert in %s/%s", path, filename);
+            log_warning ("Ignoring malformed alert in %s/%s", path, filename);
             continue;
         }
         if (s_alerts_input_checks (alerts, alert) == 0) {
             zlistx_add_end (alerts, alert);
         }
         else {
-            zsys_warning (
+            log_warning (
                     "Alert id (%s, %s) already read.",
                     fty_proto_rule(alert),
                     fty_proto_name(alert));
@@ -490,14 +490,14 @@ alert_save_state(zlistx_t *alerts, const char *path, const char *filename, bool 
 
     zfile_t *file = zfile_new(path, filename);
     if (!file) {
-        zsys_error("zfile_new (path = '%s', file = '%s') failed.", path, filename);
+        log_error("zfile_new (path = '%s', file = '%s') failed.", path, filename);
         return -1;
     }
 
     zfile_remove(file);
 
     if (zfile_output(file) == -1) {
-        zsys_error("zfile_output () failed; filename = '%s'", zfile_filename(file, NULL));
+        log_error("zfile_output () failed; filename = '%s'", zfile_filename(file, NULL));
         zfile_close(file);
         zfile_destroy(&file);
         return -1;
@@ -555,7 +555,7 @@ alert_save_state(zlistx_t *alerts, const char *path, const char *filename, bool 
     }
 
     if (zchunk_write(chunk, zfile_handle(file)) == -1) {
-        zsys_error("zchunk_write () failed.");
+        log_error("zchunk_write () failed.");
     }
 
     zchunk_destroy(&chunk);
@@ -595,7 +595,7 @@ alerts_utils_test(bool verbose) {
 
     //  @selftest
 
-    zsys_debug(" * alerts_utils: ");
+    log_debug(" * alerts_utils: ");
 
     //  **********************
     //  *****   utf8eq   *****
@@ -606,7 +606,7 @@ alerts_utils_test(bool verbose) {
     assert(utf8eq("Ka\xcc\x81rol", "K\xc3\xa1rol") == 0);
     assert(utf8eq("супер test", "\u0441\u0443\u043f\u0435\u0440 Test") == 1);
     assert(utf8eq("ŽlUťOUčKý kůň", "ŽlUťOUčKý kůn") == 0);
-    zsys_debug("utf8eq: OK");
+    log_debug("utf8eq: OK");
 
     //  ************************************
     //  *****   is_acknowledge_state   *****
@@ -633,7 +633,7 @@ alerts_utils_test(bool verbose) {
     assert(is_acknowledge_state("aCK-WIP") == 0);
     assert(is_acknowledge_state("ACKWIP") == 0);
     assert(is_acknowledge_state("somethign") == 0);
-    zsys_debug("is_acknowledge_state: OK");
+    log_debug("is_acknowledge_state: OK");
 
 
     //  ******************************
@@ -656,7 +656,7 @@ alerts_utils_test(bool verbose) {
     assert(is_alert_state("ACK") == 0);
     assert(is_alert_state("ack-wip") == 0);
     assert(is_alert_state("resolved") == 0);
-    zsys_debug("is_alert_state: OK");
+    log_debug("is_alert_state: OK");
 
     //  *************************************
     //  *****   is_list_request_state   *****
@@ -680,7 +680,7 @@ alerts_utils_test(bool verbose) {
     assert(is_list_request_state("") == 0);
     assert(is_list_request_state(NULL) == 0);
     assert(is_list_request_state("sdfsd") == 0);
-    zsys_debug("is_list_request_state: OK");
+    log_debug("is_list_request_state: OK");
 
 
     //  *********************************
@@ -715,7 +715,7 @@ alerts_utils_test(bool verbose) {
     assert(is_state_included("ALL", "ALL") == 0);
     assert(is_state_included("ACK-WIP", "ACTIVE") == 0);
     assert(is_state_included("ACK-IGNORE", "ACK-WIP") == 0);
-    zsys_debug("is_state_included: OK");
+    log_debug("is_state_included: OK");
 
     //  *********************************************
     //  *****   is_acknowledge_request_state    *****
@@ -733,7 +733,7 @@ alerts_utils_test(bool verbose) {
     assert(is_acknowledge_request_state("active") == 0);
     assert(is_acknowledge_request_state("") == 0);
     assert(is_acknowledge_request_state(NULL) == 0);
-    zsys_debug("is_acknowledge_request_state: OK");
+    log_debug("is_acknowledge_request_state: OK");
 
     //  **************************
     //  *****   alert_new    *****
@@ -1613,7 +1613,7 @@ alerts_utils_test(bool verbose) {
         rv = alert_load_state(alerts, ".", "test_state_file");
         assert(rv == 0);
 
-        zsys_debug("zlistx size == %d", zlistx_size(alerts));
+        log_debug("zlistx size == %d", zlistx_size(alerts));
 
         // Check them one by one
         fty_proto_t *cursor = (fty_proto_t *) zlistx_first(alerts);
