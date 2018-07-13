@@ -37,6 +37,7 @@ s_ttl_cleanup_timer(zloop_t *loop, int timer_id, void *output) {
 int main(int argc, char *argv []) {
     bool verbose = false;
     int argn;
+    ManageFtyLog::setInstanceFtylog ("fty-alert-list","/etc/fty/ftylog.cfg");
     for (argn = 1; argn < argc; argn++) {
         if (streq(argv [argn], "--help") ||
                 streq(argv [argn], "-h")) {
@@ -47,20 +48,18 @@ int main(int argc, char *argv []) {
         } else if (streq(argv [argn], "--verbose") ||
                 streq(argv [argn], "-v")) {
             verbose = true;
+            ManageFtyLog::getInstanceFtylog()->setVeboseMode();
         }
         else {
             printf("Unknown option: %s\n", argv [argn]);
             return 1;
         }
     }
-    ManageFtyLog::setInstanceFtylog ("fty-alert-list","/etc/fty/ftylog.cfg");
     //  Insert main code here
-    if (verbose) {
-        log_info("fty-alert-list - Agent providing information about active alerts"); // TODO: rewite alerts_list_server to accept VERBOSE
-    }
+    log_debug("fty-alert-list - Agent providing information about active alerts"); // TODO: rewrite alerts_list_server to accept VERBOSE
     log_info("fty-alert-list starting");
     const char *endpoint = "ipc://@/malamute";
-    //init the alert list (common with stream and mailbox traitement
+    //init the alert list (common with stream and mailbox treatment)
     init_alert(verbose);
 
     //initialize actor and timer for stream

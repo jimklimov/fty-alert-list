@@ -103,7 +103,7 @@ s_resolve_expired_alerts(zhash_t *exp) {
             fty_proto_set_description(cursor, "%s", new_desc);
 
             if (verbose) {
-                log_info("s_resolve_expired_alerts: resolving alert");
+                log_debug("s_resolve_expired_alerts: resolving alert");
                 fty_proto_print(cursor);
             }
         }
