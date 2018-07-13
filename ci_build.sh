@@ -407,7 +407,7 @@ default|default-Werror|default-with-docs|valgrind|clang-format-check)
         echo ""
         BASE_PWD=${PWD}
         echo "`date`: INFO: Building prerequisite 'fty-common-logging' from Git repository..." >&2
-        $CI_TIME git clone --quiet --depth 1 -b master https://github.com/42ity/fty-log.git fty-common-logging
+        $CI_TIME git clone --quiet --depth 1 -b master https://github.com/42ity/fty-common-logging.git fty-common-logging
         cd fty-common-logging
         CCACHE_BASEDIR=${PWD}
         export CCACHE_BASEDIR
