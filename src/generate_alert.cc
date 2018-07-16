@@ -36,13 +36,13 @@ int main (int argc, char **argv) {
     errno = 0;
     unsigned long int unixtime = strtoul (argv[6], endptr, 10);
     if (endptr != NULL || errno != 0) {
-        zsys_error ("<unixtime> parameter = '%s' is not a valid unix time", argv[6]);
+        log_error ("<unixtime> parameter = '%s' is not a valid unix time", argv[6]);
         return EXIT_FAILURE;
     }
 
     unsigned long int ttl = strtoul (argv[8], endptr, 10);
     if (endptr != NULL || errno != 0) {
-        zsys_error ("<ttl> parameter = '%s' is not a valid ttl", argv[8]);
+        log_error ("<ttl> parameter = '%s' is not a valid ttl", argv[8]);
         return EXIT_FAILURE;
     }
 
@@ -57,7 +57,7 @@ int main (int argc, char **argv) {
     char *strtemp = NULL;
     int rv = asprintf (&strtemp, "generate_alert.%d%d", rand () % 10, rand () % 10);
     if (rv == -1) {
-        zsys_error ("asprintf() failed");
+        log_error ("asprintf() failed");
         free (endpoint); endpoint = NULL;
         mlm_client_destroy (&client);
         return EXIT_FAILURE;
@@ -80,7 +80,7 @@ int main (int argc, char **argv) {
             argv[5],
             actions);
     if (!alert_message) {
-        zsys_error ("fty_proto_encode_alert() failed");
+        log_error ("fty_proto_encode_alert() failed");
         free (endpoint); endpoint = NULL;
         mlm_client_destroy (&client);
         zlist_destroy (&actions);
@@ -90,7 +90,7 @@ int main (int argc, char **argv) {
     // rule_name/severity@element_name
     rv = asprintf (&strtemp, "%s/%s@%s", argv[1], argv[4], argv[2]);
     if (rv == -1) {
-        zsys_error ("asprintf() failed");
+        log_error ("asprintf() failed");
         free (endpoint); endpoint = NULL;
         mlm_client_destroy (&client);
         zlist_destroy (&actions);
@@ -99,7 +99,7 @@ int main (int argc, char **argv) {
     rv = mlm_client_send (client, strtemp, &alert_message);
     free (strtemp); strtemp = NULL;
     if (rv != 0) {
-        zsys_error ("mlm_client_send () failed");
+        log_error ("mlm_client_send () failed");
         free (endpoint); endpoint = NULL;
         mlm_client_destroy (&client);
         zlist_destroy (&actions);

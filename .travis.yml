@@ -23,9 +23,8 @@ sudo: false
 #dist:
 #- trusty
 
-# Note: uncommented in earlier builds (TODO: Check if needed)
-services:
-- docker
+#services:
+#- docker
 
 # Set CI_TIME=true to enable build-step profiling in Travis
 # Set CI_TRACE=true to enable shell script tracing in Travis
@@ -68,6 +67,9 @@ pkg_deps_prereqs_source: &pkg_deps_prereqs_source
     - libczmq-dev
     - libmlm-dev
     - libfty-proto-dev
+    - log4cplus-dev
+    - cxxtools-dev
+    - libfty-common-logging-dev
 
 # NOTE: Our forks are checked out and built without pkg dependencies in use
 pkg_deps_prereqs: &pkg_deps_prereqs
@@ -103,8 +105,6 @@ matrix:
   include:
   - env: BUILD_TYPE=default-with-docs
     os: linux
-# Note: was uncommented in earlier builds (TODO: Check if needed)
-#    service: docker
     addons:
       apt:
         sources: *pkg_src_zeromq_ubuntu14
@@ -143,7 +143,7 @@ matrix:
         packages:
         - clang-5.0
         - clang-format-5.0
-        - *pkg_deps_prereqs
+#autotools#        - *pkg_deps_prereqs
 
 before_install:
 - if [ "$TRAVIS_OS_NAME" == "osx" -a "$BUILD_TYPE" == "android" ] ; then brew install binutils ; fi

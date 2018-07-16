@@ -52,7 +52,7 @@ s_set_alert_lifetime(zhash_t *exp, fty_proto_t *msg) {
     if (!time) return;
     *time = zclock_mono() / 1000 + ttl;
     zhash_update(exp, rule, time);
-    zsys_debug(" ##### rule %s with ttl %" PRIi64, rule, ttl);
+    log_debug(" ##### rule %s with ttl %" PRIi64, rule, ttl);
     zhash_freefn(exp, rule, free);
 }
 
@@ -103,7 +103,7 @@ s_resolve_expired_alerts(zhash_t *exp) {
             fty_proto_set_description(cursor, "%s", new_desc);
 
             if (verbose) {
-                zsys_info("s_resolve_expired_alerts: resolving alert");
+                log_debug("s_resolve_expired_alerts: resolving alert");
                 fty_proto_print(cursor);
             }
         }
@@ -120,24 +120,24 @@ s_handle_stream_deliver(mlm_client_t *client, zmsg_t** msg_p, zhash_t *expiratio
     bool send = true;
 
     if (!is_fty_proto(*msg_p)) {
-        zsys_error("s_handle_stream_deliver (): Message not fty_proto");
+        log_error("s_handle_stream_deliver (): Message not fty_proto");
         return;
     }
 
     fty_proto_t *newAlert = fty_proto_decode(msg_p);
     if (!newAlert || fty_proto_id(newAlert) != FTY_PROTO_ALERT) {
         fty_proto_destroy(&newAlert);
-        zsys_warning("s_handle_stream_deliver (): Message not FTY_PROTO_ALERT.");
+        log_warning("s_handle_stream_deliver (): Message not FTY_PROTO_ALERT.");
         return;
     }
     if (!streq(fty_proto_state(newAlert), "ACTIVE") &&
             !streq(fty_proto_state(newAlert), "RESOLVED")) {
         fty_proto_destroy(&newAlert);
-        zsys_warning("s_handle_stream_deliver (): Message state not ACTIVE or RESOLVED. Not publishing any further.");
+        log_warning("s_handle_stream_deliver (): Message state not ACTIVE or RESOLVED. Not publishing any further.");
         return;
     }
     if (verbose) {
-        zsys_debug("----> printing alert ");
+        log_debug("----> printing alert ");
         fty_proto_print(newAlert);
     }
 
@@ -240,7 +240,7 @@ s_handle_stream_deliver(mlm_client_t *client, zmsg_t** msg_p, zhash_t *expiratio
 
         int rv = mlm_client_send(client, mlm_client_subject(client), &encoded);
         if (rv == -1) {
-            zsys_error("mlm_client_send (subject = '%s') failed",
+            log_error("mlm_client_send (subject = '%s') failed",
                     mlm_client_subject(client));
             zmsg_destroy(&encoded);
         }
@@ -268,7 +268,7 @@ s_send_error_response(mlm_client_t *client, const char *subject, const char *rea
     int rv = mlm_client_sendto(client, mlm_client_sender(client), subject, NULL, 5000, &reply);
     if (rv != 0) {
         zmsg_destroy(&reply);
-        zsys_error("mlm_client_sendto (sender = '%s', subject = '%s', timeout = '5000') failed.",
+        log_error("mlm_client_sendto (sender = '%s', subject = '%s', timeout = '5000') failed.",
                 mlm_client_sender(client), subject);
     }
 }
@@ -337,7 +337,7 @@ s_handle_rfc_alerts_list(mlm_client_t *client, zmsg_t **msg_p) {
     alertMtx.unlock();
 
     if (mlm_client_sendto(client, mlm_client_sender(client), RFC_ALERTS_LIST_SUBJECT, NULL, 5000, &reply) != 0) {
-        zsys_error("mlm_client_sendto (sender = '%s', subject = '%s', timeout = '5000') failed.",
+        log_error("mlm_client_sendto (sender = '%s', subject = '%s', timeout = '5000') failed.",
                 mlm_client_sender(client), RFC_ALERTS_LIST_SUBJECT);
     }
     free(state);
@@ -379,7 +379,7 @@ s_handle_rfc_alerts_acknowledge(mlm_client_t *client, zmsg_t **msg_p) {
     zmsg_destroy(&msg);
     // check 'state'
     if (!is_acknowledge_request_state(state)) {
-        zsys_warning(
+        log_warning(
                 "state '%s' is not an acknowledge request state according to protocol '%s'.",
                 state, RFC_ALERTS_ACKNOWLEDGE_SUBJECT);
         zstr_free(&rule);
@@ -388,7 +388,7 @@ s_handle_rfc_alerts_acknowledge(mlm_client_t *client, zmsg_t **msg_p) {
         s_send_error_response(client, RFC_ALERTS_ACKNOWLEDGE_SUBJECT, "BAD_STATE");
         return;
     }
-    zsys_debug(
+    log_debug(
             "s_handle_rfc_alerts_acknowledge (): rule == '%s' element == '%s' state == '%s'",
             rule, element, state);
     // check ('rule', 'element') pair
@@ -419,7 +419,7 @@ s_handle_rfc_alerts_acknowledge(mlm_client_t *client, zmsg_t **msg_p) {
         return;
     }
     // change stored alert state, don't change timestamp
-    zsys_debug(
+    log_debug(
             "s_handle_rfc_alerts_acknowledge (): Changing state of (%s, %s) to %s",
             fty_proto_rule(cursor), fty_proto_name(cursor), state);
     fty_proto_set_state(cursor, "%s", state);
@@ -440,18 +440,18 @@ s_handle_rfc_alerts_acknowledge(mlm_client_t *client, zmsg_t **msg_p) {
             RFC_ALERTS_ACKNOWLEDGE_SUBJECT, NULL, 5000, &reply);
     if (rv != 0) {
         zmsg_destroy(&reply);
-        zsys_error("mlm_client_sendto (sender = '%s', subject = '%s', timeout = '5000') failed.",
+        log_error("mlm_client_sendto (sender = '%s', subject = '%s', timeout = '5000') failed.",
                 mlm_client_sender(client), RFC_ALERTS_ACKNOWLEDGE_SUBJECT);
     }
     if (!subject) {
-        zsys_error("zsys_sprintf () failed");
+        log_error("zsys_sprintf () failed");
         alertMtx.unlock();
         return;
     }
     uint64_t timestamp = (uint64_t) ((uint64_t) zclock_time() / 1000);
     fty_proto_t *copy = fty_proto_dup(cursor);
     if (!copy) {
-        zsys_error("fty_proto_dup () failed");
+        log_error("fty_proto_dup () failed");
         zstr_free(&subject);
         alertMtx.unlock();
         return;
@@ -461,7 +461,7 @@ s_handle_rfc_alerts_acknowledge(mlm_client_t *client, zmsg_t **msg_p) {
     fty_proto_set_time(copy, timestamp);
     reply = fty_proto_encode(&copy);
     if (!reply) {
-        zsys_error("fty_proto_encode () failed");
+        log_error("fty_proto_encode () failed");
         fty_proto_destroy(&copy);
         zstr_free(&subject);
         return;
@@ -469,7 +469,7 @@ s_handle_rfc_alerts_acknowledge(mlm_client_t *client, zmsg_t **msg_p) {
     rv = mlm_client_send(client, subject, &reply);
     if (rv != 0) {
         zmsg_destroy(&reply);
-        zsys_error("mlm_client_send (subject = '%s') failed", subject);
+        log_error("mlm_client_send (subject = '%s') failed", subject);
     }
     zstr_free(&subject);
 }
@@ -486,7 +486,7 @@ s_handle_mailbox_deliver(mlm_client_t *client, zmsg_t** msg_p) {
         s_handle_rfc_alerts_acknowledge(client, msg_p);
     } else {
         s_send_error_response(client, mlm_client_subject(client), "UNKNOWN_PROTOCOL");
-        zsys_error("Unknown protocol. Subject: '%s', Sender: '%s'.",
+        log_error("Unknown protocol. Subject: '%s', Sender: '%s'.",
                 mlm_client_subject(client), mlm_client_sender(client));
         zmsg_destroy(msg_p);
     }
@@ -495,7 +495,7 @@ s_handle_mailbox_deliver(mlm_client_t *client, zmsg_t** msg_p) {
 void
 fty_alert_list_server_stream(zsock_t *pipe, void *args) {
     const char *endpoint = (const char *) args;
-    zsys_debug("Stream endpoint = %s", endpoint);
+    log_debug("Stream endpoint = %s", endpoint);
 
     zhash_t *expirations = zhash_new();
     mlm_client_t *client = mlm_client_new();
@@ -528,7 +528,7 @@ fty_alert_list_server_stream(zsock_t *pipe, void *args) {
             } else if (streq(mlm_client_command(client), "STREAM DELIVER")) {
                 s_handle_stream_deliver(client, &msg, expirations);
             } else {
-                zsys_warning("Unknown command '%s'. Subject: '%s', Sender: '%s'.",
+                log_warning("Unknown command '%s'. Subject: '%s', Sender: '%s'.",
                         mlm_client_command(client), mlm_client_subject(client), mlm_client_sender(client));
                 zmsg_destroy(&msg);
             }
@@ -543,7 +543,7 @@ fty_alert_list_server_stream(zsock_t *pipe, void *args) {
 void
 fty_alert_list_server_mailbox(zsock_t *pipe, void *args) {
     const char *endpoint = (const char *) args;
-    zsys_debug("Mailbox endpoint = %s", endpoint);
+    log_debug("Mailbox endpoint = %s", endpoint);
 
     mlm_client_t *client = mlm_client_new();
     mlm_client_connect(client, endpoint, 1000, "fty-alert-list");
@@ -573,7 +573,7 @@ fty_alert_list_server_mailbox(zsock_t *pipe, void *args) {
             if (streq(mlm_client_command(client), "MAILBOX DELIVER")) {
                 s_handle_mailbox_deliver(client, &msg);
             } else {
-                zsys_warning("Unknown command '%s'. Subject: '%s', Sender: '%s'.",
+                log_warning("Unknown command '%s'. Subject: '%s', Sender: '%s'.",
                         mlm_client_command(client), mlm_client_subject(client), mlm_client_sender(client));
                 zmsg_destroy(&msg);
             }
@@ -586,7 +586,7 @@ fty_alert_list_server_mailbox(zsock_t *pipe, void *args) {
 
 void save_alerts() {
     int rv = alert_save_state(alerts, STATE_PATH, STATE_FILE, verbose);
-    zsys_debug("alert_save_state () == %d", rv);
+    log_debug("alert_save_state () == %d", rv);
 }
 
 void
@@ -596,7 +596,7 @@ init_alert(bool verb) {
     zlistx_set_duplicator(alerts, (czmq_duplicator *) fty_proto_dup);
 
     int rv = alert_load_state(alerts, STATE_PATH, STATE_FILE);
-    zsys_debug("alert_load_state () == %d", rv);
+    log_debug("alert_load_state () == %d", rv);
     verbose = verb;
 }
 
@@ -615,7 +615,7 @@ test_print_zlistx(zlistx_t *list) {
     assert(list);
     fty_proto_t *cursor = (fty_proto_t *) zlistx_first(list);
     while (cursor) {
-        zsys_debug("| %-15s %-15s %-15s %-12s  %-12" PRIu64" count:%zu  %s  %s",
+        log_debug("| %-15s %-15s %-15s %-12s  %-12" PRIu64" count:%zu  %s  %s",
                 fty_proto_rule(cursor),
                 fty_proto_aux_string(cursor, FTY_PROTO_RULE_CLASS, ""),
                 fty_proto_name(cursor),
@@ -626,7 +626,7 @@ test_print_zlistx(zlistx_t *list) {
                 fty_proto_description(cursor));
         const char *actions = fty_proto_action_first(cursor);
         while (NULL != actions) {
-            zsys_debug("| %-15s %-15s %-15s %-12s  %-12" PRIu64" %s  %s  %s",
+            log_debug("| %-15s %-15s %-15s %-12s  %-12" PRIu64" %s  %s  %s",
                     fty_proto_rule(cursor),
                     fty_proto_aux_string(cursor, FTY_PROTO_RULE_CLASS, ""),
                     fty_proto_name(cursor),
@@ -653,7 +653,7 @@ test_request_alerts_list(mlm_client_t *user_interface, const char *state) {
     zmsg_addstr(send, state);
     if (mlm_client_sendto(user_interface, "fty-alert-list", RFC_ALERTS_LIST_SUBJECT, NULL, 5000, &send) != 0) {
         zmsg_destroy(&send);
-        zsys_error("mlm_client_sendto (address = 'fty-alert-list', subject = '%s') failed.", RFC_ALERTS_LIST_SUBJECT);
+        log_error("mlm_client_sendto (address = 'fty-alert-list', subject = '%s') failed.", RFC_ALERTS_LIST_SUBJECT);
         return NULL;
     }
     zmsg_t *reply = mlm_client_recv(user_interface);
@@ -703,7 +703,7 @@ test_request_alerts_acknowledge(mlm_client_t *ui, mlm_client_t *consumer, const 
         assert(published);
         fty_proto_t *decoded = fty_proto_decode(&published);
         assert(decoded);
-        zsys_debug("\t ALERTS published %s %s %s %" PRIu64" %s %s %s",
+        log_debug("\t ALERTS published %s %s %s %" PRIu64" %s %s %s",
                 fty_proto_rule(decoded),
                 fty_proto_name(decoded),
                 fty_proto_state(decoded),
@@ -820,13 +820,13 @@ test_check_result(const char *state, zlistx_t *expected, zmsg_t **reply_p, int f
         frame = zmsg_pop(reply);
     }
 
-    zsys_debug("=====================================================");
-    zsys_debug(" REQUESTED LIST STATE == '%s'    SHOULD FAIL == '%s'", state, fail == 0 ? "NO" : "YES");
-    zsys_debug("-----    EXPECTED    --------------------------------");
+    log_debug("=====================================================");
+    log_debug(" REQUESTED LIST STATE == '%s'    SHOULD FAIL == '%s'", state, fail == 0 ? "NO" : "YES");
+    log_debug("-----    EXPECTED    --------------------------------");
     test_print_zlistx(expected);
-    zsys_debug("-----    RECEIVED    --------------------------------");
+    log_debug("-----    RECEIVED    --------------------------------");
     test_print_zlistx(received);
-    zsys_debug("");
+    log_debug("");
 
     // compare the two by iterative substraction
     int rv = test_zlistx_same(state, expected, received);

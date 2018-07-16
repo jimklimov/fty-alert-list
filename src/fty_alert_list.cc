@@ -1,21 +1,21 @@
 /*  =========================================================================
     fty_alert_list - description
 
-    Copyright (C) 2014 - 2017 Eaton                                        
-                                                                           
-    This program is free software; you can redistribute it and/or modify   
-    it under the terms of the GNU General Public License as published by   
-    the Free Software Foundation; either version 2 of the License, or      
-    (at your option) any later version.                                    
-                                                                           
-    This program is distributed in the hope that it will be useful,        
-    but WITHOUT ANY WARRANTY; without even the implied warranty of         
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          
-    GNU General Public License for more details.                           
-                                                                           
+    Copyright (C) 2014 - 2017 Eaton
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
     You should have received a copy of the GNU General Public License along
     with this program; if not, write to the Free Software Foundation, Inc.,
-    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.            
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
     =========================================================================
  */
 
@@ -37,6 +37,7 @@ s_ttl_cleanup_timer(zloop_t *loop, int timer_id, void *output) {
 int main(int argc, char *argv []) {
     bool verbose = false;
     int argn;
+    ManageFtyLog::setInstanceFtylog ("fty-alert-list","/etc/fty/ftylog.cfg");
     for (argn = 1; argn < argc; argn++) {
         if (streq(argv [argn], "--help") ||
                 streq(argv [argn], "-h")) {
@@ -47,6 +48,7 @@ int main(int argc, char *argv []) {
         } else if (streq(argv [argn], "--verbose") ||
                 streq(argv [argn], "-v")) {
             verbose = true;
+            ManageFtyLog::getInstanceFtylog()->setVeboseMode();
         }
         else {
             printf("Unknown option: %s\n", argv [argn]);
@@ -54,12 +56,10 @@ int main(int argc, char *argv []) {
         }
     }
     //  Insert main code here
-    if (verbose) {
-        zsys_info("fty-alert-list - Agent providing information about active alerts"); // TODO: rewite alerts_list_server to accept VERBOSE
-    }
-    zsys_info("fty-alert-list starting");
+    log_debug("fty-alert-list - Agent providing information about active alerts"); // TODO: rewrite alerts_list_server to accept VERBOSE
+    log_info("fty-alert-list starting");
     const char *endpoint = "ipc://@/malamute";
-    //init the alert list (common with stream and mailbox traitement
+    //init the alert list (common with stream and mailbox treatment)
     init_alert(verbose);
 
     //initialize actor and timer for stream
@@ -73,12 +73,12 @@ int main(int argc, char *argv []) {
     while (!zsys_interrupted) {
         sleep(1000);
     }
-    
+
     save_alerts();
     zloop_destroy(&ttlcleanup_stream);
     zactor_destroy(&alert_list_server_stream);
     zactor_destroy(&alert_list_server_mailbox);
     destroy_alert();
-    
+
     return EXIT_SUCCESS;
 }
