@@ -1,5 +1,6 @@
 #
 #    fty-alert-list - Provides information about active alerts
+# Note: this file was amended after generation, take care to keep that
 #
 #    Copyright (C) 2014 - 2018 Eaton
 #
@@ -55,9 +56,9 @@ BuildRequires:  libsodium-devel
 BuildRequires:  zeromq-devel
 BuildRequires:  czmq-devel
 BuildRequires:  malamute-devel
-BuildRequires:  fty-proto-devel
 BuildRequires:  log4cplus-devel
 BuildRequires:  fty-common-logging-devel
+BuildRequires:  fty-proto-devel
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 
 %description
@@ -86,9 +87,9 @@ Requires:       libsodium-devel
 Requires:       zeromq-devel
 Requires:       czmq-devel
 Requires:       malamute-devel
-Requires:       fty-proto-devel
 Requires:       log4cplus-devel
 Requires:       fty-common-logging-devel
+Requires:       fty-proto-devel
 
 %description devel
 provides information about active alerts development tools
