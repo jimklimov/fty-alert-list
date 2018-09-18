@@ -17,6 +17,8 @@ fty-alert-list.txt
 fty-alert-list.doc
 generate_alert.txt
 generate_alert.doc
+fty-alert-list-convert.txt
+fty-alert-list-convert.doc
 
 # Make sure to track the manually maintained project description
 !*.adoc

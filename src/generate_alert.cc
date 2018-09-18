@@ -25,8 +25,8 @@
 int main (int argc, char **argv) {
     char *endpoint = NULL;
     
-    if (argc < 7) {
-        fprintf (stderr, "USAGE:\n\tgenerate_alert <rule_name> <element_name> <state> <severity> <description> <unixtime> <action[|action2[|...]]> [endpoint]\n");
+    if (argc < 8) {
+        fprintf (stderr, "USAGE:\n\tgenerate_alert <rule_name> <element_name> <state> <severity> <description> <unixtime> <action[|action2[|...]]> <ttl> [endpoint]\n");
         fprintf (stderr, "\nOPTIONAL ARGUMENTS:\n\tendpoint\tMalamute endpoint. Default: ipc://@/malamute.\n");
         return EXIT_FAILURE;
     }
@@ -36,12 +36,19 @@ int main (int argc, char **argv) {
     errno = 0;
     unsigned long int unixtime = strtoul (argv[6], endptr, 10);
     if (endptr != NULL || errno != 0) {
-        zsys_error ("<unixtime> parameter = '%s' is not a valid unix time", argv[6]);
+        log_error ("<unixtime> parameter = '%s' is not a valid unix time", argv[6]);
         return EXIT_FAILURE;
     }
 
-    if (argc > 8)
-        endpoint = strdup (argv[8]);
+    unsigned long int ttl = strtoul (argv[8], endptr, 10);
+    if (endptr != NULL || errno != 0) {
+        log_error ("<ttl> parameter = '%s' is not a valid ttl", argv[8]);
+        return EXIT_FAILURE;
+    }
+
+    
+    if (argc > 9)
+        endpoint = strdup (argv[9]);
     else
         endpoint = strdup ("ipc://@/malamute");
 
@@ -50,7 +57,7 @@ int main (int argc, char **argv) {
     char *strtemp = NULL;
     int rv = asprintf (&strtemp, "generate_alert.%d%d", rand () % 10, rand () % 10);
     if (rv == -1) {
-        zsys_error ("asprintf() failed");
+        log_error ("asprintf() failed");
         free (endpoint); endpoint = NULL;
         mlm_client_destroy (&client);
         return EXIT_FAILURE;
@@ -59,39 +66,47 @@ int main (int argc, char **argv) {
     free (strtemp); strtemp = NULL;
     mlm_client_set_producer (client, "ALERTS");
 
+    zlist_t *actions = zlist_new ();
+    zlist_autofree (actions);
+    zlist_append (actions, argv[7]);
     zmsg_t *alert_message = fty_proto_encode_alert (
             NULL,
+            unixtime, 
+            ttl,
             argv[1],
             argv[2],
             argv[3],
             argv[4],
             argv[5],
-            unixtime,
-            argv[7]);
+            actions);
     if (!alert_message) {
-        zsys_error ("fty_proto_encode_alert() failed");
+        log_error ("fty_proto_encode_alert() failed");
         free (endpoint); endpoint = NULL;
         mlm_client_destroy (&client);
+        zlist_destroy (&actions);
         return EXIT_FAILURE;
     }
 
     // rule_name/severity@element_name
     rv = asprintf (&strtemp, "%s/%s@%s", argv[1], argv[4], argv[2]);
     if (rv == -1) {
-        zsys_error ("asprintf() failed");
+        log_error ("asprintf() failed");
         free (endpoint); endpoint = NULL;
         mlm_client_destroy (&client);
+        zlist_destroy (&actions);
         return EXIT_FAILURE;
     }   
     rv = mlm_client_send (client, strtemp, &alert_message);
     free (strtemp); strtemp = NULL;
     if (rv != 0) {
-        zsys_error ("mlm_client_send () failed");
+        log_error ("mlm_client_send () failed");
         free (endpoint); endpoint = NULL;
         mlm_client_destroy (&client);
+        zlist_destroy (&actions);
         return EXIT_FAILURE;
     }
     free (endpoint); endpoint = NULL;
     mlm_client_destroy (&client);
+    zlist_destroy (&actions);
     return EXIT_SUCCESS;
 }

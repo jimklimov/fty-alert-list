@@ -6,7 +6,7 @@
 all-local: doc
 
 # Public programs ("main" tags in project.xml), auto-regenerated:
-MAN1 = fty-alert-list.1 generate_alert.1
+MAN1 = fty-alert-list.1 generate_alert.1 fty-alert-list-convert.1
 # Public classes ("class" tags in project.xml), auto-regenerated:
 MAN3 = fty_alert_list_server.3
 # Project overview, written by a human after initial skeleton:
@@ -42,9 +42,9 @@ SUFFIXES=.txt .adoc .xml .xml7 .1 .3 .7
 	asciidoc -d manpage -b docbook -f $(srcdir)/asciidoc.conf \
         -afty-alert-list_version=@PACKAGE_VERSION@ -o$@ $<
 .xml.1:
-	xmlto man $<
+	xmlto -o $(@D) man $<
 .xml.3:
-	xmlto man $<
+	xmlto -o $(@D) man $<
 
 # Special handling for project overview whose basename may collide
 # with a main or class name
@@ -52,7 +52,7 @@ SUFFIXES=.txt .adoc .xml .xml7 .1 .3 .7
 	asciidoc -d manpage -b docbook -f $(srcdir)/asciidoc.conf \
         -afty-alert-list_version=@PACKAGE_VERSION@ -o$@ $<
 .xml7.7:
-	xmlto man $<
+	xmlto -o $(@D) man $<
 
 # List of *.txt and *.doc files generated during build from comments
 # in project program source files and further processed into manpages.
@@ -65,19 +65,29 @@ GENERATED_DOCS =
 	@true
 
 GENERATED_DOCS += fty_alert_list_server.txt fty_alert_list_server.doc
-fty_alert_list_server.txt: $(top_srcdir)/src/fty_alert_list_server.c
+fty_alert_list_server.txt: $(top_srcdir)/src/fty_alert_list_server.cc
 	"$(srcdir)/mkman" "fty_alert_list_server" "$(builddir)/fty_alert_list_server.txt" "$(srcdir)/.."
 
+### Note: for mains, we keep the source name rather than flattened name:c
+### so that the manpages for binary programs match their name, at expense
+### of perhaps being built in a subdirectory under doc/.
 GENERATED_DOCS += fty-alert-list.txt fty-alert-list.doc
-fty-alert-list.txt: $(top_srcdir)/src/fty_alert_list.c
+fty-alert-list.txt: $(top_srcdir)/src/fty_alert_list.cc
+	mkdir -p "$(builddir)/$(@D)"
 	"$(srcdir)/mkman" "fty_alert_list" "$(builddir)/fty-alert-list.txt" "$(srcdir)/.."
 
 GENERATED_DOCS += generate_alert.txt generate_alert.doc
-generate_alert.txt: $(top_srcdir)/src/generate_alert.c
+generate_alert.txt: $(top_srcdir)/src/generate_alert.cc
+	mkdir -p "$(builddir)/$(@D)"
 	"$(srcdir)/mkman" "generate_alert" "$(builddir)/generate_alert.txt" "$(srcdir)/.."
 
+GENERATED_DOCS += fty-alert-list-convert.txt fty-alert-list-convert.doc
+fty-alert-list-convert.txt: $(top_srcdir)/src/fty_alert_list_convert.cc
+	mkdir -p "$(builddir)/$(@D)"
+	"$(srcdir)/mkman" "fty_alert_list_convert" "$(builddir)/fty-alert-list-convert.txt" "$(srcdir)/.."
 
-clean:
+
+clean-local:
 	rm -f *.1 *.3 *.7 $(GENERATED_DOCS)
 
 doc: $(GENERATED_DOCS)

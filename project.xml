@@ -3,32 +3,67 @@
     description = "Provides information about active alerts"
     script = "zproject.gsl"
     email = "EatonIPCOpenSource@eaton.com"
+    url = "https://42ity.org"
+    license = "GPL-2.0+"
     repository = "https://github.com/42ity/fty-alert-list"
     >
 
     <target name = "debian" />
     <target name = "redhat" />
-    <target name = "travis"  travis_distcheck="0" />
+    <target name = "travis" />
+    <target name = "jenkins" >
+        <option name = "agent_label" value = "devel-image &amp;&amp; x86_64" />
+        <option name = "triggers_pollSCM" value = "H/2 * * * *" />
+        <option name = "test_cppcheck" value = "1" />
+        <option name = "build_docs" value = "1" />
+        <option name = "dist_docs" value = "1" />
+        <option name = "use_test_timeout" value = "30" />
+    </target>
 
     <include filename = "license.xml" />
     <version major = "1" minor = "0" patch = "0" />
 
-    <use project = "czmq" release = "v3.0.2" />
-    <use project = "malamute" min_major = "1" />
+    <use project = "czmq"
+        repository="https://github.com/42ity/czmq.git"
+        release = "v3.0.2-FTY-master"
+        min_major = "3" min_minor = "0" min_patch = "2" >
+        <use project = "libzmq"
+            repository="https://github.com/42ity/libzmq.git"
+            release = "4.2.0-FTY-master" >
+            <use project = "libsodium" prefix = "sodium"
+                repository = "https://github.com/42ity/libsodium.git"
+                release = "1.0.5-FTY-master"
+                test = "sodium_init" />
+        </use>
+    </use>
 
-    <use project = "fty-proto" libname = "libfty_proto" prefix="fty_proto"
-        header = "fty_proto.h"
+    <use project = "malamute" min_major = "1" test = "mlm_server_test"
+        repository="https://github.com/42ity/malamute.git"
+        release = "1.0-FTY-master"
+        />
+
+    <use project = "fty-common-logging" libname = "libfty_common_logging" header="fty_log.h"
+        repository = "https://github.com/42ity/fty-common-logging.git"
+        release = "master"
+        test = "fty_common_logging_selftest" >
+
+        <use project = "log4cplus" header = "log4cplus/logger.h" test = "appender_test"
+            repository = "https://github.com/42ity/log4cplus.git"
+            release = "1.1.2-FTY-master"
+            />
+    </use>
+
+    <use project = "fty-proto" libname = "libfty_proto" header="ftyproto.h" prefix="fty_proto"
         min_major = "1" min_minor = "0" min_patch = "0"
-        repository = "https://github.com/42ity/fty-proto"
-        test = "fty_proto_test">
-        <use project = "malamute"/>
+        repository = "https://github.com/42ity/fty-proto.git"
+        test = "fty_proto_test" >
+        <use project = "malamute" />
     </use>
 
     <class name = "alerts_utils" private = "1">Helper functions</class>
-
     <class name = "fty_alert_list_server">Providing information about active alerts</class>
-
+    <class name = "bios_proto" private = "1">0d2e5e8 rev of biosproto, old system protocols</class>
     <main name = "fty-alert-list" service="1" no_config="1" />
     <main name = "generate_alert" />
-
+    <main name = "fty-alert-list-convert"> Converts bios_proto state file to fty_proto state.</main>
 </project>
