@@ -1,5 +1,6 @@
 #
 #    fty-alert-list - Provides information about active alerts
+# Note: this file was amended after generation, take care to keep that
 #
 #    Copyright (C) 2014 - 2018 Eaton
 #
