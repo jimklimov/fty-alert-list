@@ -28,6 +28,7 @@
 #include <string.h>
 #include <map>
 #include <mutex>
+#include <fty_common_macros.h>
 #include "fty_alert_list_classes.h"
 
 #define RFC_ALERTS_LIST_SUBJECT "rfc-alerts-list"
@@ -185,7 +186,7 @@ s_handle_stream_deliver(mlm_client_t *client, zmsg_t** msg_p, zhash_t *expiratio
         //  ACTIVE comes form _ALERTS_SYS
         //  * if stored RESOLVED -> update stored time/state, publish modified
         //  * if stored ACK-XXX -> Don't change state or time, don't publish
-        //  * if stored ACTIVE -> update time 
+        //  * if stored ACTIVE -> update time
         //                      -> if severity change => publish else don't publish
         if (streq(fty_proto_state(newAlert), "RESOLVED")) {
             if (!streq(fty_proto_state(cursor), "RESOLVED")) {
@@ -285,7 +286,7 @@ s_handle_rfc_alerts_list(mlm_client_t *client, zmsg_t **msg_p) {
         free(command);
         command = NULL;
         zmsg_destroy(&msg);
-        s_send_error_response(client, RFC_ALERTS_LIST_SUBJECT, "BAD_MESSAGE");
+        s_send_error_response(client, RFC_ALERTS_LIST_SUBJECT, TRANSLATE_ME ("BAD_MESSAGE"));
         return;
     }
     free(command);
@@ -358,14 +359,14 @@ s_handle_rfc_alerts_acknowledge(mlm_client_t *client, zmsg_t **msg_p) {
     char *rule = zmsg_popstr(msg);
     if (!rule) {
         zmsg_destroy(&msg);
-        s_send_error_response(client, RFC_ALERTS_ACKNOWLEDGE_SUBJECT, "BAD_MESSAGE");
+        s_send_error_response(client, RFC_ALERTS_ACKNOWLEDGE_SUBJECT, TRANSLATE_ME ("BAD_MESSAGE"));
         return;
     }
     char *element = zmsg_popstr(msg);
     if (!element) {
         zstr_free(&rule);
         zmsg_destroy(&msg);
-        s_send_error_response(client, RFC_ALERTS_ACKNOWLEDGE_SUBJECT, "BAD_MESSAGE");
+        s_send_error_response(client, RFC_ALERTS_ACKNOWLEDGE_SUBJECT, TRANSLATE_ME ("BAD_MESSAGE"));
         return;
     }
     char *state = zmsg_popstr(msg);
@@ -373,7 +374,7 @@ s_handle_rfc_alerts_acknowledge(mlm_client_t *client, zmsg_t **msg_p) {
         zstr_free(&rule);
         zstr_free(&element);
         zmsg_destroy(&msg);
-        s_send_error_response(client, RFC_ALERTS_ACKNOWLEDGE_SUBJECT, "BAD_MESSAGE");
+        s_send_error_response(client, RFC_ALERTS_ACKNOWLEDGE_SUBJECT, TRANSLATE_ME ("BAD_MESSAGE"));
         return;
     }
     zmsg_destroy(&msg);
@@ -485,7 +486,7 @@ s_handle_mailbox_deliver(mlm_client_t *client, zmsg_t** msg_p) {
     } else if (streq(mlm_client_subject(client), RFC_ALERTS_ACKNOWLEDGE_SUBJECT)) {
         s_handle_rfc_alerts_acknowledge(client, msg_p);
     } else {
-        s_send_error_response(client, mlm_client_subject(client), "UNKNOWN_PROTOCOL");
+        s_send_error_response(client, mlm_client_subject(client), TRANSLATE_ME ("UNKNOWN_PROTOCOL"));
         log_error("Unknown protocol. Subject: '%s', Sender: '%s'.",
                 mlm_client_subject(client), mlm_client_sender(client));
         zmsg_destroy(msg_p);
@@ -1413,7 +1414,7 @@ fty_alert_list_server_test(bool verb) {
     assert(streq(part, "ERROR"));
     zstr_free(&part);
     part = zmsg_popstr(reply);
-    assert(streq(part, "UNKNOWN_PROTOCOL"));
+    assert(streq(part, TRANSLATE_ME ("UNKNOWN_PROTOCOL")));
     zstr_free(&part);
     zmsg_destroy(&reply);
 
@@ -1428,7 +1429,7 @@ fty_alert_list_server_test(bool verb) {
     assert(streq(part, "ERROR"));
     zstr_free(&part);
     part = zmsg_popstr(reply);
-    assert(streq(part, "BAD_MESSAGE"));
+    assert(streq(part, TRANSLATE_ME ("BAD_MESSAGE")));
     zstr_free(&part);
     zmsg_destroy(&reply);
 
