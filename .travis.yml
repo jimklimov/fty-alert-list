@@ -68,6 +68,7 @@ pkg_deps_prereqs_source: &pkg_deps_prereqs_source
     - libmlm-dev
     - log4cplus-dev
     - libfty-common-logging-dev
+    - libfty-common-dev
     - libfty-proto-dev
 
 # NOTE: Our forks are checked out and built without pkg dependencies in use
