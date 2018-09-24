@@ -50,10 +50,6 @@ FTY_ALERT_LIST_EXPORT fty_proto_t*
                uint64_t timestamp,
                zlist_t **action,
                int64_t ttl);
-// compare utf8 strings for equality
-// ignore case on ascii (i.e on 1 byte chars)
-int
-utf8eq (const char *s1, const char *s2);
 
 // czmq_comparator of two alert's identifiers; alert is identified by pair (name, element)
 // 0 - same, 1 - different

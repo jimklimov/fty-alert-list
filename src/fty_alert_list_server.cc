@@ -29,6 +29,7 @@
 #include <map>
 #include <mutex>
 #include <fty_common_macros.h>
+#include <fty_common_utf8.h>
 #include "fty_alert_list_classes.h"
 
 #define RFC_ALERTS_LIST_SUBJECT "rfc-alerts-list"
@@ -713,7 +714,7 @@ test_request_alerts_acknowledge(mlm_client_t *ui, mlm_client_t *consumer, const 
                 fty_proto_severity(decoded),
                 fty_proto_description(decoded));
         assert(streq(rule, fty_proto_rule(decoded)));
-        assert(utf8eq(element, fty_proto_name(decoded)) == 1);
+        assert(UTF8::utf8eq(element, fty_proto_name(decoded)) == 1);
         assert(streq(state, fty_proto_state(decoded)));
         fty_proto_destroy(&decoded);
     }
@@ -732,7 +733,7 @@ test_request_alerts_acknowledge(mlm_client_t *ui, mlm_client_t *consumer, const 
         char *state_reply = zmsg_popstr(reply);
         assert(streq(ok, "OK"));
         assert(streq(rule_reply, rule));
-        assert(utf8eq(element_reply, element));
+        assert(UTF8::utf8eq(element_reply, element));
         assert(streq(state_reply, state));
         zstr_free(&rule_reply);
         zstr_free(&element_reply);
