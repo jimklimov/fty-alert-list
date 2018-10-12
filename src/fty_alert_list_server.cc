@@ -287,7 +287,8 @@ s_handle_rfc_alerts_list(mlm_client_t *client, zmsg_t **msg_p) {
         free(command);
         command = NULL;
         zmsg_destroy(&msg);
-        s_send_error_response(client, RFC_ALERTS_LIST_SUBJECT, TRANSLATE_ME ("BAD_MESSAGE"));
+        std::string err = TRANSLATE_ME ("BAD_MESSAGE");
+        s_send_error_response(client, RFC_ALERTS_LIST_SUBJECT, err.c_str ());
         return;
     }
     free(command);
@@ -360,14 +361,16 @@ s_handle_rfc_alerts_acknowledge(mlm_client_t *client, zmsg_t **msg_p) {
     char *rule = zmsg_popstr(msg);
     if (!rule) {
         zmsg_destroy(&msg);
-        s_send_error_response(client, RFC_ALERTS_ACKNOWLEDGE_SUBJECT, TRANSLATE_ME ("BAD_MESSAGE"));
+        std::string err = TRANSLATE_ME ("BAD_MESSAGE");
+        s_send_error_response(client, RFC_ALERTS_ACKNOWLEDGE_SUBJECT, err.c_str ());
         return;
     }
     char *element = zmsg_popstr(msg);
     if (!element) {
         zstr_free(&rule);
         zmsg_destroy(&msg);
-        s_send_error_response(client, RFC_ALERTS_ACKNOWLEDGE_SUBJECT, TRANSLATE_ME ("BAD_MESSAGE"));
+        std::string err = TRANSLATE_ME ("BAD_MESSAGE");
+        s_send_error_response(client, RFC_ALERTS_ACKNOWLEDGE_SUBJECT, err.c_str ());
         return;
     }
     char *state = zmsg_popstr(msg);
@@ -375,7 +378,8 @@ s_handle_rfc_alerts_acknowledge(mlm_client_t *client, zmsg_t **msg_p) {
         zstr_free(&rule);
         zstr_free(&element);
         zmsg_destroy(&msg);
-        s_send_error_response(client, RFC_ALERTS_ACKNOWLEDGE_SUBJECT, TRANSLATE_ME ("BAD_MESSAGE"));
+        std::string err = TRANSLATE_ME ("BAD_MESSAGE");
+        s_send_error_response(client, RFC_ALERTS_ACKNOWLEDGE_SUBJECT, err.c_str ());
         return;
     }
     zmsg_destroy(&msg);
@@ -487,7 +491,8 @@ s_handle_mailbox_deliver(mlm_client_t *client, zmsg_t** msg_p) {
     } else if (streq(mlm_client_subject(client), RFC_ALERTS_ACKNOWLEDGE_SUBJECT)) {
         s_handle_rfc_alerts_acknowledge(client, msg_p);
     } else {
-        s_send_error_response(client, mlm_client_subject(client), TRANSLATE_ME ("UNKNOWN_PROTOCOL"));
+        std::string err = TRANSLATE_ME ("UNKNOWN_PROTOCOL");
+        s_send_error_response(client, mlm_client_subject(client), err.c_str ());
         log_error("Unknown protocol. Subject: '%s', Sender: '%s'.",
                 mlm_client_subject(client), mlm_client_sender(client));
         zmsg_destroy(msg_p);
@@ -1415,7 +1420,8 @@ fty_alert_list_server_test(bool verb) {
     assert(streq(part, "ERROR"));
     zstr_free(&part);
     part = zmsg_popstr(reply);
-    assert(streq(part, TRANSLATE_ME ("UNKNOWN_PROTOCOL")));
+    std::string err = TRANSLATE_ME ("UNKNOWN_PROTOCOL");
+    assert(streq(part, err.c_str ()));
     zstr_free(&part);
     zmsg_destroy(&reply);
 
@@ -1430,7 +1436,8 @@ fty_alert_list_server_test(bool verb) {
     assert(streq(part, "ERROR"));
     zstr_free(&part);
     part = zmsg_popstr(reply);
-    assert(streq(part, TRANSLATE_ME ("BAD_MESSAGE")));
+    err = TRANSLATE_ME ("BAD_MESSAGE");
+    assert(streq(part, err.c_str ()));
     zstr_free(&part);
     zmsg_destroy(&reply);
 
