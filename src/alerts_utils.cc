@@ -360,6 +360,21 @@ alert_load_state (zlistx_t *alerts, const char *path, const char *filename)
     return rv;
 }
 
+/* fty_proto_zpl automatically encloses values in quotes, like this:
+
+description = "Rule changed"
+
+But JSON contains quotes on its own, and ZPL doesn't support escaping them:
+
+description = "{ "key": "Device {{var1}} does not provide expected data. It may be offline or not correctly configured.", "variables": { "var1": "sc21543331131" } }"
+
+However, ZPL doesn't require quotes and if the drop them, the value is still parsed correctly:
+
+description = { "key": "Device {{var1}} does not provide expected data. It may be offline or not correctly configured.", "variables": { "var1": "sc21543331131" } }
+
+This function drops the quotes added by fty_proto_zpl if they are enclosing JSON string.
+*/
+
 void
 s_drop_quotes_around_json (const char *state_file, const char *path, const char *filename)
 {
