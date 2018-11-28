@@ -360,7 +360,7 @@ alert_load_state (zlistx_t *alerts, const char *path, const char *filename)
     return rv;
 }
 
-int
+void
 s_drop_quotes_around_json (const char *state_file, const char *path, const char *filename)
 {
     std::ifstream input_stream (state_file);
@@ -416,7 +416,7 @@ alert_save_state(zlistx_t *alerts, const char *path, const char *filename, bool 
         return rv;
     }
 
-    rv = s_drop_quotes_around_json (state_file, path, filename);
+    s_drop_quotes_around_json (state_file, path, filename);
     zstr_free (&state_file);
     zconfig_destroy (&state);
     return 0;
