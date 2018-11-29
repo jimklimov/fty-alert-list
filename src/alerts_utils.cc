@@ -26,8 +26,6 @@
 @end
  */
 
-#include <iostream>
-#include <fstream>
 #include <string>
 #include <fty_common_utf8.h>
 #include "fty_alert_list_classes.h"
@@ -331,6 +329,16 @@ s_alert_load_state_new (zlistx_t *alerts, const char *path, const char *filename
             cursor = zconfig_next (cursor);
             continue;
         }
+
+        const char *encoded_alert_desc = fty_proto_description (alert);
+        size_t encoded_alert_desc_size = strlen (encoded_alert_desc);
+        uint8_t *alert_desc = (uint8_t *) zmalloc (1 + (5 * encoded_alert_desc_size) / 4);
+        zmq_z85_decode (alert_desc, encoded_alert_desc);
+
+        std::string alert_desc_str ((char *) alert_desc);
+        size_t alert_desc_end = alert_desc_str.find_last_not_of (" ");
+
+        fty_proto_set_description (alert, "%s", alert_desc_str.substr (0, alert_desc_end + 1).c_str ());
         fty_proto_print (alert);
 
         if (s_alerts_input_checks (alerts, alert)) {
@@ -342,6 +350,8 @@ s_alert_load_state_new (zlistx_t *alerts, const char *path, const char *filename
         else {
             zlistx_add_end (alerts, alert);
         }
+
+        free (alert_desc);
         cursor = zconfig_next (cursor);
     }
 
@@ -360,30 +370,16 @@ alert_load_state (zlistx_t *alerts, const char *path, const char *filename)
     return rv;
 }
 
-void
-s_drop_quotes_around_json (const char *state_file, const char *path, const char *filename)
+// right-pad the string with spaces to specified size
+uint8_t *
+s_pad (const char *src, size_t padded_size)
 {
-    std::ifstream input_stream (state_file);
-    char *real_state_file = zsys_sprintf ("%s/%s", path, filename);
-    std::ofstream output_stream (real_state_file);
-    std::string line;
-    while (std::getline (input_stream, line)) {
-        size_t json_start = line.find ("\"{");
-        if (json_start != std::string::npos) {
-            size_t json_end = line.rfind ("}\"");
-            if (json_end != std::string::npos) {
-                line.replace (json_start, 2, " {");
-                line.replace (json_end, 2, "} ");
-            }
-        }
-        output_stream << line << std::endl;
-    }
+    uint8_t *padded = (uint8_t *) zmalloc ((padded_size) * sizeof (uint8_t));
+    memcpy (padded, src, strlen (src));
+    for (size_t i = strlen (src); i < padded_size; i++)
+        padded[i] = 0x20; // pad with SPACEs
 
-    log_debug ("storing into state file %s", real_state_file);
-    input_stream.close ();
-    zsys_file_delete (state_file);
-    output_stream.close ();
-    zstr_free (&real_state_file);
+    return padded;
 }
 
 // save alert state to disk
@@ -396,19 +392,32 @@ alert_save_state(zlistx_t *alerts, const char *path, const char *filename, bool 
         return -1;
     }
 
-    // because serialization of fty_proto_zpl adds quotes, which have to removed around JSON,
-    // write into scratch file first
-    const char *suffix = "scratch";
     zconfig_t *state = zconfig_new ("root", NULL);
     fty_proto_t *cursor = (fty_proto_t *) zlistx_first (alerts);
 
     while (cursor) {
         fty_proto_print (cursor);
+
+        const char *alert_desc = fty_proto_description (cursor);
+        size_t alert_desc_size = strlen (alert_desc);
+        // new size is the next bigger or equal multiple of 4
+        size_t padded_size = (alert_desc_size + 3) & 0xFFFFFFFC;
+
+        uint8_t *padded_alert_desc = s_pad (alert_desc, padded_size);
+        size_t encoded_alert_desc_size = 1 + (5 * padded_size) / 4;
+        char *encoded_alert_desc = (char *) zmalloc (encoded_alert_desc_size);
+        zmq_z85_encode (encoded_alert_desc, padded_alert_desc, padded_size);
+        log_debug ("encoded_alert_desc = %s", encoded_alert_desc);
+
+        fty_proto_set_description (cursor, "%s", encoded_alert_desc);
         fty_proto_zpl (cursor, state);
         cursor = (fty_proto_t *) zlistx_next (alerts);
+
+        zstr_free (&encoded_alert_desc);
+        free (padded_alert_desc);
     }
 
-    char *state_file = zsys_sprintf ("%s/%s.%s", path, filename, suffix);
+    char *state_file = zsys_sprintf ("%s/%s", path, filename);
     int rv = zconfig_save (state, state_file);
     if (rv == -1) {
         zstr_free (&state_file);
@@ -416,7 +425,6 @@ alert_save_state(zlistx_t *alerts, const char *path, const char *filename, bool 
         return rv;
     }
 
-    s_drop_quotes_around_json (state_file, path, filename);
     zstr_free (&state_file);
     zconfig_destroy (&state);
     return 0;
