@@ -1549,6 +1549,8 @@ alerts_utils_test(bool verbose) {
             zlist_destroy(&actions5);
         if (NULL != actions6)
             zlist_destroy(&actions6);
+
+        zsys_file_delete ("./test_state_file");
     }
 
     // Test case #2:
