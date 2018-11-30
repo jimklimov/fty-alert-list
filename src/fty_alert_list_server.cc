@@ -942,9 +942,9 @@ fty_alert_list_server_test (bool verb) {
     assert (rv == 0);
 
     // Alert Lists
+    init_alert (verb);
     zactor_t *fty_al_server_stream = zactor_new (fty_alert_list_server_stream, (void *) endpoint);
     zactor_t *fty_al_server_mailbox = zactor_new (fty_alert_list_server_mailbox, (void *) endpoint);
-    init_alert (verb);
 
     // maintain a list of active alerts (that serves as "expected results")
     zlistx_t *testAlerts = zlistx_new ();
@@ -1334,7 +1334,6 @@ fty_alert_list_server_test (bool verb) {
     reply = test_request_alerts_list (ui, "RESOLVED");
     test_check_result ("RESOLVED", testAlerts, &reply, 1);
 
-
     // RESOLVED used to be an error response, but it's no more true
     zmsg_t *send = zmsg_new ();
     zmsg_addstr (send, "LIST");
@@ -1405,7 +1404,6 @@ fty_alert_list_server_test (bool verb) {
     assert (part);
     zstr_free (&part);
     zmsg_destroy (&reply);
-
 
     // Now, let's test an error response of rfc-alerts-acknowledge
     send = zmsg_new ();
@@ -1490,16 +1488,15 @@ fty_alert_list_server_test (bool verb) {
     zmsg_destroy (&reply);
 
     zlistx_destroy (&testAlerts);
-    mlm_client_destroy (&ui);
-    mlm_client_destroy (&producer);
-    mlm_client_destroy (&consumer);
 
-    zactor_destroy (&fty_al_server_stream);
-    zactor_destroy (&fty_al_server_mailbox);
-    zactor_destroy (&server);
     save_alerts ();
+    zactor_destroy (&fty_al_server_mailbox);
+    zactor_destroy (&fty_al_server_stream);
+    mlm_client_destroy (&consumer);
+    mlm_client_destroy (&producer);
+    mlm_client_destroy (&ui);
+    zactor_destroy (&server);
     destroy_alert ();
-
 
     if (NULL != actions1)
         zlist_destroy (&actions1);

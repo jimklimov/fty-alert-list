@@ -26,6 +26,7 @@
 @end
  */
 
+#include <string>
 #include <fty_common_utf8.h>
 #include "fty_alert_list_classes.h"
 
@@ -181,10 +182,11 @@ s_alerts_input_checks(zlistx_t *alerts, fty_proto_t *alert) {
     return 0;
 }
 
-// load alert state from disk
+// load alert state from disk - legacy
 // 0 - success, -1 - error
 int
-alert_load_state(zlistx_t *alerts, const char *path, const char *filename) {
+s_alert_load_state_legacy (zlistx_t *alerts, const char *path, const char *filename)
+{
     assert(alerts);
     assert(path);
     assert(filename);
@@ -238,7 +240,6 @@ alert_load_state(zlistx_t *alerts, const char *path, const char *filename) {
         byte *prefix = zframe_data(frame) + offset;
         byte *data = zframe_data(frame) + offset + sizeof (uint64_t);
         offset += (uint64_t) * prefix + sizeof (uint64_t);
-        log_debug("prefix == %" PRIu64 "; offset = %jd ", (uint64_t) * prefix, (intmax_t) offset);
 
         /* Note: the CZMQ_VERSION_MAJOR comparison below actually assumes versions
          * we know and care about - v3.0.2 (our legacy default, already obsoleted
@@ -277,87 +278,155 @@ alert_load_state(zlistx_t *alerts, const char *path, const char *filename) {
     return 0;
 }
 
+int
+s_alert_load_state_new (zlistx_t *alerts, const char *path, const char *filename) {
+    if (!alerts || !path || !filename) {
+        log_error ("cannot load state");
+        return -1;
+    }
+
+    char *state_file = zsys_sprintf ("%s/%s", path, filename);
+    /* This is unrolled version of zconfig_load() which deallocates file before handing it to config
+     * in case of success.
+     * I'm not sure whether we can do this always, or whether this is specific to fty-proto state files
+     * - that's the reason for unrolling.
+     */
+    zconfig_t *state = NULL;
+    zfile_t *file = zfile_new (path, filename);
+
+    if (zfile_input (file) == 0) {
+        zchunk_t *chunk = zfile_read (file, zfile_cursize (file), 0);
+        if (chunk) {
+            state = zconfig_chunk_load (chunk);
+            zchunk_destroy (&chunk);
+            zfile_close (file);
+            zfile_destroy (&file);
+            file = NULL;        //  Config tree now owns file handle
+        }
+    }
+    zfile_destroy (&file);
+
+    if (!state) {
+        log_error ("cannot load state from file %s", state_file);
+        zconfig_destroy (&state);
+        zstr_free (&state_file);
+        return -1;
+    }
+
+    zconfig_t *cursor = zconfig_child (state);
+    if (!cursor) {
+        log_error ("no correct alert in the file %s", state_file);
+        zconfig_destroy (&state);
+        zstr_free (&state_file);
+        return -1;
+    }
+
+    log_debug ("loading alerts from file %s", state_file);
+    while (cursor) {
+        fty_proto_t *alert = fty_proto_new_zpl (cursor);
+        if (!alert) {
+            log_warning ("Ignoring malformed alert in %s", state_file);
+            cursor = zconfig_next (cursor);
+            continue;
+        }
+
+        const char *encoded_alert_desc = fty_proto_description (alert);
+        size_t encoded_alert_desc_size = strlen (encoded_alert_desc);
+        uint8_t *alert_desc = (uint8_t *) zmalloc (1 + (5 * encoded_alert_desc_size) / 4);
+        zmq_z85_decode (alert_desc, encoded_alert_desc);
+
+        std::string alert_desc_str ((char *) alert_desc);
+        size_t alert_desc_end = alert_desc_str.find_last_not_of (" ");
+
+        fty_proto_set_description (alert, "%s", alert_desc_str.substr (0, alert_desc_end + 1).c_str ());
+        fty_proto_print (alert);
+
+        if (s_alerts_input_checks (alerts, alert)) {
+            log_warning (
+                    "Alert id (%s, %s) already read.",
+                    fty_proto_rule(alert),
+                    fty_proto_name(alert));
+        }
+        else {
+            zlistx_add_end (alerts, alert);
+        }
+
+        free (alert_desc);
+        cursor = zconfig_next (cursor);
+    }
+
+    zconfig_destroy (&state);
+    zstr_free (&state_file);
+    return 0;
+}
+
+int
+alert_load_state (zlistx_t *alerts, const char *path, const char *filename)
+{
+    int rv = s_alert_load_state_new (alerts, path, filename);
+    if (rv == -1)
+        rv = s_alert_load_state_legacy (alerts, path, filename);
+
+    return rv;
+}
+
+// right-pad the string with spaces to specified size
+uint8_t *
+s_pad (const char *src, size_t padded_size)
+{
+    uint8_t *padded = (uint8_t *) zmalloc ((padded_size) * sizeof (uint8_t));
+    memcpy (padded, src, strlen (src));
+    for (size_t i = strlen (src); i < padded_size; i++)
+        padded[i] = 0x20; // pad with SPACEs
+
+    return padded;
+}
+
 // save alert state to disk
 // 0 - success, -1 - error
 int
-alert_save_state(zlistx_t *alerts, const char *path, const char *filename, bool verbose) {
-    assert(alerts);
-    assert(path);
-    assert(filename);
-
-    zfile_t *file = zfile_new(path, filename);
-    if (!file) {
-        log_error("zfile_new (path = '%s', file = '%s') failed.", path, filename);
+alert_save_state(zlistx_t *alerts, const char *path, const char *filename, bool verbose)
+{
+    if (!alerts || !path || !filename) {
+        log_error ("cannot save state");
         return -1;
     }
 
-    zfile_remove(file);
-
-    if (zfile_output(file) == -1) {
-        log_error("zfile_output () failed; filename = '%s'", zfile_filename(file, NULL));
-        zfile_close(file);
-        zfile_destroy(&file);
-        return -1;
-    }
-
-    zchunk_t *chunk = zchunk_new(NULL, 0); // TODO: this can be tweaked to
-    // avoid a lot of allocs
-    assert(chunk);
-
-    fty_proto_t *cursor = (fty_proto_t *) zlistx_first(alerts);
-    if (cursor && verbose) {
-        fty_proto_print(cursor);
-    }
+    zconfig_t *state = zconfig_new ("root", NULL);
+    fty_proto_t *cursor = (fty_proto_t *) zlistx_first (alerts);
 
     while (cursor) {
-        uint64_t size = 0; // Note: the zmsg_encode() and zframe_size()
-        // below return a platform-dependent size_t,
-        // but in protocol we use fixed uint64_t
-        assert(sizeof (size_t) <= sizeof (uint64_t));
-        zframe_t *frame = NULL;
-        fty_proto_t *duplicate = fty_proto_dup(cursor);
-        assert(duplicate);
-        zmsg_t *zmessage = fty_proto_encode(&duplicate); // duplicate destroyed here
-        assert(zmessage);
+        fty_proto_print (cursor);
 
-#if CZMQ_VERSION_MAJOR == 3
-        {
-            byte *buffer = NULL;
-            size = zmsg_encode(zmessage, &buffer);
+        const char *alert_desc = fty_proto_description (cursor);
+        size_t alert_desc_size = strlen (alert_desc);
+        // new size is the next bigger or equal multiple of 4
+        size_t padded_size = (alert_desc_size + 3) & 0xFFFFFFFC;
 
-            assert(buffer);
-            assert(size > 0);
-            frame = zframe_new(buffer, size);
-            free(buffer);
-            buffer = NULL;
-        }
-#else
-        frame = zmsg_encode(zmessage);
-        size = zframe_size(frame);
-#endif
-        zmsg_destroy(&zmessage);
-        assert(frame);
-        assert(size > 0);
+        uint8_t *padded_alert_desc = s_pad (alert_desc, padded_size);
+        size_t encoded_alert_desc_size = 1 + (5 * padded_size) / 4;
+        char *encoded_alert_desc = (char *) zmalloc (encoded_alert_desc_size);
+        zmq_z85_encode (encoded_alert_desc, padded_alert_desc, padded_size);
+        log_debug ("encoded_alert_desc = %s", encoded_alert_desc);
 
-        // prefix
-        // FIXME?: originally this was for uint64_t, should it be sizeof (size) instead?
-        // Also is usage of uint64_t here really warranted (e.g. dictated by protocol)?
-        zchunk_extend(chunk, (const void *) &size, sizeof (uint64_t));
-        // data
-        zchunk_extend(chunk, (const void *) zframe_data(frame), size);
+        fty_proto_set_description (cursor, "%s", encoded_alert_desc);
+        fty_proto_zpl (cursor, state);
+        cursor = (fty_proto_t *) zlistx_next (alerts);
 
-        zframe_destroy(&frame);
-
-        cursor = (fty_proto_t *) zlistx_next(alerts);
+        zstr_free (&encoded_alert_desc);
+        free (padded_alert_desc);
     }
 
-    if (zchunk_write(chunk, zfile_handle(file)) == -1) {
-        log_error("zchunk_write () failed.");
+    char *state_file = zsys_sprintf ("%s/%s", path, filename);
+    int rv = zconfig_save (state, state_file);
+    if (rv == -1) {
+        zstr_free (&state_file);
+        zconfig_destroy (&state);
+        return rv;
     }
 
-    zchunk_destroy(&chunk);
-    zfile_close(file);
-    zfile_destroy(&file);
+    zstr_free (&state_file);
+    zconfig_destroy (&state);
     return 0;
 }
 
@@ -1392,17 +1461,17 @@ alerts_utils_test(bool verbose) {
 
         zlistx_destroy(&alerts);
 
-        alerts = zlistx_new();
-        assert(alerts);
-        zlistx_set_destructor(alerts, (czmq_destructor *) fty_proto_destroy);
-        zlistx_set_duplicator(alerts, (czmq_duplicator *) fty_proto_dup);
-        rv = alert_load_state(alerts, ".", "test_state_file");
+        zlistx_t *alerts2 = zlistx_new();
+        assert(alerts2);
+        zlistx_set_destructor(alerts2, (czmq_destructor *) fty_proto_destroy);
+        //zlistx_set_duplicator(alerts2, (czmq_duplicator *) fty_proto_dup);
+        rv = alert_load_state(alerts2, ".", "test_state_file");
         assert(rv == 0);
 
-        log_debug("zlistx size == %d", zlistx_size(alerts));
+        log_debug("zlistx size == %d", zlistx_size(alerts2));
 
         // Check them one by one
-        fty_proto_t *cursor = (fty_proto_t *) zlistx_first(alerts);
+        fty_proto_t *cursor = (fty_proto_t *) zlistx_first(alerts2);
         assert(streq(fty_proto_rule(cursor), "Rule1"));
         assert(streq(fty_proto_name(cursor), "Element1"));
         assert(streq(fty_proto_state(cursor), "ACTIVE"));
@@ -1413,7 +1482,7 @@ alerts_utils_test(bool verbose) {
         assert(NULL == fty_proto_action_next(cursor));
         assert(fty_proto_time(cursor) == (uint64_t) 1);
 
-        cursor = (fty_proto_t *) zlistx_next(alerts);
+        cursor = (fty_proto_t *) zlistx_next(alerts2);
         assert(streq(fty_proto_rule(cursor), "Rule1"));
         assert(streq(fty_proto_name(cursor), "Element2"));
         assert(streq(fty_proto_state(cursor), "RESOLVED"));
@@ -1424,7 +1493,7 @@ alerts_utils_test(bool verbose) {
         assert(NULL == fty_proto_action_next(cursor));
         assert(fty_proto_time(cursor) == (uint64_t) 20);
 
-        cursor = (fty_proto_t *) zlistx_next(alerts);
+        cursor = (fty_proto_t *) zlistx_next(alerts2);
         assert(streq(fty_proto_rule(cursor), "Rule2"));
         assert(streq(fty_proto_name(cursor), "Element1"));
         assert(streq(fty_proto_state(cursor), "ACK-WIP"));
@@ -1434,7 +1503,7 @@ alerts_utils_test(bool verbose) {
         assert(NULL == fty_proto_action_next(cursor));
         assert(fty_proto_time(cursor) == (uint64_t) 152452412);
 
-        cursor = (fty_proto_t *) zlistx_next(alerts);
+        cursor = (fty_proto_t *) zlistx_next(alerts2);
         assert(streq(fty_proto_rule(cursor), "Rule2"));
         assert(streq(fty_proto_name(cursor), "Element2"));
         assert(streq(fty_proto_state(cursor), "ACK-SILENCE"));
@@ -1444,7 +1513,7 @@ alerts_utils_test(bool verbose) {
         assert(NULL == fty_proto_action_next(cursor));
         assert(fty_proto_time(cursor) == (uint64_t) 5);
 
-        cursor = (fty_proto_t *) zlistx_next(alerts);
+        cursor = (fty_proto_t *) zlistx_next(alerts2);
         assert(streq(fty_proto_rule(cursor), "Rule1"));
         assert(streq(fty_proto_name(cursor), "Element3"));
         assert(streq(fty_proto_state(cursor), "RESOLVED"));
@@ -1455,7 +1524,7 @@ alerts_utils_test(bool verbose) {
         assert(NULL == fty_proto_action_next(cursor));
         assert(fty_proto_time(cursor) == (uint64_t) 50);
 
-        cursor = (fty_proto_t *) zlistx_next(alerts);
+        cursor = (fty_proto_t *) zlistx_next(alerts2);
         assert(streq(fty_proto_rule(cursor), "realpower.default"));
         assert(UTF8::utf8eq(fty_proto_name(cursor), "ŽlUťOUčKý kůň супер"));
         assert(streq(fty_proto_state(cursor), "ACTIVE"));
@@ -1465,7 +1534,8 @@ alerts_utils_test(bool verbose) {
         assert(streq(fty_proto_action_next(cursor), "SMS"));
         assert(NULL == fty_proto_action_next(cursor));
         assert(fty_proto_time(cursor) == (uint64_t) 60);
-        zlistx_destroy(&alerts);
+
+        zlistx_destroy(&alerts2);
 
         if (NULL != actions1)
             zlist_destroy(&actions1);
@@ -1479,6 +1549,8 @@ alerts_utils_test(bool verbose) {
             zlist_destroy(&actions5);
         if (NULL != actions6)
             zlist_destroy(&actions6);
+
+        zsys_file_delete ("./test_state_file");
     }
 
     // Test case #2:
@@ -1492,7 +1564,6 @@ alerts_utils_test(bool verbose) {
         assert(rv == -1);
         zlistx_destroy(&alerts);
     }
-
     // State file with old format
     {
     zlistx_t *alerts = zlistx_new ();
