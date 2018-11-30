@@ -374,9 +374,13 @@ alert_load_state (zlistx_t *alerts, const char *path, const char *filename)
 uint8_t *
 s_pad (const char *src, size_t padded_size)
 {
+    size_t src_size = strlen (src);
+    if (padded_size < src_size)
+        return NULL;
+
     uint8_t *padded = (uint8_t *) zmalloc ((padded_size) * sizeof (uint8_t));
-    memcpy (padded, src, strlen (src));
-    for (size_t i = strlen (src); i < padded_size; i++)
+    memcpy (padded, src, src_size);
+    for (size_t i = src_size; i < padded_size; i++)
         padded[i] = 0x20; // pad with SPACEs
 
     return padded;
