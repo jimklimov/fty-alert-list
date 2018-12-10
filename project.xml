@@ -48,7 +48,8 @@
             <use project = "libsodium" prefix = "sodium"
                 repository = "https://github.com/42ity/libsodium.git"
                 release = "1.0.5-FTY-master"
-                test = "sodium_init" />
+                test = "sodium_init"
+                />
         </use>
     </use>
 
