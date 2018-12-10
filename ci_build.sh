@@ -379,16 +379,16 @@ default|default-Werror|default-with-docs|valgrind|clang-format-check)
         cd "${BASE_PWD}"
     fi
 
-    # Start of recipe for dependency: fty-common
-    if ! (command -v dpkg-query >/dev/null 2>&1 && dpkg-query --list libfty_common-dev >/dev/null 2>&1) || \
-           (command -v brew >/dev/null 2>&1 && brew ls --versions fty-common >/dev/null 2>&1) \
+    # Start of recipe for dependency: fty-proto
+    if ! (command -v dpkg-query >/dev/null 2>&1 && dpkg-query --list libfty_proto-dev >/dev/null 2>&1) || \
+           (command -v brew >/dev/null 2>&1 && brew ls --versions fty-proto >/dev/null 2>&1) \
     ; then
         echo ""
         BASE_PWD=${PWD}
-        echo "`date`: INFO: Building prerequisite 'fty-common' from Git repository..." >&2
+        echo "`date`: INFO: Building prerequisite 'fty-proto' from Git repository..." >&2
         cd ./tmp-deps
-        $CI_TIME git clone --quiet --depth 1 -b master https://github.com/42ity/fty-common.git fty-common
-        cd ./fty-common
+        $CI_TIME git clone --quiet --depth 1 -b master https://github.com/42ity/fty-proto.git fty-proto
+        cd ./fty-proto
         CCACHE_BASEDIR=${PWD}
         export CCACHE_BASEDIR
         git --no-pager log --oneline -n1
@@ -412,16 +412,16 @@ default|default-Werror|default-with-docs|valgrind|clang-format-check)
         cd "${BASE_PWD}"
     fi
 
-    # Start of recipe for dependency: fty-proto
-    if ! (command -v dpkg-query >/dev/null 2>&1 && dpkg-query --list libfty_proto-dev >/dev/null 2>&1) || \
-           (command -v brew >/dev/null 2>&1 && brew ls --versions fty-proto >/dev/null 2>&1) \
+    # Start of recipe for dependency: fty-common
+    if ! (command -v dpkg-query >/dev/null 2>&1 && dpkg-query --list libfty_common-dev >/dev/null 2>&1) || \
+           (command -v brew >/dev/null 2>&1 && brew ls --versions fty-common >/dev/null 2>&1) \
     ; then
         echo ""
         BASE_PWD=${PWD}
-        echo "`date`: INFO: Building prerequisite 'fty-proto' from Git repository..." >&2
+        echo "`date`: INFO: Building prerequisite 'fty-common' from Git repository..." >&2
         cd ./tmp-deps
-        $CI_TIME git clone --quiet --depth 1 https://github.com/42ity/fty-proto.git fty-proto
-        cd ./fty-proto
+        $CI_TIME git clone --quiet --depth 1 -b master https://github.com/42ity/fty-common.git fty-common
+        cd ./fty-common
         CCACHE_BASEDIR=${PWD}
         export CCACHE_BASEDIR
         git --no-pager log --oneline -n1
@@ -481,14 +481,18 @@ default|default-Werror|default-with-docs|valgrind|clang-format-check)
     make check-gitignore
     echo "==="
 
+    if [ "$CI_TEST_DISTCHECK" = false ]; then
+        make check
+    else
     (
-        export DISTCHECK_CONFIGURE_FLAGS="--enable-drafts=yes ${CONFIG_OPTS[@]}"
-        $CI_TIME make VERBOSE=1 DISTCHECK_CONFIGURE_FLAGS="$DISTCHECK_CONFIGURE_FLAGS" distcheck
-
-        echo "=== Are GitIgnores good after 'make distcheck' with drafts?"
-        make check-gitignore
-        echo "==="
+        export DISTCHECK_CONFIGURE_FLAGS="--enable-drafts=yes ${CONFIG_OPTS[@]}" && \
+        $CI_TIME make VERBOSE=1 DISTCHECK_CONFIGURE_FLAGS="$DISTCHECK_CONFIGURE_FLAGS" distcheck || exit $?
     )
+    fi
+
+    echo "=== Are GitIgnores good after 'make (dist)check' with drafts?"
+    make check-gitignore
+    echo "==="
 
     # Build and check this project without DRAFT APIs
     echo ""
@@ -501,14 +505,18 @@ default|default-Werror|default-with-docs|valgrind|clang-format-check)
         $CI_TIME ./autogen.sh 2> /dev/null
         $CI_TIME ./configure --enable-drafts=no "${CONFIG_OPTS[@]}"
         $CI_TIME make VERBOSE=1 all || exit $?
+        if [ "$CI_TEST_DISTCHECK" = false ]; then
+            make check
+        else
         (
             export DISTCHECK_CONFIGURE_FLAGS="--enable-drafts=no ${CONFIG_OPTS[@]}" && \
             $CI_TIME make VERBOSE=1 DISTCHECK_CONFIGURE_FLAGS="$DISTCHECK_CONFIGURE_FLAGS" distcheck || exit $?
         )
+        fi
     ) || exit 1
     [ -z "$CI_TIME" ] || echo "`date`: Builds completed without fatal errors!"
 
-    echo "=== Are GitIgnores good after 'make distcheck' without drafts?"
+    echo "=== Are GitIgnores good after 'make (dist)check' without drafts?"
     make check-gitignore
     echo "==="
 
