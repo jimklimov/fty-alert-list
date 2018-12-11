@@ -94,6 +94,16 @@ where
     of requested state
 * subject of the message MUST be "rfc-alerts-list".
 
+A variant of the previous message with the same semantics is LIST_EX:
+
+* LIST_EX/correlation_id/'state' - request list of alerts of specified 'state'
+
+The FTY-ALERT-LIST-SERVER peer MUST respond with one of the messages back to USER
+peer using MAILBOX SEND.
+
+* LIST_EX/correlation_id/'state'/'alert\_1'[/'alert\_2']...[/'alert\_N']
+* ERROR/correlation_id/reason
+
 #### Acknowledging an alert
 
 The USER peer sends the following messages using MAILBOX SEND to

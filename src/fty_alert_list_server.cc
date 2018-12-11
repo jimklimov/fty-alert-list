@@ -283,7 +283,7 @@ s_handle_rfc_alerts_list (mlm_client_t *client, zmsg_t **msg_p) {
 
     zmsg_t *msg = *msg_p;
     char *command = zmsg_popstr (msg);
-    if (!command || !streq (command, "LIST")) {
+    if (!command || (!streq (command, "LIST") && !streq (command, "LIST_EX"))) {
         free (command);
         command = NULL;
         zmsg_destroy (&msg);
@@ -291,12 +291,30 @@ s_handle_rfc_alerts_list (mlm_client_t *client, zmsg_t **msg_p) {
         s_send_error_response (client, RFC_ALERTS_LIST_SUBJECT, err.c_str ());
         return;
     }
+
+    char *correlation_id = NULL;
+    if (streq (command, "LIST_EX")) {
+        correlation_id = zmsg_popstr (msg);
+        if (!correlation_id) {
+            free (command);
+            command = NULL;
+            free (correlation_id);
+            correlation_id = NULL;
+            zmsg_destroy (&msg);
+            std::string err = TRANSLATE_ME ("BAD_MESSAGE");
+            s_send_error_response (client, RFC_ALERTS_LIST_SUBJECT, err.c_str ());
+            return;
+        }
+    }
+
     free (command);
     command = NULL;
 
     char *state = zmsg_popstr (msg);
     zmsg_destroy (msg_p);
     if (!state || !is_list_request_state (state)) {
+        free (correlation_id);
+        correlation_id = NULL;
         free (state);
         state = NULL;
         s_send_error_response (client, RFC_ALERTS_LIST_SUBJECT, "NOT_FOUND");
@@ -304,7 +322,13 @@ s_handle_rfc_alerts_list (mlm_client_t *client, zmsg_t **msg_p) {
     }
 
     zmsg_t *reply = zmsg_new ();
-    zmsg_addstr (reply, "LIST");
+    if (correlation_id) {
+        zmsg_addstr (reply, "LIST_EX");
+        zmsg_addstr (reply, correlation_id);
+    }
+    else {
+        zmsg_addstr (reply, "LIST");
+    }
     zmsg_addstr (reply, state);
     alertMtx.lock ();
     fty_proto_t *cursor = (fty_proto_t *) zlistx_first (alerts);
@@ -343,6 +367,8 @@ s_handle_rfc_alerts_list (mlm_client_t *client, zmsg_t **msg_p) {
         log_error ("mlm_client_sendto (sender = '%s', subject = '%s', timeout = '5000') failed.",
                 mlm_client_sender (client), RFC_ALERTS_LIST_SUBJECT);
     }
+    free (correlation_id);
+    correlation_id = NULL;
     free (state);
     state = NULL;
 }
@@ -649,14 +675,20 @@ test_print_zlistx (zlistx_t *list) {
 }
 
 static zmsg_t *
-test_request_alerts_list (mlm_client_t *user_interface, const char *state) {
+test_request_alerts_list (mlm_client_t *user_interface, const char *state, bool ex = false) {
     assert (user_interface);
     assert (state);
     assert (is_list_request_state (state));
 
     zmsg_t *send = zmsg_new ();
     assert (send);
-    zmsg_addstr (send, "LIST");
+    if (ex) {
+        zmsg_addstr (send, "LIST_EX");
+        zmsg_addstr (send, "1234");
+    }
+    else {
+        zmsg_addstr (send, "LIST");
+    }
     zmsg_addstr (send, state);
     if (mlm_client_sendto (user_interface, "fty-alert-list", RFC_ALERTS_LIST_SUBJECT, NULL, 5000, &send) != 0) {
         zmsg_destroy (&send);
@@ -792,7 +824,12 @@ test_check_result (const char *state, zlistx_t *expected, zmsg_t **reply_p, int 
     zmsg_t *reply = *reply_p;
     // check leading protocol frames (strings)
     char *part = zmsg_popstr (reply);
-    assert (streq (part, "LIST"));
+    assert (streq (part, "LIST") || streq (part, "LIST_EX"));
+    if (streq (part, "LIST_EX")) {
+        char *correlation_id = zmsg_popstr (reply);
+        assert (streq (correlation_id, "1234"));
+        free (correlation_id);
+    }
     free (part);
     part = NULL;
     part = zmsg_popstr (reply);
@@ -1047,20 +1084,23 @@ fty_alert_list_server_test (bool verb) {
     alert = alert_new ("Threshold", "ŽlUťOUčKý kůň супер", "RESOLVED", "high", "description", 4, &actions5, 0);
     test_alert_publish (producer, consumer, testAlerts, &alert);
 
-    reply = test_request_alerts_list (ui, "ALL");
-    test_check_result ("ALL", testAlerts, &reply, 0);
+    for (bool ex : { false, true }) {
+        // exercise LIST_EX a bit
+        reply = test_request_alerts_list (ui, "ALL", ex);
+        test_check_result ("ALL", testAlerts, &reply, 0);
 
-    reply = test_request_alerts_list (ui, "ALL-ACTIVE");
-    test_check_result ("ALL-ACTIVE", testAlerts, &reply, 0);
+        reply = test_request_alerts_list (ui, "ALL-ACTIVE", ex);
+        test_check_result ("ALL-ACTIVE", testAlerts, &reply, 0);
 
-    reply = test_request_alerts_list (ui, "RESOLVED");
-    test_check_result ("RESOLVED", testAlerts, &reply, 0);
+        reply = test_request_alerts_list (ui, "RESOLVED", ex);
+        test_check_result ("RESOLVED", testAlerts, &reply, 0);
 
-    reply = test_request_alerts_list (ui, "ACTIVE");
-    test_check_result ("ACTIVE", testAlerts, &reply, 0);
+        reply = test_request_alerts_list (ui, "ACTIVE", ex);
+        test_check_result ("ACTIVE", testAlerts, &reply, 0);
 
-    reply = test_request_alerts_list (ui, "ACK-SILENCE");
-    test_check_result ("ACK-SILENCE", testAlerts, &reply, 0);
+        reply = test_request_alerts_list (ui, "ACK-SILENCE", ex);
+        test_check_result ("ACK-SILENCE", testAlerts, &reply, 0);
+    }
 
     // change state (rfc-alerts-acknowledge)
     test_request_alerts_acknowledge (ui, consumer, "Threshold", "epdu", "ACK-WIP", testAlerts, 0);
