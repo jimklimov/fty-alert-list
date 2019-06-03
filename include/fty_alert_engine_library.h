@@ -91,6 +91,8 @@ typedef struct _fty_alert_actions_t fty_alert_actions_t;
 #ifdef FTY_ALERT_ENGINE_BUILD_DRAFT_API
 typedef struct _alert_t alert_t;
 #define ALERT_T_DEFINED
+typedef struct _alert_list_t alert_list_t;
+#define ALERT_LIST_T_DEFINED
 #endif // FTY_ALERT_ENGINE_BUILD_DRAFT_API
 
 

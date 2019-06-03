@@ -12,7 +12,8 @@ include_HEADERS = \
 
 if ENABLE_DRAFTS
 include_HEADERS += \
-    alert.h
+    alert.h \
+    alert_list.h
 
 endif
 

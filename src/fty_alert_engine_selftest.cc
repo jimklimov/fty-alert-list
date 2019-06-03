@@ -47,6 +47,7 @@ all_tests [] = {
 #ifdef FTY_ALERT_ENGINE_BUILD_DRAFT_API
 // Tests for draft public classes:
     { "alert", alert_test, false, true, NULL },
+    { "alert_list", alert_list_test, false, true, NULL },
 #endif // FTY_ALERT_ENGINE_BUILD_DRAFT_API
 #ifdef FTY_ALERT_ENGINE_BUILD_DRAFT_API
 // Tests for stable/draft private classes:

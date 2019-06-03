@@ -29,7 +29,8 @@ src_libfty_alert_engine_la_SOURCES = \
 
 if ENABLE_DRAFTS
 src_libfty_alert_engine_la_SOURCES += \
-    src/alert.cc
+    src/alert.cc \
+    src/alert_list.cc
 
 endif
 

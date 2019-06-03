@@ -13,6 +13,8 @@
 # Ignore the source doc texts generated from program sources
 alert.txt
 alert.doc
+alert_list.txt
+alert_list.doc
 utils.txt
 utils.doc
 autoconfig.txt

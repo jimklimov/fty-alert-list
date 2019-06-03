@@ -154,6 +154,7 @@
         repository = "https://github.com/42ity/fty-shm.git"/>
 
     <class name = "alert">Alert representation</class>
+    <class name = "alert_list">Actor to serve REST API requests about alerts</class>
     <class name = "metriclist" private = "1" selftest = "0">MetricList</class>
     <class name = "alertconfiguration" private = "1">alertconfiguration</class>
     <class name = "luarule" private = "1" selftest = "0">luaRule</class>
