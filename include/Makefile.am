@@ -10,6 +10,11 @@ include_HEADERS = \
     fty_alert_actions.h \
     fty_alert_engine_library.h
 
+if ENABLE_DRAFTS
+include_HEADERS += \
+    alert.h
+
+endif
 
 
 ################################################################################

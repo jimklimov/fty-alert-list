@@ -87,6 +87,11 @@ typedef struct _fty_alert_engine_server_t fty_alert_engine_server_t;
 #define FTY_ALERT_ENGINE_SERVER_T_DEFINED
 typedef struct _fty_alert_actions_t fty_alert_actions_t;
 #define FTY_ALERT_ACTIONS_T_DEFINED
+//  Draft classes are by default not built in stable releases
+#ifdef FTY_ALERT_ENGINE_BUILD_DRAFT_API
+typedef struct _alert_t alert_t;
+#define ALERT_T_DEFINED
+#endif // FTY_ALERT_ENGINE_BUILD_DRAFT_API
 
 
 //  Public classes, each with its own header file
