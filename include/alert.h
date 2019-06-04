@@ -29,16 +29,15 @@
 //  @interface
 class Alert {
     public:
-        explicit Alert (std::string id, std::map<std::string, std::map<std::string,std::vector<std::string>>> results)
-        {
-            m_Id = id;
-            m_Results = results;
-            m_State = RESOLVED;
-            m_Outcome = "OK";
-            m_Ctime = 0;
-            m_Mtime = 0;
-            m_Ttl = std::numeric_limits<uint64_t>::max ();
-        }
+        explicit Alert (std::string id, std::map<std::string, std::map<std::string,std::vector<std::string>>> results):
+            m_Id (id),
+            m_Results (results),
+            m_State (RESOLVED),
+            m_Outcome ("OK"),
+            m_Ctime (0),
+            m_Mtime (0),
+            m_Ttl (std::numeric_limits<uint64_t>::max ())
+        {}
 
         std::string id () { return m_Id; }
         void setResults (std::map<std::string, std::map<std::string, std::vector<std::string>>> results)
@@ -58,7 +57,7 @@ class Alert {
         void overwrite (Rule rule);
         void update (fty_proto_t *msg);
         void cleanup ();
-        int switch_state (std::string state_str);
+        int switchState (std::string state_str);
         zmsg_t *toFtyProto ();
     private:
         enum AlertState : uint8_t

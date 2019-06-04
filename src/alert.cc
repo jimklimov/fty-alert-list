@@ -32,6 +32,10 @@
 void
 Alert::update (fty_proto_t *msg)
 {
+    if (fty_proto_id (msg) != FTY_PROTO_ALERT) {
+        std::string msg ("Wrong fty-proto type");
+        throw std::runtime_error (msg);
+    }
     std::string outcome = fty_proto_aux_string (msg, "outcome", "OK");
     m_Outcome = outcome;
     if (m_Ctime == 0)
@@ -45,6 +49,10 @@ Alert::update (fty_proto_t *msg)
 void
 Alert::overwrite (fty_proto_t *msg)
 {
+    if (fty_proto_id (msg) != FTY_PROTO_ALERT) {
+        std::string msg ("Wrong fty-proto type");
+        throw std::runtime_error (msg);
+    }
     if (!isAckState (m_State))
         m_State = StringToAlertState (fty_proto_state (msg));
     m_Ctime = fty_proto_time (msg);
@@ -71,13 +79,16 @@ Alert::cleanup ()
 {
     uint64_t now = zclock_mono ()/1000;
     m_State = RESOLVED;
-    m_Severity = "OK";
+    m_Outcome = "OK";
     m_Ctime = now;
     m_Mtime = now;
+    m_Severity.clear ();
+    m_Description.clear ();
+    m_Actions.clear ();
 }
 
 int
-Alert::switch_state (std::string state_str) {
+Alert::switchState (std::string state_str) {
     if (state_str == "RESOLVED") {
         // allow this transition always
         m_State = RESOLVED;
