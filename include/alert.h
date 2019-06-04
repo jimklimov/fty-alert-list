@@ -65,6 +65,7 @@ class Alert {
                 std::string logical_asset_ename,
                 std::string normal_state,
                 std::string port);
+        zmsg_t *StaleToFtyProto ();
         zmsg_t *TriggeredToFtyProto ();
     private:
         enum AlertState : uint8_t

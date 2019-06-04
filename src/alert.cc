@@ -205,6 +205,29 @@ Alert::toFtyProto (
 }
 
 zmsg_t *
+Alert::StaleToFtyProto()
+{
+    zhash_t *aux = zhash_new ();
+    zlist_t *actions = zlist_new ();
+
+    int sep = m_Id.find ('@');
+    std::string rule = m_Id.substr (0, sep-1);
+    std::string name = m_Id.substr (sep+1);
+
+    zmsg_t *tmp = fty_proto_encode_alert (
+            aux,
+            m_Mtime,
+            m_Ttl,
+            rule.c_str (),
+            name.c_str (),
+            AlertStateToString (m_State).c_str (),
+            "",
+            "",
+            actions
+            );
+}
+
+zmsg_t *
 Alert::TriggeredToFtyProto()
 {
     zhash_t *aux = zhash_new ();
