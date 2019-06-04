@@ -81,9 +81,9 @@ class BasicAsset {
         std::string getTypeString () const { return typeToString (type_subtype_.first); };
         Subtype getSubtype () const { return type_subtype_.second; };
         std::string getSubtypeString () const { return subtypeToString (type_subtype_.second); };
-        void setStatus (const std::string &status) { status_ = stringToStatus (status); };
-        void setType (const std::string &type) { type_subtype_.first = stringToType (type); };
-        void setSubtype (const std::string &subtype) { type_subtype_.second = stringToSubtype (subtype); };
+        void setStatus (const std::string status) { status_ = stringToStatus (status); };
+        void setType (const std::string type) { type_subtype_.first = stringToType (type); };
+        void setSubtype (const std::string subtype) { type_subtype_.second = stringToSubtype (subtype); };
 };
 
 /// extends basic asset with location and user identification and priority
@@ -118,10 +118,10 @@ class ExtendedAsset : public BasicAsset {
         std::string getParentId () const { return parent_id_; };
         std::string getPriorityString () const { return std::string ("P") + std::to_string (priority_); };
         int getPriority () const { return priority_; };
-        void setName (const std::string &name) { name_ = name; };
-        void setParentId (const std::string &parent_id) { parent_id_ = parent_id; };
+        void setName (const std::string name) { name_ = name; };
+        void setParentId (const std::string parent_id) { parent_id_ = parent_id; };
         void setPriority (int priority) { priority_ = priority; };
-        void setPriority (const std::string &priority);
+        void setPriority (const std::string priority);
 };
 
 /// provide full details about the asset without specifying asset type
