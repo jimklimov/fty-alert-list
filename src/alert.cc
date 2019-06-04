@@ -29,6 +29,38 @@
 #include "alert.h"
 #include "fty_alert_engine_classes.h"
 
+std::string
+s_replace_tokens (
+        std::string desc,
+        std::string severity,
+        std::string name,
+        std::string ename,
+        std::string logical_asset,
+        std::string logical_asset_ename,
+        std::string normal_state,
+        std::string port)
+{
+    std::string rule_result = severity;
+    std::transform (rule_result.begin(), rule_result.end(), rule_result.begin(), ::tolower);
+
+    std::vector<std::string> patterns = {"__severity__", "__name__", "__ename__", "__logicalasset_iname__", "__logicalasset__", "__normalstate__", "__port__", "__rule_result__"};
+    std::vector<std::string> replacements = {severity, name, ename, logical_asset, logical_asset_ename, normal_state, port, rule_result};
+
+    std::string result = desc;
+    int i = 0;
+    for (auto &p : patterns)
+    {
+        size_t pos = 0;
+        while ((pos = result.find (p, pos)) != std::string::npos){
+            result.replace (pos, p.length(), replacements.at (i));
+            pos += replacements.at (i).length ();
+        }
+        ++i;
+    }
+
+    return result;
+}
+
 void
 Alert::update (fty_proto_t *msg)
 {
@@ -127,7 +159,12 @@ Alert::switchState (std::string state_str) {
 }
 
 zmsg_t *
-Alert::toFtyProto()
+Alert::toFtyProto (
+        std::string ename,
+        std::string logical_asset,
+        std::string logical_asset_ename,
+        std::string normal_state,
+        std::string port)
 {
     zhash_t *aux = zhash_new ();
     zhash_insert (aux, "ctime", (void *) m_Ctime);
@@ -142,6 +179,16 @@ Alert::toFtyProto()
     std::string rule = m_Id.substr (0, sep-1);
     std::string name = m_Id.substr (sep+1);
 
+    std::string description = s_replace_tokens (
+            m_Description,
+            m_Severity,
+            name,
+            ename,
+            logical_asset,
+            logical_asset_ename,
+            normal_state,
+            port);
+
     zmsg_t *tmp = fty_proto_encode_alert (
             aux,
             m_Mtime,
@@ -150,7 +197,7 @@ Alert::toFtyProto()
             name.c_str (),
             AlertStateToString (m_State).c_str (),
             m_Severity.c_str (),
-            m_Description.c_str (),
+            description.c_str (),
             actions
             );
 

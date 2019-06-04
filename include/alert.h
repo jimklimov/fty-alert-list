@@ -58,7 +58,13 @@ class Alert {
         void update (fty_proto_t *msg);
         void cleanup ();
         int switchState (std::string state_str);
-        zmsg_t *toFtyProto ();
+        zmsg_t *
+        toFtyProto (
+                std::string ename,
+                std::string logical_asset,
+                std::string logical_asset_ename,
+                std::string normal_state,
+                std::string port);
         zmsg_t *TriggeredToFtyProto ();
     private:
         enum AlertState : uint8_t
