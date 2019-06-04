@@ -248,7 +248,29 @@ s_process_mailbox (AlertList alert_list_server, zmsg_t *msg)
             zmsg_addstr (reply, filter.c_str ());
 
             for (auto alert : filtered_alerts) {
-                fty_proto_t *fty_alert = alert.toFtyProto ();
+                int sep = alert.id().find ('@');
+                std::string name = alert.id().substr (sep+1);
+                FullAsset asset = m_Asset_cache.getAsset (name);
+
+                std::string ename = asset.getName ();
+                std::string logical_assset_name(), logical_asset_ename(), normal_state(), port();
+                if (asset.getTypeString () == "device" && asset.getSubtypeString () == "sensorgpio") {
+                    logical_asset_name = asset.getAuxItem ("logical_asset");
+                    if (logical_asset_name.empty ())
+                        logical_asset_name = asset.getParentId ();
+                    FullAsset logical_asset = m_Asset_cache.getAsset (logical_asset_name);
+                    logical_asset_ename = logical_asset.getName ();
+                    normal_state = asset.getExtItem ("normal_state");
+                    port = asset.getExtItem ("port");
+                }
+
+                fty_proto_t *fty_alert = alert.toFtyProto (
+                        ename,
+                        logical_asset_name,
+                        logical_asset_ename,
+                        normal_state,
+                        port
+                        );
                 zmsg_t *fty_alert_encoded = fty_proto_encode (fty_alert);
                 zmsg_addmsg (reply, fty_alert_encoded);
             }
