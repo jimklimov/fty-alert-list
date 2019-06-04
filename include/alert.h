@@ -59,6 +59,7 @@ class Alert {
         void cleanup ();
         int switchState (std::string state_str);
         zmsg_t *toFtyProto ();
+        zmsg_t *TriggeredToFtyProto ();
     private:
         enum AlertState : uint8_t
         {
