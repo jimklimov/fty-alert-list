@@ -26,56 +26,6 @@
 #include "rule.h"
 #include "fty_proto.h"
 
-enum AlertState : uint8_t
-{
-    RESOLVED = 0,
-    ACTIVE,
-    ACKIGNORE,
-    ACKPAUSE,
-    ACKSILENCE,
-    ACKWIP
-};
-
-std::string AlertStateToString (AlertState state)
-{
-    std::string tmp;
-    switch (state) {
-        case RESOLVED: tmp = "RESOLVED"; break;
-        case ACTIVE: tmp = "ACTIVE"; break;
-        case ACKIGNORE: tmp = "ACK-IGNORE"; break;
-        case ACKPAUSE: tmp = "ACK-PAUSE"; break;
-        case ACKSILENCE: tmp = "ACK-SILENCE"; break;
-        case ACKWIP: tmp = "ACK-WIP"; break;
-        default: break; // return empty string
-    }
-
-    return tmp;
-}
-
-AlertState StringToAlertState (std::string state_str)
-{
-    AlertState state;
-    if (state_str == "RESOLVED")
-        state = RESOLVED;
-    else if (state_str == "ACTIVE")
-        state = ACTIVE;
-    else if (state_str == "ACK-IGNORE")
-        state = ACKIGNORE;
-    else if (state_str == "ACK-PAUSE")
-        state = ACKPAUSE;
-    else if (state_str == "ACK-SILENCE")
-        state = ACKSILENCE;
-    else if (state_str == "ACK-WIP")
-        state = ACKWIP;
-
-    return state;
-}
-
-bool isAckState (AlertState state)
-{
-    return (state == ACKIGNORE || state == ACKPAUSE || state == ACKSILENCE || state == ACKWIP);
-}
-
 //  @interface
 class Alert {
     public:
@@ -111,6 +61,56 @@ class Alert {
         int switch_state (std::string state_str);
         zmsg_t *toFtyProto ();
     private:
+        enum AlertState : uint8_t
+        {
+            RESOLVED = 0,
+            ACTIVE,
+            ACKIGNORE,
+            ACKPAUSE,
+            ACKSILENCE,
+            ACKWIP
+        };
+
+        std::string AlertStateToString (AlertState state)
+        {
+            std::string tmp;
+            switch (state) {
+                case RESOLVED: tmp = "RESOLVED"; break;
+                case ACTIVE: tmp = "ACTIVE"; break;
+                case ACKIGNORE: tmp = "ACK-IGNORE"; break;
+                case ACKPAUSE: tmp = "ACK-PAUSE"; break;
+                case ACKSILENCE: tmp = "ACK-SILENCE"; break;
+                case ACKWIP: tmp = "ACK-WIP"; break;
+                default: break; // return empty string
+            }
+
+            return tmp;
+        }
+
+        AlertState StringToAlertState (std::string state_str)
+        {
+            AlertState state;
+            if (state_str == "RESOLVED")
+                state = RESOLVED;
+            else if (state_str == "ACTIVE")
+                state = ACTIVE;
+            else if (state_str == "ACK-IGNORE")
+                state = ACKIGNORE;
+            else if (state_str == "ACK-PAUSE")
+                state = ACKPAUSE;
+            else if (state_str == "ACK-SILENCE")
+                state = ACKSILENCE;
+            else if (state_str == "ACK-WIP")
+                state = ACKWIP;
+
+            return state;
+        }
+
+        bool isAckState (AlertState state)
+        {
+            return (state == ACKIGNORE || state == ACKPAUSE || state == ACKSILENCE || state == ACKWIP);
+        }
+
         std::string m_Id;
         std::map<std::string, std::map<std::string,std::vector<std::string>>> m_Results;
         AlertState m_State;
