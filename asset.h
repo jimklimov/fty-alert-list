@@ -5,6 +5,8 @@
 #include <map>
 #include <string>
 #include <cstdint>
+#include "fty_proto.h"
+#include "fty_common_mlm.h"
 
 /*
  * \brief Class that provides C++ interface for assets
@@ -62,6 +64,17 @@ class BasicAsset {
         BasicAsset (std::string id, std::string status, std::string type, std::string subtype) :
                 id_(id), status_(stringToStatus (status)),
                 type_subtype_(std::make_pair (stringToType (type), stringToSubtype (subtype))) { };
+        BasicAsset (fty_proto_t *msg)
+        {
+            if (fty_proto_id (msg) != FTY_PROTO_ASSET)
+                throw std::invalid_argument ("Wrong fty-proto type");
+            id_ = fty_proto_name (msg);
+            std::string status_str = fty_proto_aux_string (msg, "status", "active");
+            status_ = stringToStatus (status_str);
+            std::string type_str = fty_proto_aux_string (msg, "type", "");
+            std::string subtype_str = fty_proto_aux_string (msg, "subtype", "");
+            type_subtype_ = std::make_pair (stringToType (type_str), stringToSubtype (subtype_str));
+        }
         BasicAsset () = delete;
         BasicAsset (const BasicAsset & asset) = default;
         BasicAsset (BasicAsset && asset) = default;
@@ -105,6 +118,12 @@ class ExtendedAsset : public BasicAsset {
                 parent_id_(parent_id) {
                 setPriority (priority);
             };
+        ExtendedAsset (fty_proto_t *msg): BasicAsset (msg)
+        {
+            name_ = fty_proto_ext_string (msg, "name", fty_proto_name (msg));
+            parent_id_ = fty_proto_aux_string (msg, "parent_name.1", "");
+            priority_ = fty_proto_aux_number (msg, "priority", 5);
+        }
         ExtendedAsset () = delete;
         ExtendedAsset (const ExtendedAsset & asset) = default;
         ExtendedAsset (ExtendedAsset && asset) = default;
@@ -141,6 +160,14 @@ class FullAsset : public ExtendedAsset {
         FullAsset (std::string id, std::string status, std::string type, std::string subtype, std::string name,
                 std::string parent_id, std::string priority, HashMap aux, HashMap ext) :
                 ExtendedAsset (id, status, type, subtype, name, parent_id, priority), aux_(aux), ext_(ext) { };
+        FullAsset (fty_proto_t *msg): ExtendedAsset (msg)
+        {
+            // get our own copies since zhash_to_map doesn't do copying
+            zhash_t *aux = fty_proto_get_aux (msg);
+            zhash_t *ext = fty_proto_get_ext (msg);
+            aux_ = MlmUtils::zhash_to_map (aux);
+            ext_ = MlmUtils::zhash_to_map (ext);
+        }
         FullAsset () = delete;
         FullAsset (const FullAsset & asset) = default;
         FullAsset (FullAsset && asset) = default;
