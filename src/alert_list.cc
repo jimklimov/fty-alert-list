@@ -48,7 +48,6 @@ AlertList::alert_cache_clean ()
             }
         }
     }
-    //TODO: should we send the actions msg here?
 }
 
 std::set<Alert>
@@ -70,9 +69,41 @@ AlertList::handle_rule (std::string rule)
     Rule deserialized_rule;
     int pos = m_Alert_cache.find (deserialized_rule.id ());
     // new rule
-    if ( pos == std::npos) {
-        Alert rule_alert (deserialized_rule.id(), deserialized_rule.results());
-        m_Alert_cache.insert (rule_alert);
+    if (pos == std::npos) {
+        int sep = m_Id.find ('@');
+        std::string name = m_Id.substr (sep+1);
+        if (m_Asset_cache.find (name) == std::npos) {
+            // ask FTY_ASSET_AGENT for ASSET_DETAILS
+            zuuid_t *uuid = zuuid_new ();
+            mlm_client_sendtox (m_Mailbox_client, FTY_ASSET_AGENT_ADDRESS, "ASSET_DETAIL", "GET",
+                    zuuid_str_canonical (uuid), name.c_str (), NULL);
+            void *which = zpoller_wait (m_Mailbox_client, 5);
+            if (which == NULL) {
+                log_warning("no response from ASSET AGENT, ignoring this alert.");
+            } else {
+                zmsg_t *reply_msg = mlm_client_recv (m_Mailbox_client);
+                char *rcv_uuid = zmsg_popstr (reply_msg);
+                if (0 == strcmp (rcv_uuid, zuuid_str_canonical (uuid)) && fty_proto_is (reply_msg)) {
+                    fty_proto_t *reply_proto_msg = fty_proto_decode (&reply_msg);
+                    if (fty_proto_id (reply_proto_msg) != FTY_PROTO_ASSET) {
+                        log_warning("unexpected response from ASSET AGENT, ignoring this alert.");
+                    }
+                    log_debug("received alert for %s, asked for it and was successful", name.c_str ());
+                    Alert rule_alert (deserialized_rule.id(), deserialized_rule.results());
+                    m_Alert_cache.insert (rule_alert);
+                }
+                else {
+                    log_warning("received alert for unknown asset, ignoring.");
+                    if (reply_msg) {
+                        zmsg_destroy(&reply_msg);
+                    }
+                    // msg will be destroyed by caller
+                }
+                zstr_free(&rcv_uuid);
+            }
+            zuuid_destroy (&uuid);
+
+        }
     }
     // update of old rule
     else {
@@ -162,14 +193,6 @@ AlertList::handle_alert (fty_proto_t *fty_new_alert, std::string subject)
             }
             else {
                 m_Last_send [new_alert_id] = zclock_mono ()/1000;
-            }
-
-            zmsg_t *actions_msg = zmsg_new ();
-            zmsg_addstr (actions_msg, "ACT");
-            int rv = mlm_client_sendto (m_Mailbox_client, , ,,&actions_msg);
-            if (rv == -1) {
-                log_error ("mlm_client_sendto to '%s' failed", );
-                zmsg_destroy (&actions_msg);
             }
         }
         fty_proto_destroy (&fty_new_alert);
