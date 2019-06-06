@@ -91,6 +91,8 @@ AlertList::handle_rule (std::string rule)
                     log_debug("received alert for %s, asked for it and was successful", name.c_str ());
                     Alert rule_alert (deserialized_rule.id(), deserialized_rule.results());
                     m_Alert_cache.insert (rule_alert);
+                    std::weak_ptr<Alert> rule_alert_ptr = &rule_alert;
+                    m_Asset_alerts.get [name].insert (rule_alert_ptr);
                 }
                 else {
                     log_warning("received alert for unknown asset, ignoring.");
@@ -102,8 +104,8 @@ AlertList::handle_rule (std::string rule)
                 zstr_free(&rcv_uuid);
             }
             zuuid_destroy (&uuid);
-
         }
+        m_Asset_alerts.insert
     }
     // update of old rule
     else {
@@ -235,7 +237,7 @@ s_process_mailbox (AlertList alert_list_server, zmsg_t *msg)
     std::string subject = mlm_client_subject (alert_list_server.m_Mailbox_client);
     std::string cmd = zmsg_popstr (msg);
     std::string correlation_id = zmsg_popstr (msg);
-    if (cmd == "LIST") {
+    if (cmd == "LISTALL" || cmd == "LIST") {
         if (subject != RFC_ALERTS_LIST_SUBJECT) {
             log_error ("Expected subject %s,  got %s", RFC_ALERTS_LIST_SUBJECT, subject.c_str ());
             zmsg_addstr (reply, "ERROR");
@@ -265,36 +267,73 @@ s_process_mailbox (AlertList alert_list_server, zmsg_t *msg)
                     ( [filter](AlertState state) {return AlertStateToString (state) == filter } );
             }
 
-            zmsg_addstr (reply, "LIST");
-            zmsg_addstr (reply, correlation_id.c_str ());
-            zmsg_addstr (reply, filter.c_str ());
+            if (cmd == "LISTALL") {
+                zmsg_addstr (reply, "LISTALL");
+                zmsg_addstr (reply, correlation_id.c_str ());
+                zmsg_addstr (reply, filter.c_str ());
 
-            for (auto alert : filtered_alerts) {
-                int sep = alert.id().find ('@');
-                std::string name = alert.id().substr (sep+1);
-                FullAsset asset = m_Asset_cache.getAsset (name);
+                for (auto alert : filtered_alerts) {
+                    int sep = alert.id().find ('@');
+                    std::string name = alert.id().substr (sep+1);
+                    FullAsset asset = m_Asset_cache.getAsset (name);
 
-                std::string ename = asset.getName ();
-                std::string logical_assset_name(), logical_asset_ename(), normal_state(), port();
-                if (asset.getTypeString () == "device" && asset.getSubtypeString () == "sensorgpio") {
-                    logical_asset_name = asset.getAuxItem ("logical_asset");
-                    if (logical_asset_name.empty ())
-                        logical_asset_name = asset.getParentId ();
-                    FullAsset logical_asset = m_Asset_cache.getAsset (logical_asset_name);
-                    logical_asset_ename = logical_asset.getName ();
-                    normal_state = asset.getExtItem ("normal_state");
-                    port = asset.getExtItem ("port");
+                    std::string ename = asset.getName ();
+                    std::string logical_assset_name(), logical_asset_ename(), normal_state(), port();
+                    if (asset.getTypeString () == "device" && asset.getSubtypeString () == "sensorgpio") {
+                        logical_asset_name = asset.getAuxItem ("logical_asset");
+                        if (logical_asset_name.empty ())
+                            logical_asset_name = asset.getParentId ();
+                        FullAsset logical_asset = m_Asset_cache.getAsset (logical_asset_name);
+                        logical_asset_ename = logical_asset.getName ();
+                        normal_state = asset.getExtItem ("normal_state");
+                        port = asset.getExtItem ("port");
+                    }
+
+                    fty_proto_t *fty_alert = alert.toFtyProto (
+                            ename,
+                            logical_asset_name,
+                            logical_asset_ename,
+                            normal_state,
+                            port
+                            );
+                    zmsg_t *fty_alert_encoded = fty_proto_encode (fty_alert);
+                    zmsg_addmsg (reply, fty_alert_encoded);
                 }
+            }
 
-                fty_proto_t *fty_alert = alert.toFtyProto (
-                        ename,
-                        logical_asset_name,
-                        logical_asset_ename,
-                        normal_state,
-                        port
-                        );
-                zmsg_t *fty_alert_encoded = fty_proto_encode (fty_alert);
-                zmsg_addmsg (reply, fty_alert_encoded);
+            if (cmd == "LIST") {
+                char *name = zmsg_popstr (msg);
+                while (name) {
+                    std::vector<std::weak_ptr<Alert>> asset_alerts = m_Asset_alerts.get [name];
+                    for (std::weak_ptr<Alert> alert : asset_alerts) {
+                        std::shared_ptr<Alert> alert_ptr = std::make_shared<Alert>(alert);
+                        FullAsset asset = m_Asset_cache.getAsset (name);
+
+                        std::string ename = asset.getName ();
+                        std::string logical_assset_name(), logical_asset_ename(), normal_state(), port();
+                        if (asset.getTypeString () == "device" && asset.getSubtypeString () == "sensorgpio") {
+                            logical_asset_name = asset.getAuxItem ("logical_asset");
+                            if (logical_asset_name.empty ())
+                                logical_asset_name = asset.getParentId ();
+                            FullAsset logical_asset = m_Asset_cache.getAsset (logical_asset_name);
+                            logical_asset_ename = logical_asset.getName ();
+                            normal_state = asset.getExtItem ("normal_state");
+                            port = asset.getExtItem ("port");
+                        }
+
+                        fty_proto_t *fty_alert = *alert_ptr.toFtyProto (
+                                ename,
+                                logical_asset_name,
+                                logical_asset_ename,
+                                normal_state,
+                                port
+                                );
+                        zmsg_t *fty_alert_encoded = fty_proto_encode (fty_alert);
+                        zmsg_addmsg (reply, fty_alert_encoded);
+                    }
+                    zstr_free (&name);
+                    name = zmsg_popstr (msg);
+                }
             }
         }
         else {

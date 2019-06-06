@@ -50,6 +50,7 @@ class AlertList {
         mlm_client_t *m_Stream_client;
         FullAssetDatabase m_Asset_cache;
         std::map<std::string, Alert> m_Alert_cache;
+        std::map<std::string, std::vector<std::weak_ptr<Alert>>> m_Asset_alerts;
         std::map<std::string, uint64_t> m_Last_send;
 }
 //  @end
