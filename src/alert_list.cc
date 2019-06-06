@@ -240,7 +240,6 @@ s_process_mailbox (AlertList alert_list_server, zmsg_t *msg)
             log_error ("Expected subject %s,  got %s", RFC_ALERTS_LIST_SUBJECT, subject.c_str ());
             zmsg_addstr (reply, "ERROR");
             zmsg_addstr (reply, correlation_id.c_str ());
-            zmsg_addstr (reply, filter.c_str ());
             zmsg_addstr (reply, "WRONG_SUBJECT");
         }
 
@@ -302,7 +301,6 @@ s_process_mailbox (AlertList alert_list_server, zmsg_t *msg)
             log_error ("Filter %s not allowed for alerts", filter.c_str ());
             zmsg_addstr (reply, "ERROR");
             zmsg_addstr (reply, correlation_id.c_str ());
-            zmsg_addstr (reply, filter.c_str ());
             zmsg_addstr (reply, "NOT_FOUND");
         }
     }
@@ -339,7 +337,7 @@ s_process_mailbox (AlertList alert_list_server, zmsg_t *msg)
             zmsg_addstr (reply, "BAD_STATE");
         }
         else {
-            zmsg_addstr (reply, "ADD");
+            zmsg_addstr (reply, "CHANGESTATE");
             zmsg_addstr (reply, correlation_id.c_str ());
             zmsg_addstr (reply, alert_id().c_str ());
         }
@@ -441,6 +439,13 @@ alert_list_test (bool verbose)
     //  @selftest
     //  Simple create/destroy test
     AlertList alert_list_server();
+
+    // send asset - DC
+    // add rule
+    // send ACTIVE alert
+    // LIST ALL
+    // send RESOLVED alert
+    // LIST ALL
     //  @end
     printf ("OK\n");
 }
