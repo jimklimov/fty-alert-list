@@ -67,6 +67,7 @@ class Alert {
                 std::string port);
         zmsg_t *StaleToFtyProto ();
         zmsg_t *TriggeredToFtyProto ();
+        friend void alert_test (bool verbose);
     private:
         enum AlertState : uint8_t
         {
