@@ -39,20 +39,12 @@ typedef struct {
 
 static test_item_t
 all_tests [] = {
-// Tests for stable public classes:
-    { "utils", utils_test, true, true, NULL },
-    { "autoconfig", autoconfig_test, true, true, NULL },
-    { "fty_alert_engine_server", fty_alert_engine_server_test, true, true, NULL },
-    { "fty_alert_actions", fty_alert_actions_test, true, true, NULL },
 #ifdef FTY_ALERT_ENGINE_BUILD_DRAFT_API
 // Tests for draft public classes:
     { "alert", alert_test, false, true, NULL },
-#endif // FTY_ALERT_ENGINE_BUILD_DRAFT_API
-#ifdef FTY_ALERT_ENGINE_BUILD_DRAFT_API
-// Tests for stable/draft private classes:
-// Now built only with --enable-drafts, so even stable builds are hidden behind the flag
-    { "alertconfiguration", NULL, true, false, "alertconfiguration_test" },
-    { "private_classes", NULL, false, false, "$ALL" }, // compat option for older projects
+    { "asset", asset_test, false, true, NULL },
+    { "rule", rule_test, false, true, NULL },
+    { "extended_rules", extended_rules_test, false, true, NULL },
 #endif // FTY_ALERT_ENGINE_BUILD_DRAFT_API
     {NULL, NULL, 0, 0, NULL}          //  Sentinel
 };

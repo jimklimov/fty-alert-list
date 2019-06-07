@@ -4,15 +4,16 @@
 ################################################################################
 include_HEADERS = \
     fty_alert_engine.h \
-    utils.h \
-    autoconfig.h \
-    fty_alert_engine_server.h \
-    fty_alert_actions.h \
+    asset_database.h \
+    rule_factory.h \
     fty_alert_engine_library.h
 
 if ENABLE_DRAFTS
 include_HEADERS += \
-    alert.h
+    alert.h \
+    asset.h \
+    rule.h \
+    extended_rules.h
 
 endif
 

@@ -73,9 +73,9 @@ Alert::update (fty_proto_t *msg)
     if (m_Ctime == 0)
         m_Ctime = fty_proto_time (msg);
     m_Ttl = fty_proto_ttl (msg);
-    m_Severity = m_Results[outcome]["severity"][0];
-    m_Description = m_Results[outcome]["description"][0];
-    m_Actions = m_Results[outcome]["actions"];
+    m_Severity = m_Results[outcome].severity_;
+    m_Description = m_Results[outcome].description_;
+    m_Actions = m_Results[outcome].actions_;
 }
 
 void
@@ -92,10 +92,10 @@ Alert::overwrite (fty_proto_t *msg)
 }
 
 void
-Alert::overwrite (Rule rule)
+Alert::overwrite (std::shared_ptr<Rule> rule)
 {
-    m_Id = rule.id ();
-    m_Results = rule.results ();
+    m_Id = rule->getName ();
+    m_Results = rule->getResults ();
     m_State = RESOLVED;
     m_Outcome = "OK";
     m_Ctime = 0;
@@ -279,13 +279,32 @@ alert_test (bool verbose)
     std::string name = "datacenter-3";
 
     // put in proper results
-    std::vector<std::string> severity_critical = {"CRITICAL"};
+    std::vector<std::string> actions = {"EMAIL, SMS"};
+    Rule::Outcome high_critical;
+    high_critical.severity_ = "CRITICAL";
+    high_critical.description_ = "Average temperature in __ename__ is critically high";
+    high_critical.actions_ = actions;
+
+    Rule::Outcome high_warning;
+    high_critical.severity_ = "WARNING";
+    high_critical.description_ = "Average temperature in __ename__ is high";
+    high_critical.actions_ = actions;
+
+    Rule::Outcome low_warning;
+    high_critical.severity_ = "WARNING";
+    high_critical.description_ = "Average temperature in __ename__ is low";
+    high_critical.actions_ = actions;
+
+    Rule::Outcome low_critical;
+    high_critical.severity_ = "CRITICAL";
+    high_critical.description_ = "Average temperature in __ename__ is critically low";
+    high_critical.actions_ = actions;
+    /*std::vector<std::string> severity_critical = {"CRITICAL"};
     std::vector<std::string> severity_warning = {"WARNING"};
     std::vector<std::string> description_high_critical = {"Average temperature in __ename__ is critically high"};
     std::vector<std::string> description_high_warning = {"Average temperature in __ename__ is high"};
     std::vector<std::string> description_low_warning = {"Average temperature in __ename__ is low"};
     std::vector<std::string> description_low_critical = {"Average temperature in __ename__ is critically low"};
-    std::vector<std::string> actions = {"EMAIL, SMS"};
 
     std::map<std::string, std::vector<std::string>> tmp1;
     std::map<std::string, std::vector<std::string>> tmp2;
@@ -307,12 +326,17 @@ alert_test (bool verbose)
     tmp5.insert (std::pair<std::string, std::map<std::string, std::vector<std::string>>> ("HIGH_CRITICAL", tmp1));
     tmp5.insert (std::pair<std::string, std::map<std::string, std::vector<std::string>>> ("HIGH_WARNING", tmp2));
     tmp5.insert (std::pair<std::string, std::map<std::string, std::vector<std::string>>> ("LOW_WARNING", tmp3));
-    tmp5.insert (std::pair<std::string, std::map<std::string, std::vector<std::string>>> ("LOW_CRITICAL", tmp4));
+    tmp5.insert (std::pair<std::string, std::map<std::string, std::vector<std::string>>> ("LOW_CRITICAL", tmp4));*/
+    Rule::ResultsMap tmp;
+    tmp.insert (std::pair<std::string, Rule::Outcome> ("HIGH_CRITICAL", high_critical));
+    tmp.insert (std::pair<std::string, Rule::Outcome> ("HIGH_WARNING", high_warning));
+    tmp.insert (std::pair<std::string, Rule::Outcome> ("LOW_WARNING", low_warning));
+    tmp.insert (std::pair<std::string, Rule::Outcome> ("LOW_CRITICAL", low_critical));
 
     uint64_t now = zclock_time () / 1000;
     // create fty-proto msg
     {
-        Alert alert (rule + "@" + name, tmp5);
+        Alert alert (rule + "@" + name, tmp);
 
         zhash_t *aux = zhash_new ();
         zhash_autofree (aux);
@@ -389,7 +413,7 @@ alert_test (bool verbose)
 
     {
         // create alert2 - triggered
-        Alert alert2 (rule + "@" + name, tmp5);
+        Alert alert2 (rule + "@" + name, tmp);
 
         zhash_t *aux = zhash_new ();
         zhash_autofree (aux);
@@ -422,7 +446,7 @@ alert_test (bool verbose)
 
     {
     // create alert3, overwrite it with a Rule
-    Alert alert3 (rule + "@" + name, tmp5);
+    Alert alert3 (rule + "@" + name, tmp);
     // update it from fty-proto
     // do toFtyProto
     }

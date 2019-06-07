@@ -77,28 +77,34 @@
 #   endif
 #endif
 
+//  Project has no stable classes, so we build the draft API
+#undef  FTY_ALERT_ENGINE_BUILD_DRAFT_API
+#define FTY_ALERT_ENGINE_BUILD_DRAFT_API
+
 //  Opaque class structures to allow forward references
 //  These classes are stable or legacy and built in all releases
-typedef struct _utils_t utils_t;
-#define UTILS_T_DEFINED
-typedef struct _autoconfig_t autoconfig_t;
-#define AUTOCONFIG_T_DEFINED
-typedef struct _fty_alert_engine_server_t fty_alert_engine_server_t;
-#define FTY_ALERT_ENGINE_SERVER_T_DEFINED
-typedef struct _fty_alert_actions_t fty_alert_actions_t;
-#define FTY_ALERT_ACTIONS_T_DEFINED
 //  Draft classes are by default not built in stable releases
 #ifdef FTY_ALERT_ENGINE_BUILD_DRAFT_API
 typedef struct _alert_t alert_t;
 #define ALERT_T_DEFINED
+typedef struct _asset_t asset_t;
+#define ASSET_T_DEFINED
+typedef struct _rule_t rule_t;
+#define RULE_T_DEFINED
+typedef struct _extended_rules_t extended_rules_t;
+#define EXTENDED_RULES_T_DEFINED
 #endif // FTY_ALERT_ENGINE_BUILD_DRAFT_API
 
 
 //  Public classes, each with its own header file
-#include "utils.h"
-#include "autoconfig.h"
-#include "fty_alert_engine_server.h"
-#include "fty_alert_actions.h"
+#include "asset_database.h"
+#include "rule_factory.h"
+#ifdef FTY_ALERT_ENGINE_BUILD_DRAFT_API
+#include "alert.h"
+#include "asset.h"
+#include "rule.h"
+#include "extended_rules.h"
+#endif // FTY_ALERT_ENGINE_BUILD_DRAFT_API
 
 #ifdef FTY_ALERT_ENGINE_BUILD_DRAFT_API
 
