@@ -13,24 +13,15 @@ lib_LTLIBRARIES += src/libfty_alert_engine.la
 pkgconfig_DATA = src/libfty_alert_engine.pc
 
 src_libfty_alert_engine_la_SOURCES = \
-    src/metriclist.cc \
-    src/alertconfiguration.cc \
-    src/luarule.cc \
-    src/purealert.cc \
-    src/rule.cc \
-    src/thresholdrulecomplex.cc \
-    src/utils.cc \
-    src/autoconfig.cc \
-    src/ruleconfigurator.cc \
-    src/templateruleconfigurator.cc \
-    src/fty_alert_engine_server.cc \
-    src/fty_alert_actions.cc \
     src/platform.h
 
 if ENABLE_DRAFTS
 src_libfty_alert_engine_la_SOURCES += \
     src/alert.cc \
-    src/alert_list.cc
+    src/alert_list.cc \
+    src/asset.cc \
+    src/rule.cc \
+    src/extended_rules.cc
 
 endif
 

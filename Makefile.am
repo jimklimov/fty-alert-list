@@ -65,18 +65,6 @@ EXTRA_DIST += \
 endif
 
 EXTRA_DIST += \
-    src/metriclist.h \
-    src/alertconfiguration.h \
-    src/luarule.h \
-    src/purealert.h \
-    src/rule.h \
-    src/thresholdrulecomplex.h \
-    src/ruleconfigurator.h \
-    src/templateruleconfigurator.h \
-    src/normalrule.h \
-    src/thresholdrulesimple.h \
-    src/thresholdruledevice.h \
-    src/regexrule.h \
     README.md \
     src/fty_alert_engine_classes.h
 

@@ -29,7 +29,7 @@
 //  @interface
 class Alert {
     public:
-        explicit Alert (std::string id, std::map<std::string, std::map<std::string,std::vector<std::string>>> results):
+        explicit Alert (std::string id, Rule::ResultsMap results):
             m_Id (id),
             m_Results (results),
             m_State (RESOLVED),
@@ -40,7 +40,7 @@ class Alert {
         {}
 
         std::string id () { return m_Id; }
-        void setResults (std::map<std::string, std::map<std::string, std::vector<std::string>>> results)
+        void setResults (Rule::ResultsMap results)
             { m_Results = results; }
         std::string state () { return AlertStateToString (m_State); }
         uint64_t ctime () { return m_Ctime; }
@@ -54,7 +54,7 @@ class Alert {
         std::vector<std::string> actions () { return m_Actions; }
 
         void overwrite (fty_proto_t *msg);
-        void overwrite (Rule rule);
+        void overwrite (std::shared_ptr<Rule> rule);
         void update (fty_proto_t *msg);
         void cleanup ();
         int switchState (std::string state_str);
@@ -65,7 +65,9 @@ class Alert {
                 std::string logical_asset_ename,
                 std::string normal_state,
                 std::string port);
+        zmsg_t *StaleToFtyProto ();
         zmsg_t *TriggeredToFtyProto ();
+        friend void alert_test (bool verbose);
     private:
         enum AlertState : uint8_t
         {
@@ -118,7 +120,7 @@ class Alert {
         }
 
         std::string m_Id;
-        std::map<std::string, std::map<std::string,std::vector<std::string>>> m_Results;
+        Rule::ResultsMap m_Results;
         AlertState m_State;
         std::string m_Outcome;
         uint64_t m_Ctime;

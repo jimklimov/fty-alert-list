@@ -64,19 +64,27 @@ s_replace_tokens (
 void
 Alert::update (fty_proto_t *msg)
 {
+    if (fty_proto_id (msg) != FTY_PROTO_ALERT) {
+        std::string msg ("Wrong fty-proto type");
+        throw std::runtime_error (msg);
+    }
     std::string outcome = fty_proto_aux_string (msg, "outcome", "OK");
     m_Outcome = outcome;
     if (m_Ctime == 0)
         m_Ctime = fty_proto_time (msg);
     m_Ttl = fty_proto_ttl (msg);
-    m_Severity = m_Results[outcome]["severity"][0];
-    m_Description = m_Results[outcome]["description"][0];
-    m_Actions = m_Results[outcome]["actions"];
+    m_Severity = m_Results[outcome].severity_;
+    m_Description = m_Results[outcome].description_;
+    m_Actions = m_Results[outcome].actions_;
 }
 
 void
 Alert::overwrite (fty_proto_t *msg)
 {
+    if (fty_proto_id (msg) != FTY_PROTO_ALERT) {
+        std::string msg ("Wrong fty-proto type");
+        throw std::runtime_error (msg);
+    }
     if (!isAckState (m_State))
         m_State = StringToAlertState (fty_proto_state (msg));
     m_Ctime = fty_proto_time (msg);
@@ -84,10 +92,10 @@ Alert::overwrite (fty_proto_t *msg)
 }
 
 void
-Alert::overwrite (Rule rule)
+Alert::overwrite (std::shared_ptr<Rule> rule)
 {
-    m_Id = rule.id ();
-    m_Results = rule.results ();
+    m_Id = rule->getName ();
+    m_Results = rule->getResults ();
     m_State = RESOLVED;
     m_Outcome = "OK";
     m_Ctime = 0;
@@ -197,6 +205,29 @@ Alert::toFtyProto (
 }
 
 zmsg_t *
+Alert::StaleToFtyProto()
+{
+    zhash_t *aux = zhash_new ();
+    zlist_t *actions = zlist_new ();
+
+    int sep = m_Id.find ('@');
+    std::string rule = m_Id.substr (0, sep-1);
+    std::string name = m_Id.substr (sep+1);
+
+    zmsg_t *tmp = fty_proto_encode_alert (
+            aux,
+            m_Mtime,
+            m_Ttl,
+            rule.c_str (),
+            name.c_str (),
+            AlertStateToString (m_State).c_str (),
+            "",
+            "",
+            actions
+            );
+}
+
+zmsg_t *
 Alert::TriggeredToFtyProto()
 {
     zhash_t *aux = zhash_new ();
@@ -242,16 +273,183 @@ Alert::TriggeredToFtyProto()
 void
 alert_test (bool verbose)
 {
-    printf (" * alert: ");
-
-    std::vector<std::string> tmp1;
-    std::map<std::string, std::vector<std::string>> tmp2;
-    std::map<std::string, std::map<std::string,std::vector<std::string>>> tmp3;
-    tmp2.insert (std::pair<std::string, std::vector<std::string>> ("foo", tmp1));
-    tmp3.insert (std::pair<std::string, std::map<std::string, std::vector<std::string>>> ("bar", tmp2));
     //  @selftest
-    //  Simple create/destroy test
-    Alert alert ("id", tmp3);
+    printf (" * alert: ");
+    std::string rule = "average.temperature";
+    std::string name = "datacenter-3";
+
+    // put in proper results
+    std::vector<std::string> actions = {"EMAIL, SMS"};
+    Rule::Outcome high_critical;
+    high_critical.severity_ = "CRITICAL";
+    high_critical.description_ = "Average temperature in __ename__ is critically high";
+    high_critical.actions_ = actions;
+
+    Rule::Outcome high_warning;
+    high_critical.severity_ = "WARNING";
+    high_critical.description_ = "Average temperature in __ename__ is high";
+    high_critical.actions_ = actions;
+
+    Rule::Outcome low_warning;
+    high_critical.severity_ = "WARNING";
+    high_critical.description_ = "Average temperature in __ename__ is low";
+    high_critical.actions_ = actions;
+
+    Rule::Outcome low_critical;
+    high_critical.severity_ = "CRITICAL";
+    high_critical.description_ = "Average temperature in __ename__ is critically low";
+    high_critical.actions_ = actions;
+    /*std::vector<std::string> severity_critical = {"CRITICAL"};
+    std::vector<std::string> severity_warning = {"WARNING"};
+    std::vector<std::string> description_high_critical = {"Average temperature in __ename__ is critically high"};
+    std::vector<std::string> description_high_warning = {"Average temperature in __ename__ is high"};
+    std::vector<std::string> description_low_warning = {"Average temperature in __ename__ is low"};
+    std::vector<std::string> description_low_critical = {"Average temperature in __ename__ is critically low"};
+
+    std::map<std::string, std::vector<std::string>> tmp1;
+    std::map<std::string, std::vector<std::string>> tmp2;
+    std::map<std::string, std::vector<std::string>> tmp3;
+    std::map<std::string, std::vector<std::string>> tmp4;
+    std::map<std::string, std::map<std::string,std::vector<std::string>>> tmp5;
+    tmp1.insert (std::pair<std::string, std::vector<std::string>> ("severity", severity_critical));
+    tmp1.insert (std::pair<std::string, std::vector<std::string>> ("description", description_high_critical));
+    tmp1.insert (std::pair<std::string, std::vector<std::string>> ("actions", actions));
+    tmp2.insert (std::pair<std::string, std::vector<std::string>> ("severity", severity_warning));
+    tmp2.insert (std::pair<std::string, std::vector<std::string>> ("description", description_high_warning));
+    tmp2.insert (std::pair<std::string, std::vector<std::string>> ("actions", actions));
+    tmp3.insert (std::pair<std::string, std::vector<std::string>> ("severity", severity_warning));
+    tmp3.insert (std::pair<std::string, std::vector<std::string>> ("description", description_low_warning));
+    tmp3.insert (std::pair<std::string, std::vector<std::string>> ("actions", actions));
+    tmp4.insert (std::pair<std::string, std::vector<std::string>> ("severity", severity_critical));
+    tmp4.insert (std::pair<std::string, std::vector<std::string>> ("description", description_low_critical));
+    tmp4.insert (std::pair<std::string, std::vector<std::string>> ("actions", actions));
+    tmp5.insert (std::pair<std::string, std::map<std::string, std::vector<std::string>>> ("HIGH_CRITICAL", tmp1));
+    tmp5.insert (std::pair<std::string, std::map<std::string, std::vector<std::string>>> ("HIGH_WARNING", tmp2));
+    tmp5.insert (std::pair<std::string, std::map<std::string, std::vector<std::string>>> ("LOW_WARNING", tmp3));
+    tmp5.insert (std::pair<std::string, std::map<std::string, std::vector<std::string>>> ("LOW_CRITICAL", tmp4));*/
+    Rule::ResultsMap tmp;
+    tmp.insert (std::pair<std::string, Rule::Outcome> ("HIGH_CRITICAL", high_critical));
+    tmp.insert (std::pair<std::string, Rule::Outcome> ("HIGH_WARNING", high_warning));
+    tmp.insert (std::pair<std::string, Rule::Outcome> ("LOW_WARNING", low_warning));
+    tmp.insert (std::pair<std::string, Rule::Outcome> ("LOW_CRITICAL", low_critical));
+
+    uint64_t now = zclock_time () / 1000;
+    // create fty-proto msg
+    {
+        Alert alert (rule + "@" + name, tmp);
+
+        zhash_t *aux = zhash_new ();
+        zhash_autofree (aux);
+        zhash_insert (aux, "outcome", (void *) "HIGH_CRITICAL");
+        zlist_t *actions = zlist_new ();
+
+        uint64_t mtime = now;
+        uint64_t ttl = 5;
+
+        zmsg_t *msg = fty_proto_encode_alert (
+                aux,
+                mtime,
+                ttl,
+                rule.c_str (),
+                name.c_str (),
+                "ACTIVE",
+                "",
+                "",
+                actions
+                );
+        // do update and overwrite
+        fty_proto_t *fty_msg = fty_proto_decode (&msg);
+        alert.update (fty_msg);
+        assert (alert.m_Outcome == "HIGH_CRITICAL");
+        assert (alert.m_Ctime == now);
+        assert (alert.m_Ttl == ttl);
+        assert (alert.m_Severity == "CRITICAL");
+        assert (alert.m_Description == "Average temperature in __ename__ is critically high");
+        assert (alert.m_Actions[0] == "EMAIL");
+        assert (alert.m_Actions[1] == "SMS");
+
+        alert.overwrite (fty_msg);
+        assert (alert.m_Ctime == now);
+        assert (alert.m_Mtime == now);
+        assert (alert.AlertStateToString (alert.m_State) == "ACTIVE");
+
+        // switch state
+        alert.switchState ("ACK-SILENCE");
+        assert (alert.AlertStateToString (alert.m_State) == "ACK-SILENCE");
+
+        // do toFtyProto
+        zmsg_t *alert_msg =  alert.toFtyProto ("DC-Roztoky", "", "", "", "");
+        fty_proto_t *fty_alert_msg = fty_proto_decode (&alert_msg);
+        assert (fty_proto_aux_number (fty_alert_msg, "ctime", 0) == now);
+        assert (fty_proto_aux_string (fty_alert_msg, "outcome", "") == "HIGH_CRITICAL");
+        assert (fty_proto_time (fty_alert_msg) == now);
+        assert (fty_proto_rule (fty_alert_msg) == rule.c_str ());
+        assert (fty_proto_name (fty_alert_msg) == name.c_str ());
+        assert (fty_proto_ttl (fty_alert_msg) == ttl);
+        assert (fty_proto_severity (fty_alert_msg) == "CRITICAL");
+        assert (fty_proto_state (fty_alert_msg) == "ACK-SILENCE");
+        assert (fty_proto_description (fty_alert_msg) == "Average temperature in DC-Roztoky is critically high");
+        assert (fty_proto_action (fty_alert_msg) == actions);
+
+        // cleanup the first alert
+        alert.cleanup ();
+        assert (alert.AlertStateToString (alert.m_State) == "RESOLVED");
+        assert (alert.m_Outcome == "OK");
+        assert (alert.m_Severity == "");
+        assert (alert.m_Description == "");
+        assert (alert.m_Actions.empty ());
+        // call StaleToFtyProto
+        zmsg_t *alert_stale_msg = alert.StaleToFtyProto ();
+        fty_proto_t *fty_alert_stale_msg = fty_proto_decode (&alert_stale_msg);
+        assert (fty_proto_aux_string (fty_alert_stale_msg, "outcome", "") == "OK");
+        assert (fty_proto_rule (fty_alert_stale_msg) == rule.c_str ());
+        assert (fty_proto_name (fty_alert_stale_msg) == name.c_str ());
+        assert (fty_proto_ttl (fty_alert_stale_msg) == ttl);
+        assert (fty_proto_severity (fty_alert_stale_msg) == "");
+        assert (fty_proto_state (fty_alert_stale_msg) == "RESOLVED");
+        assert (fty_proto_description (fty_alert_stale_msg) == "");
+        assert (fty_proto_action (fty_alert_stale_msg) == actions);
+    }
+
+    {
+        // create alert2 - triggered
+        Alert alert2 (rule + "@" + name, tmp);
+
+        zhash_t *aux = zhash_new ();
+        zhash_autofree (aux);
+        zhash_insert (aux, "outcome", (void *) "HIGH_CRITICAL");
+        zlist_t *actions = zlist_new ();
+
+        uint64_t mtime = now;
+        uint64_t ttl = 5;
+
+        zmsg_t *msg = fty_proto_encode_alert (
+                aux,
+                mtime,
+                ttl,
+                rule.c_str (),
+                name.c_str (),
+                "ACTIVE",
+                "",
+                "",
+                actions
+                );
+        fty_proto_t *fty_msg = fty_proto_decode (&msg);
+        alert2.update (fty_msg);
+        // call TriggeredToFtyProto
+        zmsg_t *alert2_msg = alert2.TriggeredToFtyProto ();
+        fty_proto_t *fty_alert2_msg = fty_proto_decode (&alert2_msg);
+        assert (fty_proto_aux_string (fty_alert2_msg, "outcome", "") == "HIGH_WARNING");
+        assert (fty_proto_rule (fty_alert2_msg) == rule.c_str ());
+        assert (fty_proto_name (fty_alert2_msg) == name.c_str ());
+    }
+
+    {
+    // create alert3, overwrite it with a Rule
+    Alert alert3 (rule + "@" + name, tmp);
+    // update it from fty-proto
+    // do toFtyProto
+    }
     //  @end
     printf ("OK\n");
 }

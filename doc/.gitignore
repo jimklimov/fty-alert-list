@@ -15,14 +15,12 @@ alert.txt
 alert.doc
 alert_list.txt
 alert_list.doc
-utils.txt
-utils.doc
-autoconfig.txt
-autoconfig.doc
-fty_alert_engine_server.txt
-fty_alert_engine_server.doc
-fty_alert_actions.txt
-fty_alert_actions.doc
+asset.txt
+asset.doc
+rule.txt
+rule.doc
+extended_rules.txt
+extended_rules.doc
 fty-alert-engine.txt
 fty-alert-engine.doc
 
