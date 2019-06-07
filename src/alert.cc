@@ -308,96 +308,124 @@ alert_test (bool verbose)
     tmp5.insert (std::pair<std::string, std::map<std::string, std::vector<std::string>>> ("HIGH_WARNING", tmp2));
     tmp5.insert (std::pair<std::string, std::map<std::string, std::vector<std::string>>> ("LOW_WARNING", tmp3));
     tmp5.insert (std::pair<std::string, std::map<std::string, std::vector<std::string>>> ("LOW_CRITICAL", tmp4));
-    Alert alert (rule + "@" + name, tmp5);
-
-    // create fty-proto msg
-    {
-    zhash_t *aux = zhash_new ();
-    zhash_autofree (aux);
-    zhash_insert (aux, "outcome", "HIGH_CRITICAL");
-    zlist_t *actions = zlist_new ();
 
     uint64_t now = zclock_time () / 1000;
-    uint64_t mtime = now;
-    uint64_t ttl = 5;
+    // create fty-proto msg
+    {
+        Alert alert (rule + "@" + name, tmp5);
 
-    zmsg_t *msg = fty_proto_encode_alert (
-            aux,
-            mtime,
-            ttl,
-            rule.c_str (),
-            name.c_str (),
-            "ACTIVE",
-            "",
-            "",
-            actions
-            );
-    // do update and overwrite
-    alert.update (msg);
-    assert (alert.m_Outcome == HIGH_CRITICAL);
-    assert (alert.m_Ctime === now);
-    assert (alert.m_Ttl == ttl);
-    assert (alert.m_Severity == "CRITICAL");
-    assert (alert.m_Description == "Average temperature in __ename__ is critically high");
-    assert (alert.m_Actions == {"EMAIL", "SMS"});
+        zhash_t *aux = zhash_new ();
+        zhash_autofree (aux);
+        zhash_insert (aux, "outcome", (void *) "HIGH_CRITICAL");
+        zlist_t *actions = zlist_new ();
 
-    alert.overwrite (msg);
-    assert (alert.m_Ctime === now);
-    assert (alert.m_Mtime == now);
-    assert (alert.m_State == ACTIVE);
+        uint64_t mtime = now;
+        uint64_t ttl = 5;
 
-    // switch state
-    alert.switch_state ("ACK-SILENCE");
-    assert (alert.m_State == ACKSILENCE);
+        zmsg_t *msg = fty_proto_encode_alert (
+                aux,
+                mtime,
+                ttl,
+                rule.c_str (),
+                name.c_str (),
+                "ACTIVE",
+                "",
+                "",
+                actions
+                );
+        // do update and overwrite
+        fty_proto_t *fty_msg = fty_proto_decode (&msg);
+        alert.update (fty_msg);
+        assert (alert.m_Outcome == "HIGH_CRITICAL");
+        assert (alert.m_Ctime == now);
+        assert (alert.m_Ttl == ttl);
+        assert (alert.m_Severity == "CRITICAL");
+        assert (alert.m_Description == "Average temperature in __ename__ is critically high");
+        assert (alert.m_Actions[0] == "EMAIL");
+        assert (alert.m_Actions[1] == "SMS");
+
+        alert.overwrite (fty_msg);
+        assert (alert.m_Ctime == now);
+        assert (alert.m_Mtime == now);
+        assert (alert.AlertStateToString (alert.m_State) == "ACTIVE");
+
+        // switch state
+        alert.switchState ("ACK-SILENCE");
+        assert (alert.AlertStateToString (alert.m_State) == "ACK-SILENCE");
+
+        // do toFtyProto
+        zmsg_t *alert_msg =  alert.toFtyProto ("DC-Roztoky", "", "", "", "");
+        fty_proto_t *fty_alert_msg = fty_proto_decode (&alert_msg);
+        assert (fty_proto_aux_number (fty_alert_msg, "ctime", 0) == now);
+        assert (fty_proto_aux_string (fty_alert_msg, "outcome", "") == "HIGH_CRITICAL");
+        assert (fty_proto_time (fty_alert_msg) == now);
+        assert (fty_proto_rule (fty_alert_msg) == rule.c_str ());
+        assert (fty_proto_name (fty_alert_msg) == name.c_str ());
+        assert (fty_proto_ttl (fty_alert_msg) == ttl);
+        assert (fty_proto_severity (fty_alert_msg) == "CRITICAL");
+        assert (fty_proto_state (fty_alert_msg) == "ACK-SILENCE");
+        assert (fty_proto_description (fty_alert_msg) == "Average temperature in DC-Roztoky is critically high");
+        assert (fty_proto_action (fty_alert_msg) == actions);
+
+        // cleanup the first alert
+        alert.cleanup ();
+        assert (alert.AlertStateToString (alert.m_State) == "RESOLVED");
+        assert (alert.m_Outcome == "OK");
+        assert (alert.m_Severity == "");
+        assert (alert.m_Description == "");
+        assert (alert.m_Actions.empty ());
+        // call StaleToFtyProto
+        zmsg_t *alert_stale_msg = alert.StaleToFtyProto ();
+        fty_proto_t *fty_alert_stale_msg = fty_proto_decode (&alert_stale_msg);
+        assert (fty_proto_aux_string (fty_alert_stale_msg, "outcome", "") == "OK");
+        assert (fty_proto_rule (fty_alert_stale_msg) == rule.c_str ());
+        assert (fty_proto_name (fty_alert_stale_msg) == name.c_str ());
+        assert (fty_proto_ttl (fty_alert_stale_msg) == ttl);
+        assert (fty_proto_severity (fty_alert_stale_msg) == "");
+        assert (fty_proto_state (fty_alert_stale_msg) == "RESOLVED");
+        assert (fty_proto_description (fty_alert_stale_msg) == "");
+        assert (fty_proto_action (fty_alert_stale_msg) == actions);
     }
 
-    // do toFtyProto
-    zmsg_t *alert_msg =  alert.toFtyProto ("DC-Roztoky", "", "", "", "");
-    zhash_t *aux = fty_proto_aux (alert_msg);
-    assert (fty_proto_aux_number (aux, "ctime", "") == now);
-    assert (fty_proto_aux_string (aux, "outcome", "") == "HIGH_CRITICAL");
-    assert (fty_proto_time (alert_msg) == now);
-    assert (fty_proto_rule (alert_msg) == rule.c_str ());
-    assert (fty_proto_name (alert_msg) == name.c_str ());
-    assert (fty_proto_ttl (alert_msg) == ttl);
-    assert (fty_proto_severity (alert_msg) == "CRITICAL");
-    assert (fty_proto_state (alert_msg) == "ACK-SILENCE");
-    assert (fty_proto_description (alert_msg) == "Average temperature in DC-Roztoky is critically high");
-    assert (fty_proto_actions (alert_msg) == actions);
+    {
+        // create alert2 - triggered
+        Alert alert2 (rule + "@" + name, tmp5);
 
-    // create alert2 - triggered
-    Alert alert2 (rule + "@" + name, tmp5);
-    alert2.setOutcome ("HIGH_WARNING");
-    // call TriggeredToFtyProto
-    zmsg_t *alert2_msg = alert2.triggeredToFtyProto ();
-    zhash_t *aux = fty_proto_aux (alert_msg);
-    assert (fty_proto_aux_string (aux, "outcome", "") == "HIGH_WARNING");
-    assert (fty_proto_rule (alert_msg) == rule.c_str ());
-    assert (fty_proto_name (alert_msg) == name.c_str ());
+        zhash_t *aux = zhash_new ();
+        zhash_autofree (aux);
+        zhash_insert (aux, "outcome", (void *) "HIGH_CRITICAL");
+        zlist_t *actions = zlist_new ();
 
-    // cleanup the first alert
-    alert.cleanup ();
-    assert (alert.m_State == RESOLVED);
-    assert (alert.m_Outcome == OK);
-    assert (alert.m_Severity == "");
-    assert (alert.m_Description == "");
-    assert (alert.m_Actions == actions);
-    // call StaleToFtyProto
-    zmsg_t *alert_stale_msg = alert.staleToFtyProto ();
-    zhash_t *aux = fty_proto_aux (alert_msg);
-    assert (fty_proto_aux_string (aux, "outcome", "") == "OK");
-    assert (fty_proto_rule (alert_msg) == rule.c_str ());
-    assert (fty_proto_name (alert_msg) == name.c_str ());
-    assert (fty_proto_ttl (alert_msg) == ttl);
-    assert (fty_proto_severity (alert_msg) == "");
-    assert (fty_proto_state (alert_msg) == "RESOLVED");
-    assert (fty_proto_description (alert_msg) == "");
-    assert (fty_proto_actions (alert_msg) == actions);
+        uint64_t mtime = now;
+        uint64_t ttl = 5;
 
+        zmsg_t *msg = fty_proto_encode_alert (
+                aux,
+                mtime,
+                ttl,
+                rule.c_str (),
+                name.c_str (),
+                "ACTIVE",
+                "",
+                "",
+                actions
+                );
+        fty_proto_t *fty_msg = fty_proto_decode (&msg);
+        alert2.update (fty_msg);
+        // call TriggeredToFtyProto
+        zmsg_t *alert2_msg = alert2.TriggeredToFtyProto ();
+        fty_proto_t *fty_alert2_msg = fty_proto_decode (&alert2_msg);
+        assert (fty_proto_aux_string (fty_alert2_msg, "outcome", "") == "HIGH_WARNING");
+        assert (fty_proto_rule (fty_alert2_msg) == rule.c_str ());
+        assert (fty_proto_name (fty_alert2_msg) == name.c_str ());
+    }
+
+    {
     // create alert3, overwrite it with a Rule
     Alert alert3 (rule + "@" + name, tmp5);
     // update it from fty-proto
     // do toFtyProto
+    }
     //  @end
     printf ("OK\n");
 }
