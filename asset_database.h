@@ -42,7 +42,7 @@ class AssetDatabase {
         /// insert or update, not safe for inheritance
         void insertOrUpdateAsset (AssetT asset) {
             std::string key = static_cast<BasicAsset>(asset).getId ();
-            asset_database_[key] = std::make_shared<AssetT> (asset);
+            asset_database_[key] = std::shared_ptr<AssetT> (new AssetT (asset));
         }
         /// insert or update, safe for inheritance
         void insertOrUpdateAsset (std::shared_ptr<AssetT> asset) {

@@ -323,7 +323,7 @@ bool ExtendedAsset::compare (const ExtendedAsset &asset) const {
         priority_ == asset.priority_;
 }
 
-void ExtendedAsset::setPriority (const std::string &priority) {
+void ExtendedAsset::setPriority (const std::string priority) {
     priority_ = priority[1] - '0';
 }
 
