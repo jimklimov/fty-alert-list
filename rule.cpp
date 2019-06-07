@@ -99,13 +99,6 @@ Rule::Rule (const std::string json) {
     std::istringstream iss (json);
     cxxtools::JsonDeserializer jd (iss);
     jd.deserialize (*this);
-    /*
-    if (jd.si () != nullptr) {
-        loadFromSerializedObject (*jd.si ());
-    } else {
-        throw std::runtime_error ("JSON deserializer has null SerializationInfo for input: " + json);
-    }
-    */
 }
 
 void Rule::setGlobalVariables (const VariableMap vars) {
@@ -200,9 +193,15 @@ void operator>>= (const cxxtools::SerializationInfo& si, Rule::Outcome& outcome)
             throw std::runtime_error ("Invalid format of action");
         }
     }
-    si.getMember ("severity") >>= outcome.severity_;
-    si.getMember ("threshold_name") >>= outcome.threshold_name_;
-    si.getMember ("description") >>= outcome.description_;
+    const cxxtools::SerializationInfo *severity = si.findMember ("severity");
+    if (severity != nullptr)
+        *severity >>= outcome.severity_;
+    const cxxtools::SerializationInfo *threshold_name = si.findMember ("threshold_name");
+    if (threshold_name != nullptr)
+        *threshold_name >>= outcome.threshold_name_;
+    const cxxtools::SerializationInfo *description = si.findMember ("description");
+    if (description != nullptr)
+        *description >>= outcome.description_;
 }
 // TODO error handling mistakes can be hidden here
 /// deserialization of variables (values)

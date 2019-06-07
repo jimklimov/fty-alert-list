@@ -357,10 +357,23 @@ bool ruleUT () {
     json4.erase (remove_if (json4.begin (), json4.end (), isspace), json4.end ());
     if (json3 != json || json3 != json4)
         return false;
+    FlexibleRule ("metric@asset2", {"metric1"}, {"asset2"}, {"CAT_ALL"}, {{"ok", {{"no_action"}, "critical",
+            "ok_description"}}}, "function main () return ok end", {{"var1", "val1"}});
     return true;
 }
 
 bool ruleFactoryUT () {
+    // flexible rule sts-voltage@device_sts.rule
+    std::string json1 = std::string ("{ \"flexible\" : { \"name\" : \"sts-voltage@__name__\", \"description\" : \"") +
+            "TRANSLATE_LUA (The STS/ATS voltage is out of tolerance)\", \"categories\" : [\"CAT_OTHER\", \"CAT_ALL\"]" +
+            ", \"metrics\" : [\"status.input.1.voltage\", \"status.input.2.voltage\"], \"assets\" : [\"__name__\"" +
+            "], \"results\" : [ { \"high_warning\" : { \"action\" : [ ], \"severity\" : \"WARNING\", \"description\" " +
+            ": \"none\" } } ], \"evaluation\" : \" function main (i1," + " i2) if i1 == 'good' and i2 == 'good' then return OK, string.format ('{ \\\"key\\\": \\\"TRANSLATE_LUA (" + "Voltage status of both inputs of {{NAME}} is good.)\\\", \\\"variables\\\": {\\\"NAME\\\": \\\"NAME\\\"" + "}}') end if i1 == 'good' then return WARNING, string.format ('{ \\\"key\\\": \\\"TRANSLATE_LUA (Input 2 " + "voltage status of {{NAME}} is out of tolerance ({{i2}})!)\\\", \\\"variables\\\": {\\\"NAME\\\": \\\"" + "NAME\\\", \\\"i2\\\" : \\\"%s\\\"}}', i2) end if i2 == 'good' then return WARNING, string.format ('{ " + "\\\"key\\\": \\\"TRANSLATE_LUA (Input 1 voltage status of {{NAME}} is out of tolerance ({{i1}})!)\\\", " + "\\\"variables\\\": {\\\"NAME\\\": \\\"NAME\\\", \\\"i1\\\" : \\\"%s\\\"}}', i1) end return WARNING, " + "string.format ('{ \\\"key\\\": \\\"TRANSLATE_LUA (Voltage status of both inputs is out of tolerance " + "({{i1}}, {{i2}})!)\\\", \\\"variables\\\": {\\\"i2\\\": \\\"%s\\\", \\\"i1\\\" : \\\"%s\\\"}}', i2, i1) " + "end \" } }";
+    auto rule = RuleFactory::createFromJson (json1);
+    if (rule->whoami () != "flexible")
+        return false;
+    if (rule->getName () != "sts-voltage@__name__")
+        return false;
     return true;
 }
 
