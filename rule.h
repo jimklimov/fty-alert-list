@@ -31,13 +31,51 @@ class InterfaceRule {
          * \return string result of evaluation
          * \throw std::exception in case of evaluation failure
          */
-        virtual std::string evaluate (const VectorStrings &metrics) = 0;
+        virtual VectorStrings evaluate (const VectorStrings &metrics) = 0;
         /// identifies rule with unique name
         std::string getName (void) const;
         /// returns a list of metrics in order in which evaluation expects them to be
         VectorStrings getTargetMetrics (void) const;
 };
 
+/*
+ * serialized rule looks like:
+ * {
+ *  "single|pattern|threshold|flexible" : {
+ *      "name" : "NAME",
+ *      "description" : "DESCRIPTION", // optional
+ *      "class" : "CLASS", // optional
+ *      "categories" : [ // nonempty
+ *          "CAT1", "CAT2", ...
+ *      ],
+ *      "metrics" : "METRIC"|[ // can be either value or array, nonempty
+ *          "METRIC1", "METRIC2", ...
+ *      ],
+ *      "results" : [ // nonempty
+ *          { "RES1" : { // this object is called outcome
+ *              "action" : [
+ *                  {"action" : "EMAIL|SMS"}, { "action" : "GPO_INTERACTION", "asset" : "ASSET", "mode" : "MODE"}, ...
+ *              ],
+ *              "description" : "DESCRIPTION",
+ *              "threshold_name" : "THRESHOLD_NAME",
+ *              "severity" : "SEVERITY"
+ *          }
+ *      ],
+ *      "source" : "SOURCE", // optional
+ *      "assets" : "ASSET"|[ // can be either value or array, nonempty
+ *          "ASSET1", "ASSET2", ...
+ *      ],
+ *      "outcome_item_count" : "OUTCOME_ITEM_COUNT", // optional
+ *      "values" : [ // can be empty
+ *          { "VAR1NAME" : "VAR1VALUE" }, { "VAR2NAME" : "VAR2VALUE" }, ...
+ *      ],
+ *      "values_unit" : "VALUES_UNIT",
+ *      "hierarchy" : "hierarchy",
+ *      "models" : [ // optional, flexible only
+ *          "MODEL1", "MODEL2", ...
+ *      ]
+ *  }
+ */
 /// common features of various rules
 class Rule : public InterfaceRule {
     public:
@@ -50,9 +88,15 @@ class Rule : public InterfaceRule {
          * - description
          */
         struct Outcome {
-            VectorStrings _actions;
-            std::string _severity;
-            std::string _description;
+            VectorStrings actions_;
+            std::string severity_;
+            std::string description_;
+            std::string threshold_name_;
+
+            bool operator== (const Outcome &o) const {
+                return o.actions_ == actions_ && o.severity_ == severity_ && o.description_ == description_ &&
+                    o.threshold_name_ == threshold_name_;
+            }
         };
         typedef std::map<std::string, std::string> VariableMap;
         typedef std::map<std::string, Outcome> ResultsMap;
@@ -74,8 +118,6 @@ class Rule : public InterfaceRule {
         std::string source_;
         /// assets on which this rule is applied
         VectorStrings assets_;
-        /// count of outcome elements
-        int outcome_items_;
         /// map of variables that are used in rule evaluation
         VariableMap variables_;
         // TODO: FIXME: do all values need to use same units?
@@ -86,13 +128,22 @@ class Rule : public InterfaceRule {
 
         //internal functions
         void loadFromSerializedObject (const cxxtools::SerializationInfo &si);
-        void saveToSerializedObject (const cxxtools::SerializationInfo &si) const;
+        void saveToSerializedObject (cxxtools::SerializationInfo &si) const;
+        void loadMandatoryString (const cxxtools::SerializationInfo &si, const std::string name, std::string &target);
+        void loadOptionalString (const cxxtools::SerializationInfo &si, const std::string name, std::string &target);
+        void loadOptionalInt (const cxxtools::SerializationInfo &si, const std::string name, int &target);
+        void loadMandatoryArray (const cxxtools::SerializationInfo &si, const std::string name, VectorStrings &target);
+        void loadMandatoryArrayOrValue (const cxxtools::SerializationInfo &si, const std::string name,
+                VectorStrings &target);
+        void loadOptionalArray (const cxxtools::SerializationInfo &si, const std::string name, VectorStrings &target);
+        void saveArray (cxxtools::SerializationInfo &si, const std::string name, const VectorStrings &target) const;
     public:
         // ctors, dtors, =
         Rule (const std::string name, const VectorStrings metrics, const VectorStrings assets,
                 const VectorStrings categories, const ResultsMap results) : name_(name), categories_(categories),
-                metrics_(metrics), results_(results), assets_(assets), outcome_items_(1) { };
+                metrics_(metrics), results_(results), assets_(assets) { };
         Rule (const cxxtools::SerializationInfo &si) { loadFromSerializedObject (si); };
+        Rule (const std::string json);
         virtual ~Rule () {};
         // getters/setters
         /// get rule internal name
@@ -136,16 +187,21 @@ class Rule : public InterfaceRule {
         void save (const std::string &path) const;
         /// remove rule from persistence storage
         int remove (const std::string &path);
+        /// full comparator
+        bool compare (const Rule &rule) const;
+        // friends
+        friend void operator>>= (const cxxtools::SerializationInfo& si, Rule &rule);
 };
 
 class RuleTest : public Rule {
     public:
         std::string whoami () const { return "test"; };
-        std::string evaluate (const VectorStrings &metrics) { return "eval"; };
+        VectorStrings evaluate (const VectorStrings &metrics) { return VectorStrings{"eval"}; };
         RuleTest (const std::string name, const VectorStrings metrics, const VectorStrings assets,
                 const VectorStrings categories, const ResultsMap results) : Rule (name, metrics, assets, categories,
                 results) { };
         RuleTest (const cxxtools::SerializationInfo &si) : Rule (si) { };
+        RuleTest (const std::string json) : Rule (json) { };
 };
 
 class RuleMatcher {
@@ -170,17 +226,5 @@ public:
 private:
     std::string asset_;
 };
-
-/*
- * \brief Deserialzation of outcome
- */
-/// serialization of outcome
-void operator>>= (const cxxtools::SerializationInfo& si, Rule::Outcome& outcome);
-
-/// serialization of values (global variables)
-void operator>>= (const cxxtools::SerializationInfo& si, Rule::VariableMap &values);
-
-/// serialization of results
-void operator>>= (const cxxtools::SerializationInfo& si, Rule::ResultsMap &outcomes);
 
 #endif // __rule_guard__

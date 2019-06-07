@@ -1,5 +1,6 @@
 #include <cxxtools/utf8codec.h>
 #include <cxxtools/jsonserializer.h>
+#include <cxxtools/jsondeserializer.h>
 #include <fstream>
 #include <algorithm>
 #include <sstream>
@@ -94,6 +95,18 @@ si_getValueUtf8 (const cxxtools::SerializationInfo& si, const std::string& membe
     result = cxxtools::Utf8Codec::encode (cxxtools_Charname_);
 }
 
+Rule::Rule (const std::string json) {
+    std::istringstream iss (json);
+    cxxtools::JsonDeserializer jd (iss);
+    jd.deserialize (*this);
+    /*
+    if (jd.si () != nullptr) {
+        loadFromSerializedObject (*jd.si ());
+    } else {
+        throw std::runtime_error ("JSON deserializer has null SerializationInfo for input: " + json);
+    }
+    */
+}
 
 void Rule::setGlobalVariables (const VariableMap vars) {
     variables_.clear ();
@@ -105,8 +118,11 @@ std::string Rule::getJsonRule (void) const {
     cxxtools::JsonSerializer js (s);
     js.beautify (true);
     cxxtools::SerializationInfo si;
-    if (!saveToSerializedObject (si)) {
-        throw std::runtime_error ("unable to serialize rule");
+    try {
+        saveToSerializedObject (si);
+    } catch (std::exception &e) {
+        log_error ("unable to serialize rule due to %s", e.what ());
+        throw std::runtime_error ("unable to serialize rule due to " + std::string (e.what ()));
     }
     js.serialize (si).finish ();
     return s.str ();
@@ -144,21 +160,25 @@ bool RuleAssetMatcher::operator ()(const Rule &rule) {
 }
 
 /*
- * \brief Deserialization of outcome
+ * \brief Deserialization
  */
-// TODO
+/// deserialization of rule
+void operator>>= (const cxxtools::SerializationInfo& si, Rule &rule) {
+    rule.loadFromSerializedObject (si);
+}
+/// deserialization of outcome
 void operator>>= (const cxxtools::SerializationInfo& si, Rule::Outcome& outcome)
 {
     const cxxtools::SerializationInfo &actions = si.getMember ("action");
-    outcome._actions.clear ();
-    outcome._actions.reserve (actions.memberCount ());
+    outcome.actions_.clear ();
+    outcome.actions_.reserve (actions.memberCount ());
     for ( const auto &a : actions) {
         std::string type, res;
         switch (a.category ()) {
         case cxxtools::SerializationInfo::Value:
             // old-style format ["EMAIL", "SMS"]
-            outcome._actions.resize (outcome._actions.size () + 1);
-            a >>= outcome._actions.back ();
+            outcome.actions_.resize (outcome.actions_.size () + 1);
+            a >>= outcome.actions_.back ();
             break;
         case cxxtools::SerializationInfo::Object:
             // [{"action": "EMAIL"}, {"action": "SMS"}]
@@ -174,15 +194,18 @@ void operator>>= (const cxxtools::SerializationInfo& si, Rule::Outcome& outcome)
                 log_warning ("Unknown action type: \"%s\"", type.c_str ());
                 res = type;
             }
-            outcome._actions.push_back (res);
+            outcome.actions_.push_back (res);
             break;
         default:
             throw std::runtime_error ("Invalid format of action");
         }
     }
-    si.getMember ("description") >>= outcome._description;
+    si.getMember ("severity") >>= outcome.severity_;
+    si.getMember ("threshold_name") >>= outcome.threshold_name_;
+    si.getMember ("description") >>= outcome.description_;
 }
 // TODO error handling mistakes can be hidden here
+/// deserialization of variables (values)
 void operator>>= (const cxxtools::SerializationInfo& si, Rule::VariableMap &values)
 {
     /*
@@ -205,6 +228,7 @@ void operator>>= (const cxxtools::SerializationInfo& si, Rule::VariableMap &valu
     }
 }
 // TODO error handling mistakes can be hidden here
+/// deserialization of results
 void operator>>= (const cxxtools::SerializationInfo& si, Rule::ResultsMap &outcomes)
 {
     /*
@@ -221,42 +245,69 @@ void operator>>= (const cxxtools::SerializationInfo& si, Rule::ResultsMap &outco
         auto outcomeName = oneElement.getMember (0).name ();
         Rule::Outcome outcome;
         oneElement.getMember (0) >>= outcome;
-        if ( outcomeName == "low_critical" || outcomeName == "high_critical" ) {
-            outcome._severity = "CRITICAL";
-        }
-        if ( outcomeName == "low_warning" || outcomeName == "high_warning" ) {
-            outcome._severity = "WARNING";
-        }
-        if ( outcome._severity.empty () ) {
-            throw std::runtime_error ("unsupported result");
+        if (outcome.severity_.empty ()) {
+            if ( outcomeName == "low_critical" || outcomeName == "high_critical" ) {
+                outcome.severity_ = "CRITICAL";
+            }
+            if ( outcomeName == "low_warning" || outcomeName == "high_warning" ) {
+                outcome.severity_ = "WARNING";
+            }
+            if ( outcome.severity_.empty () ) {
+                throw std::runtime_error ("unsupported result");
+            }
         }
         outcomes.emplace (outcomeName, outcome);
     }
 }
-void loadMandatoryString (const cxxtools::SerializationInfo &si, std::string &name, std::string &target) {
-    auto elem = si.getMember (name);
+void Rule::loadMandatoryString (const cxxtools::SerializationInfo &si, const std::string name, std::string &target) {
+    const cxxtools::SerializationInfo &elem = si.getMember (name);
     if (elem.category () != cxxtools::SerializationInfo::Value) {
         log_error ("%s property must be value type.", name.c_str ());
-        throw std::runtime_error ("%s property must be value type.", name.c_str ());
+        throw std::runtime_error (name + " property must be value type.");
     }
     elem >>= target;
 }
-void loadOptionalString (const cxxtools::serializationinfo &si, std::string &name, std::string &target) {
-    auto elem = si.findMember (name); // optional
+void Rule::loadOptionalString (const cxxtools::SerializationInfo &si, const std::string name, std::string &target) {
+    const cxxtools::SerializationInfo *elem = si.findMember (name); // optional
     if (elem != nullptr) {
-        if (elem.category () != cxxtools::SerializationInfo::Value) {
+        if (elem->category () != cxxtools::SerializationInfo::Value) {
             log_error ("%s property must be value type.", name.c_str ());
-            throw std::runtime_error ("%s property must be value type.", name.c_str ());
+            throw std::runtime_error (name + " property must be value type.");
         } else {
-            elem >>= target;
+            (*elem) >>= target;
         }
     }
 }
-void loadMandatoryArray (const cxxtools::serializationinfo &si, std::string &name, Rule::VectorStrings &target) {
-    auto elem = si.getMember (name); // mandatory
+void Rule::loadOptionalInt (const cxxtools::SerializationInfo &si, const std::string name, int &target) {
+    const cxxtools::SerializationInfo *elem = si.findMember (name); // optional
+    if (elem != nullptr) {
+        if (elem->category () != cxxtools::SerializationInfo::Value) {
+            log_error ("%s property must be value type.", name.c_str ());
+            throw std::runtime_error (name + " property must be value type.");
+        } else {
+            (*elem) >>= target;
+        }
+    }
+}
+void Rule::loadOptionalArray (const cxxtools::SerializationInfo &si, const std::string name, Rule::VectorStrings &target) {
+    const cxxtools::SerializationInfo *elem = si.findMember (name); // optional
+    if (elem != nullptr) {
+        if (elem->category () != cxxtools::SerializationInfo::Array) {
+            log_error ("%s property must be an array type.", name.c_str ());
+            throw std::runtime_error (name + " property must be an array type.");
+        }
+        for (size_t i = 0; i < elem->memberCount (); ++i) {
+            std::string val;
+            elem->getMember (i).getValue (val);
+            target.push_back (val);
+        }
+    }
+}
+void Rule::loadMandatoryArray (const cxxtools::SerializationInfo &si, const std::string name, Rule::VectorStrings &target) {
+    const cxxtools::SerializationInfo &elem = si.getMember (name); // mandatory
     if (elem.category () != cxxtools::SerializationInfo::Array) {
         log_error ("%s property must be an array type.", name.c_str ());
-        throw std::runtime_error ("%s property must be an array type.", name.c_str ());
+        throw std::runtime_error (name + " property must be an array type.");
     }
     for (size_t i = 0; i < elem.memberCount (); ++i) {
         std::string val;
@@ -264,8 +315,8 @@ void loadMandatoryArray (const cxxtools::serializationinfo &si, std::string &nam
         target.push_back (val);
     }
 }
-void loadMandatoryArrayOrValue (const cxxtools::serializationinfo &si, std::string &name, Rule::VectorStrings &target) {
-    auto elem = si.getMember (name); // mandatory
+void Rule::loadMandatoryArrayOrValue (const cxxtools::SerializationInfo &si, const std::string name, Rule::VectorStrings &target) {
+    const cxxtools::SerializationInfo &elem = si.getMember (name); // mandatory
     if (elem.category () == cxxtools::SerializationInfo::Value) {
         std::string val;
         elem >>= val;
@@ -278,11 +329,10 @@ void loadMandatoryArrayOrValue (const cxxtools::serializationinfo &si, std::stri
         }
     } else {
         log_error ("%s property must be either an array type or value type.", name.c_str ());
-        throw std::runtime_error ("%s property must be either an array type or value type.", name.c_str ());
+        throw std::runtime_error (name + " property must be either an array type or value type.");
     }
 }
 
-//TODO: FIXME:
 void Rule::loadFromSerializedObject (const cxxtools::SerializationInfo &si) {
     try {
         auto elem_content = si.getMember (0);
@@ -291,35 +341,117 @@ void Rule::loadFromSerializedObject (const cxxtools::SerializationInfo &si) {
             throw std::runtime_error ("Root of json must be an object with property 'single|pattern|threshold|flexible'.");
         }
         loadMandatoryString (elem_content, "name", name_);
-        loadOptionalstring (elem_content, "description", description_);
+        loadOptionalString (elem_content, "description", description_);
         loadOptionalString (elem_content, "class", class_);
         loadMandatoryArray (elem_content, "categories", categories_);
         loadMandatoryArrayOrValue (elem_content, "metrics", metrics_);
-        auto elem_results = elem_content.getMember ("results"); // mandatory
+        const cxxtools::SerializationInfo &elem_results = elem_content.getMember ("results"); // mandatory
         if ( elem_results.category () != cxxtools::SerializationInfo::Array ) {
             log_error ("results property must be an array type.");
             throw std::runtime_error ("results property must be an array type.");
         }
-        elem_results >>= results;
+        elem_results >>= results_;
         loadOptionalString (elem_content, "source", source_);
         loadMandatoryArrayOrValue (elem_content, "assets", assets_);
-        loadOptionalString (elem_content, "outcome_item_count", outcome_items_);
         auto elem_values = elem_content.findMember ("values"); // optional for general rule
         if (elem_values != nullptr) {
-            if (elem_values.category () != cxxtools::SerializationInfo::Array ) {
+            if (elem_values->category () != cxxtools::SerializationInfo::Array ) {
                 log_error ("values property must be an array type.");
                 throw std::runtime_error ("values property must be an array type.");
             }
-            elem_values >>= variables_;
+            (*elem_values) >>= variables_;
         }
         loadOptionalString (elem_content, "values_unit", value_unit_);
         loadOptionalString (elem_content, "hierarchy", hierarchy_);
     } catch (std::exception &e) {
         std::ostringstream oss;
         si.dump (oss);
-        log_error ("An error '%s' was caught while trying to read rule %s", e.what (), oss.str ());
+        log_error ("An error '%s' was caught while trying to read rule %s", e.what (), oss.str ().c_str ());
+        throw e;
     }
 }
-void Rule::saveToSerializedObject (const cxxtools::SerializationInfo &si) const {
-    return 0;
+
+/*
+ * \brief Serialization part
+ */
+/// serialization of outcome
+void operator<<= (cxxtools::SerializationInfo& si, const Rule::Outcome& outcome)
+{
+    cxxtools::SerializationInfo &actions = si.addMember ("action");
+    actions.setCategory (cxxtools::SerializationInfo::Array);
+    for (auto &act : outcome.actions_) {
+        if (act == "EMAIL" || act == "SMS") {
+            cxxtools::SerializationInfo &one_action = actions.addMember (std::string ());
+            one_action.setCategory (cxxtools::SerializationInfo::Object);
+            one_action.addMember ("action") <<= act;
+        } else if (0 == act.compare (0, strlen ("GPO_INTERACTION"), "GPO_INTERACTION")) {
+            cxxtools::SerializationInfo &one_action = actions.addMember (std::string ());
+            one_action.setCategory (cxxtools::SerializationInfo::Object);
+            size_t action_action_end = strlen ("GPO_INTERACTION");
+            size_t action_asset_end = act.find_last_of (":");
+            std::string action_action = act.substr (0, action_action_end);
+            std::string action_asset = act.substr (action_action_end + 1, action_asset_end - action_action_end - 1);
+            std::string action_mode = act.substr (action_asset_end + 1);
+            one_action.addMember ("action") <<= action_action;
+            one_action.addMember ("asset") <<= action_asset;
+            one_action.addMember ("mode") <<= action_mode;
+        } else {
+            log_warning ("Unable to serialize outcome action %s", act.c_str ());
+        }
+    }
+    si.addMember ("severity") <<= outcome.severity_;
+    si.addMember ("description") <<= outcome.description_;
+    si.addMember ("threshold_name") <<= outcome.threshold_name_;
+}
+/// serialization of variables (values)
+void operator<<= (cxxtools::SerializationInfo& si, const Rule::VariableMap &values)
+{
+    cxxtools::SerializationInfo &element = si.addMember ("values");
+    element.setCategory (cxxtools::SerializationInfo::Array);
+    for (auto &val : values) {
+        cxxtools::SerializationInfo &item_parent = element.addMember (std::string ());
+        item_parent.setCategory (cxxtools::SerializationInfo::Object);
+        item_parent.addMember (val.first) <<= val.second;
+    }
+}
+/// serialization of results
+void operator<<= (cxxtools::SerializationInfo& si, const Rule::ResultsMap &outcomes)
+{
+    cxxtools::SerializationInfo &results = si.addMember ("results");
+    results.setCategory (cxxtools::SerializationInfo::Array);
+    for (auto &res : outcomes) {
+        cxxtools::SerializationInfo &item_parent = results.addMember (std::string ());
+        item_parent.setCategory (cxxtools::SerializationInfo::Object);
+        cxxtools::SerializationInfo &item = item_parent.addMember (res.first);
+        item.setCategory (cxxtools::SerializationInfo::Object);
+        item <<= res.second;
+    }
+}
+
+void Rule::saveToSerializedObject (cxxtools::SerializationInfo &si) const {
+    cxxtools::SerializationInfo &root = si.addMember (whoami ());
+    root.setCategory (cxxtools::SerializationInfo::Object);
+    root.addMember ("name") <<= name_;
+    if (!description_.empty ())
+        root.addMember ("description") <<= description_;
+    if (!class_.empty ())
+        root.addMember ("class") <<= class_;
+    root.addMember ("categories") <<= categories_;
+    root.addMember ("metrics") <<= metrics_;
+    root <<= results_;
+    if (!source_.empty ())
+        root.addMember ("source") <<= source_;
+    root.addMember ("assets") <<= assets_;
+    root <<= variables_;
+    if (!value_unit_.empty ())
+        root.addMember ("values_unit") <<= value_unit_;
+    if (!hierarchy_.empty ())
+        root.addMember ("hierarchy") <<= hierarchy_;
+}
+
+bool Rule::compare (const Rule &rule) const {
+    return rule.name_ == name_ && rule.description_ == description_ && rule.class_ == class_ &&
+        rule.categories_ == categories_ && rule.metrics_ == metrics_ && rule.results_ == results_ &&
+        rule.source_ == source_ && rule.assets_ == assets_ && rule.variables_ == variables_ &&
+        rule.value_unit_ == value_unit_ && rule.hierarchy_ == hierarchy_;
 }

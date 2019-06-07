@@ -57,25 +57,26 @@ void DecoratorLuaEvaluate::setCode (const std::string newCode)
     }
 }
 
-std::string DecoratorLuaEvaluate::evaluate (const std::vector<std::string> &metrics)
+DecoratorLuaEvaluate::VectorStrings DecoratorLuaEvaluate::evaluate (const std::vector<std::string> &arguments)
 {
-    std::string result;
-
     if (! valid_) { throw std::runtime_error ("Rule is not valid!"); }
     lua_settop (lstate_, 0);
 
     lua_getglobal (lstate_, "main");
-    for (const auto x: metrics) {
+    for (const auto x: arguments) {
         lua_pushstring (lstate_, x.c_str ());
     }
-    if (lua_pcall (lstate_, metrics.size (), 1, 0) != 0) {
+    if (lua_pcall (lstate_, arguments.size (), 1, 0) != 0) {
         throw std::runtime_error ("LUA calling main () failed!");
     }
     if (!lua_isstring (lstate_, -1)) {
         throw std::runtime_error ("LUA main function did not return string!");
     }
-    result = lua_tostring (lstate_, -1);
-    lua_pop (lstate_, 1);
+    DecoratorLuaEvaluate::VectorStrings result;
+    for (int i = 0; i < outcome_items_; ++i) {
+        result.push_back (lua_tostring (lstate_, -1));
+        lua_pop (lstate_, 1);
+    }
     return result;
 }
 

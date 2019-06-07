@@ -6,6 +6,7 @@
 #include "rule.h"
 #include "lua_evaluate.h"
 #include "extended_rules.h"
+#include "rule_factory.h"
 
 bool assetUT () {
     try {
@@ -332,11 +333,34 @@ bool assetDatabaseUT2 () {
 
 bool ruleUT () {
     // Rule r; // compiler error, Rule is abstract
-    RuleTest rt ("metric@asset1", {"metric1"}, {"asset1"}, {"CAT_ALL"}, {{"ok", {{"no_action"}, "critical", "ok description"}}});
-
+    RuleTest rt ("metric@asset1", {"metric1"}, {"asset1"}, {"CAT_ALL"}, {{"ok", {{"no_action"}, "critical", "ok_description"}}});
+    rt.setGlobalVariables ({{"var1", "val1"}, {"var2", "val2"}});
     if (rt.whoami () != "test")
         return false;
+    if (rt.evaluate ({})[0] != "eval")
+        return false;
+    std::string json = rt.getJsonRule ();
+    json.erase (remove_if (json.begin (), json.end (), isspace), json.end ());
+    if (json != std::string ("{\"test\":{\"name\":\"metric@asset1\",\"categories\":[\"CAT_ALL\"],\"metrics\":[\"") +
+            "metric1\"],\"results\":[{\"ok\":{\"action\":[],\"severity\":\"critical\",\"description\":\"" +
+            "ok_description\",\"threshold_name\":\"\"}}],\"assets\":[\"asset1\"],\"values\":[{\"var1\":\"val1\"},{\"" +
+            "var2\":\"val2\"}]}}")
+        return false;
+    RuleTest rt2 (json);
+    RuleTest rt3 (json);
+    if (!rt2.compare (rt3))
+        return false;
+    std::string json3 = rt3.getJsonRule ();
+    RuleTest rt4 (json3);
+    json3.erase (remove_if (json3.begin (), json3.end (), isspace), json3.end ());
+    std::string json4 = rt4.getJsonRule ();
+    json4.erase (remove_if (json4.begin (), json4.end (), isspace), json4.end ());
+    if (json3 != json || json3 != json4)
+        return false;
+    return true;
+}
 
+bool ruleFactoryUT () {
     return true;
 }
 
@@ -349,6 +373,8 @@ int main () {
         std::cout << "Asset database unit tests failed" << std::endl;
     if (!ruleUT ())
         std::cout << "Rule unit tests failed" << std::endl;
+    if (!ruleFactoryUT ())
+        std::cout << "Rule factory unit tests failed" << std::endl;
     std::cout << "All tests finished" << std::endl;
     return 0;
 }
