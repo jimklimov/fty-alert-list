@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2014 - 2017 Eaton
+Copyright (C) 2014 - 2019 Eaton
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -20,130 +20,64 @@ with this program; if not, write to the Free Software Foundation, Inc.,
  *  \author Alena Chernikava <AlenaChernikava@Eaton.com>
  *  \brief Starts the alert agent
  */
+#define DEFAULT_LOG_CONFIG "/etc/fty/ftylog.cfg"
+#define DEFAULT_ENDPOINT "ipc://@/malamute"
+#define DEFAULT_TTLCLEANUP_INTERVAL 60
 
-#include "fty_alert_engine.h"
+#include "fty_common_agents.h"
+#include "fty_alert_engine_classes.h"
 
-static const char *CONFIG = "/etc/fty-alert-engine/fty-alert-engine.cfg";
-// path to the directory, where rules are stored. Attention: without last slash!
-static const char *PATH = "/var/lib/fty/fty-alert-engine";
+static int
+s_ttl_cleanup_timer (zloop_t *loop, int timer_id, void *output) {
+    zstr_send(output, "TTLCLEANUP");
+    return 0;
+}
 
-// agents name
-static const char *ENGINE_AGENT_NAME = "fty-alert-engine";
-static const char *ENGINE_AGENT_NAME_STREAM = "fty-alert-engine-stream";
-static const char *ACTIONS_AGENT_NAME = "fty-alert-actions";
-
-// autoconfig name
-static const char *AUTOCONFIG_NAME = "fty-autoconfig";
-
-// malamute endpoint
-static const char *ENDPOINT = "ipc://@/malamute";
-
-int main (int argc, char** argv)
+int main (int argc, char *argv [])
 {
-    std::string logConfigFile = "";
-    zconfig_t *cfg = NULL;
-    ManageFtyLog::setInstanceFtylog("fty-alert-engine");
-
+    bool verbose = false;
     int argn;
-    for (argn = 1 ; argn < argc; argn++)
-    {
-        char *par = NULL;
-        if (argn < argc -1)
-            par = argv [argn + 1];
-
-        if (streq (argv [argn], "-v") ||
-            streq (argv [argn], "--verbose")) {
-            ManageFtyLog::getInstanceFtylog()->setVeboseMode();
-        }
-        else if (streq (argv [argn], "-h") ||
-                 streq (argv [argn], "--help")) {
-            puts ("fty-alert-engine [option] [value]");
-            puts ("   -v|--verbose          verbose output");
-            puts ("   -h|--help             print help");
-            puts ("   -c|--config [path]    use custom config file ");
+    ManageFtyLog::setInstanceFtylog (AGENT_FTY_ALERT_LIST, DEFAULT_LOG_CONFIG);
+    for (argn = 1; argn < argc; argn++) {
+        if (streq (argv [argn], "--help")
+        ||  streq (argv [argn], "-h")) {
+            puts ("fty-alert-list [options] ...");
+            puts ("  --verbose / -v         verbose test output");
+            puts ("  --help / -h            this information");
             return 0;
         }
-        else if (streq (argv [argn], "-c") ||
-                 streq (argv [argn], "--config")) {
-            if (par)
-                cfg = zconfig_load (par);
-            ++argn;
+        else
+        if (streq (argv [argn], "--verbose")
+        ||  streq (argv [argn], "-v")) {
+            verbose = true;
+            ManageFtyLog::getInstanceFtylog()->setVeboseMode();
+        }
+        else
+        if (streq (argv [argn], "--config")
+        || streq (argv [argn], "-c")) {
+            // TODO: process config file
         }
         else {
-            printf ("Unknown option: %s, run with -h|--help \n", argv [argn]);
+            printf ("Unknown option: %s\n", argv [argn]);
             return 1;
         }
     }
+    //  Insert main code here
+    if (verbose)
+        log_info ("fty_alert_list - agent for alert REST API interface");
 
-    if (!cfg) {
-        cfg = zconfig_load(CONFIG);
-    }
+    AlertList alert_list_server;
+    zactor_t *alert_list_actor = zactor_new (std::mem_fun (&AlertList::alert_list_actor), AGENT_FTY_ALERT_LIST);
+    zstr_sendx (alert_list_actor, "CONNECT", DEFAULT_ENDPOINT, AGENT_FTY_ALERT_LIST, NULL);
+    zstr_sendx (alert_list_actor, "CONSUMER", FTY_PROTO_STREAM_ALERTS_SYS, ".*", NULL);
+    zstr_sendx (alert_list_actor, "CONSUMER", FTY_PROTO_STREAM_ASSETS, ".*", NULL);
+    zstr_sendx (alert_list_actor, "PRODUCER", FTY_PROTO_STREAM_ALERTS, NULL);
 
-    logConfigFile = std::string(zconfig_get(cfg, "log/config", FTY_COMMON_LOGGING_DEFAULT_CFG));
+    zloop_t *ttlcleanup = zloop_new ();
+    zloop_timer (ttlcleanup, 60 * 1000, 0, s_ttl_cleanup_timer, alert_list_actor);
+    zloop_start (ttlcleanup);
 
-    //If a log config file is configured, try to load it
-    if (!logConfigFile.empty())
-    {
-      ManageFtyLog::getInstanceFtylog()->setConfigFile(logConfigFile);
-    }
-
-    zactor_t *ag_server_stream = zactor_new(fty_alert_engine_stream, (void*) ENGINE_AGENT_NAME_STREAM);
-    zactor_t *ag_server_mailbox = zactor_new(fty_alert_engine_mailbox, (void*) ENGINE_AGENT_NAME);
-
-    // mailbox
-    zstr_sendx(ag_server_mailbox, "CONFIG", PATH, NULL);
-    zstr_sendx(ag_server_mailbox, "CONNECT", ENDPOINT, NULL);
-    zstr_sendx(ag_server_mailbox, "PRODUCER", FTY_PROTO_STREAM_ALERTS_SYS, NULL);
-
-    //Stream
-    zstr_sendx(ag_server_stream, "CONNECT", ENDPOINT, NULL);
-    zstr_sendx(ag_server_stream, "PRODUCER", FTY_PROTO_STREAM_ALERTS_SYS, NULL);
-    //zstr_sendx(ag_server_stream, "CONSUMER", FTY_PROTO_STREAM_METRICS, ".*", NULL);
-    zstr_sendx(ag_server_stream, "CONSUMER", FTY_PROTO_STREAM_METRICS_UNAVAILABLE, ".*", NULL);
-    zstr_sendx(ag_server_stream, "CONSUMER", FTY_PROTO_STREAM_METRICS_SENSOR, "status.*", NULL);
-    zstr_sendx(ag_server_stream, "CONSUMER", FTY_PROTO_STREAM_LICENSING_ANNOUNCEMENTS, ".*", NULL);
-
-    //autoconfig
-    zactor_t *ag_configurator = zactor_new (autoconfig, (void*) AUTOCONFIG_NAME);
-    zstr_sendx (ag_configurator, "CONFIG", PATH, NULL); // state file path
-    zstr_sendx (ag_configurator, "CONNECT", ENDPOINT, NULL);
-    zstr_sendx (ag_configurator, "TEMPLATES_DIR", "/usr/share/bios/fty-autoconfig", NULL); //rule template
-    zstr_sendx (ag_configurator, "CONSUMER", FTY_PROTO_STREAM_ASSETS, ".*", NULL);
-    zstr_sendx (ag_configurator, "ALERT_ENGINE_NAME", ENGINE_AGENT_NAME, NULL);
-
-    zactor_t *ag_actions = zactor_new (fty_alert_actions, (void*) ACTIONS_AGENT_NAME);
-    zstr_sendx (ag_actions, "CONNECT", ENDPOINT, NULL);
-    zstr_sendx (ag_actions, "CONSUMER", FTY_PROTO_STREAM_ASSETS, ".*", NULL);
-    zstr_sendx (ag_actions, "CONSUMER", FTY_PROTO_STREAM_ALERTS, ".*", NULL);
-    zstr_sendx (ag_actions, "ASKFORASSETS", NULL);
-
-    //  Accept and print any message back from server
-    //  copy from src/malamute.c under MPL license
-    while (true) {
-        char *messageS = zstr_recv (ag_server_stream);
-        if (messageS) {
-            puts (messageS);
-            free (messageS);
-        } else {
-            log_info ("interrupted");
-            break;
-        }
-
-        char *messageM = zstr_recv (ag_server_mailbox);
-        if (messageM) {
-            puts (messageM);
-            free (messageM);
-        } else {
-            log_info ("interrupted");
-            break;
-        }
-    }
-
-    // TODO save info to persistence before I die
-    zactor_destroy (&ag_server_stream);
-    zactor_destroy (&ag_server_mailbox);
-    zactor_destroy (&ag_actions);
-    zactor_destroy (&ag_configurator);
-    clearEvaluateMetrics();
+    zloop_destroy (&ttlcleanup);
+    zactor_destroy (&alert_list_actor);
     return 0;
 }
