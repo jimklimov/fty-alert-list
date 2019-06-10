@@ -27,13 +27,12 @@
 //  @interface
 class AlertList {
     public:
-        explicit AlertList ()
+        AlertList ()
         {
             m_Mailbox_client = mlm_client_new ();
             m_Stream_client = mlm_client_new ();
-            m_Asset_cache = FullAssetDatabase.getInstance ();
         }
-        void alert_list_actor (zsock_t *pipe, void *args);
+        void alert_list_run (zsock_t *pipe);
         void alert_list_test (bool verbose);
         ~AlertList ()
         {
@@ -41,18 +40,23 @@ class AlertList {
             mlm_client_destroy (&m_Stream_client);
         }
     private:
-        std::set<Alert> filter_alerts (std::function<bool(AlertState state)> filter);
+        void filter_alerts_for_publishing
+            (std::vector<Alert> alerts,
+             std::function<bool(Alert alert)> filter,
+             zmsg_t *reply);
         void alert_cache_clean ();
-        void handle_rule (std::string rule);
+        void process_mailbox (zmsg_t *msg);
+        void process_stream (zmsg_t *msg);
+        std::string handle_rule (std::string rule);
         void handle_alert (fty_proto_t *msg, std::string subject);
 
         mlm_client_t *m_Mailbox_client;
         mlm_client_t *m_Stream_client;
-        FullAssetDatabase m_Asset_cache;
         std::map<std::string, Alert> m_Alert_cache;
-        std::map<std::string, std::vector<std::weak_ptr<Alert>>> m_Asset_alerts;
+        std::map<std::string, std::vector<std::shared_ptr<Alert>>> m_Asset_alerts;
         std::map<std::string, uint64_t> m_Last_send;
-}
+};
 //  @end
+void alert_list_actor (zsock_t *pipe, void *args);
 
 #endif

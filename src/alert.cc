@@ -92,7 +92,7 @@ Alert::overwrite (fty_proto_t *msg)
 }
 
 void
-Alert::overwrite (std::shared_ptr<Rule> rule)
+Alert::overwrite (std::unique_ptr<Rule>& rule)
 {
     m_Id = rule->getName ();
     m_Results = rule->getResults ();

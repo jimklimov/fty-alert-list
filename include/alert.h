@@ -42,6 +42,7 @@ class Alert {
         std::string id () { return m_Id; }
         void setResults (Rule::ResultsMap results)
             { m_Results = results; }
+        std::string outcome () { return m_Outcome; }
         std::string state () { return AlertStateToString (m_State); }
         uint64_t ctime () { return m_Ctime; }
         void setCtime (uint64_t ctime) { m_Ctime = ctime; }
@@ -54,7 +55,7 @@ class Alert {
         std::vector<std::string> actions () { return m_Actions; }
 
         void overwrite (fty_proto_t *msg);
-        void overwrite (std::shared_ptr<Rule> rule);
+        void overwrite (std::unique_ptr<Rule>& rule);
         void update (fty_proto_t *msg);
         void cleanup ();
         int switchState (std::string state_str);
