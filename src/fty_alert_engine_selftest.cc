@@ -45,6 +45,10 @@ all_tests [] = {
     { "fty_alert_engine_server", fty_alert_engine_server_test, true, true, NULL },
     { "fty_alert_actions", fty_alert_actions_test, true, true, NULL },
 #ifdef FTY_ALERT_ENGINE_BUILD_DRAFT_API
+// Tests for draft public classes:
+    { "asset", asset_test, false, true, NULL },
+#endif // FTY_ALERT_ENGINE_BUILD_DRAFT_API
+#ifdef FTY_ALERT_ENGINE_BUILD_DRAFT_API
 // Tests for stable/draft private classes:
 // Now built only with --enable-drafts, so even stable builds are hidden behind the flag
     { "alertconfiguration", NULL, true, false, "alertconfiguration_test" },

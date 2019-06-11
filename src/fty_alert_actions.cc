@@ -27,6 +27,7 @@
 */
 
 #include "fty_alert_engine_classes.h"
+#include "fty_common_mlm_utils.h"
 
 #define EMAIL_ACTION            "EMAIL"
 #define SMS_ACTION              "SMS"
@@ -268,8 +269,9 @@ get_alert_interval(s_alert_cache *alert_cache, uint64_t override_time = 0)
         return override_time;
     }
     std::string severity = fty_proto_severity(alert_cache->alert_msg);
-    uint8_t priority = (uint8_t) FullAssetDatabase::getInstance().getAsset (alert_cache->related_asset).getAuxItem ("priority", 0);
-    //uint8_t priority = (uint8_t) fty_proto_aux_number(alert_cache->related_asset, "priority", 0);
+    std::stringstream priority_str ( FullAssetDatabase::getInstance().getAsset (alert_cache->related_asset)->getAuxItem ("priority"));
+    uint8_t priority = 0;
+    priority_str >> priority;
     std::pair <std::string, uint8_t> key = {severity, priority};
     auto it = times.find(key);
     if (it != times.end()) {
@@ -358,19 +360,19 @@ send_email(fty_alert_actions_t *self, s_alert_cache *alert_item, char action_ema
     zmsg_t *email_msg = fty_proto_encode(&alert_dup);
     zuuid_t *uuid = zuuid_new ();
     char *subject = NULL;
-    const char *sname = FullAssetDatabase::getInstance().getAsset (alert_item->related_asset).getExtItem ("name", "");
+    std::string sname = FullAssetDatabase::getInstance().getAsset (alert_item->related_asset)->getExtItem ("name");
     if (EMAIL_ACTION_VALUE == action_email) {
-        const char *contact_email = FullAssetDatabase::getInstance().getAsset (alert_item->related_asset).getExtItem ("contact_email", "");
-        zmsg_pushstr (email_msg, contact_email);
+        std::string contact_email = FullAssetDatabase::getInstance().getAsset (alert_item->related_asset)->getExtItem ("contact_email");
+        zmsg_pushstr (email_msg, contact_email.c_str ());
         subject = (char *) "SENDMAIL_ALERT";
     } else {
-        const char *contact_phone = FullAssetDatabase::getInstance().getAsset (alert_item->related_asset).getExtItem ("contact_phone", "");
-        zmsg_pushstr (email_msg, contact_phone);
+        std::string contact_phone = FullAssetDatabase::getInstance().getAsset (alert_item->related_asset)->getExtItem ("contact_phone");
+        zmsg_pushstr (email_msg, contact_phone.c_str ());
         subject = (char *) "SENDSMS_ALERT";
     }
-    const char *priority = FullAssetDatabase::getInstance().getAsset (alert_item->related_asset).getAuxItem ("priority", "");
-    zmsg_pushstr (email_msg, sname);
-    zmsg_pushstr (email_msg, priority);
+    std::string priority = FullAssetDatabase::getInstance().getAsset (alert_item->related_asset)->getAuxItem ("priority");
+    zmsg_pushstr (email_msg, sname.c_str ());
+    zmsg_pushstr (email_msg, priority.c_str ());
     zmsg_pushstr (email_msg, zuuid_str_canonical (uuid));
     const char *address = (self->integration_test) ? FTY_EMAIL_AGENT_ADDRESS_TEST : FTY_EMAIL_AGENT_ADDRESS;
     int rv = mlm_client_sendto (self->requestreply_client, address, subject, NULL, 5000, &email_msg);
@@ -813,12 +815,12 @@ s_handle_stream_deliver_asset(fty_alert_actions_t *self, fty_proto_t **asset_p, 
         log_debug("received update for asset %s", assetname);
         FullAsset new_asset (asset);
         if (nullptr != FullAssetDatabase::getInstance ().getAsset (assetname)) {
-            FullAsset old_asset = FullAssetDatabase::getInstance ().getAsset (assetname);
+            std::shared_ptr<FullAsset> old_asset = FullAssetDatabase::getInstance ().getAsset (assetname);
             bool changed = false;
-            std::string old_contact_email = old_asset.getExtItem ("contact_email", "");
-            std::string old_contact_phone = old_asset.getExtItem ("contact_phone", "");
-            std::string new_contact_email = new_asset.getExtItem ("contact_email", "");
-            std::string new_contact_phone = new_asset.getExtItem ("contact_phone", "");
+            std::string old_contact_email = old_asset->getExtItem ("contact_email");
+            std::string old_contact_phone = old_asset->getExtItem ("contact_phone");
+            std::string new_contact_email = new_asset.getExtItem ("contact_email");
+            std::string new_contact_phone = new_asset.getExtItem ("contact_phone");
             if (old_contact_email != new_contact_email || old_contact_phone != new_contact_phone ) {
                 changed = true;
             }
@@ -836,10 +838,12 @@ s_handle_stream_deliver_asset(fty_alert_actions_t *self, fty_proto_t **asset_p, 
                 }
             }
 
-            auto tmp_ext = MlmUtils::zhash_to_map (fty_proto_get_ext (asset));
-            auto tmp_aux = MlmUtils::zhash_to_map (fty_proto_get_aux (asset));
-            old_asset.setExt (tmp_ext);
-            old_asset.setAux (tmp_aux);
+            zhash_t *asset_ext = fty_proto_get_ext (asset);
+            auto tmp_ext = MlmUtils::zhash_to_map (asset_ext);
+            //zhash_t *asset_aux= fty_proto_get_ext (asset);
+            //auto tmp_aux = MlmUtils::zhash_to_map (fty_proto_get_aux (asset));
+            old_asset->setExt (tmp_ext);
+            //old_asset->setAux (tmp_aux);
             fty_proto_destroy (asset_p);
 
             if (changed) {
@@ -855,7 +859,7 @@ s_handle_stream_deliver_asset(fty_alert_actions_t *self, fty_proto_t **asset_p, 
             }
         }
         else {
-            FullAssetDatabase::insertOrUpdateAsset (new_asset);
+            FullAssetDatabase::getInstance().insertOrUpdateAsset (new_asset);
         }
     }
     else {

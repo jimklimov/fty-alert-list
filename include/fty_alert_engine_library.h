@@ -37,6 +37,7 @@
 #include <lua.h>
 #include <cxxtools/allocator.h>
 #include <fty_common.h>
+#include <fty_common_mlm.h>
 #include <fty_shm.h>
 
 //  FTY_ALERT_ENGINE version macros for compile-time API detection
@@ -87,13 +88,22 @@ typedef struct _fty_alert_engine_server_t fty_alert_engine_server_t;
 #define FTY_ALERT_ENGINE_SERVER_T_DEFINED
 typedef struct _fty_alert_actions_t fty_alert_actions_t;
 #define FTY_ALERT_ACTIONS_T_DEFINED
+//  Draft classes are by default not built in stable releases
+#ifdef FTY_ALERT_ENGINE_BUILD_DRAFT_API
+typedef struct _asset_t asset_t;
+#define ASSET_T_DEFINED
+#endif // FTY_ALERT_ENGINE_BUILD_DRAFT_API
 
 
 //  Public classes, each with its own header file
+#include "asset_database.h"
 #include "utils.h"
 #include "autoconfig.h"
 #include "fty_alert_engine_server.h"
 #include "fty_alert_actions.h"
+#ifdef FTY_ALERT_ENGINE_BUILD_DRAFT_API
+#include "asset.h"
+#endif // FTY_ALERT_ENGINE_BUILD_DRAFT_API
 
 #ifdef FTY_ALERT_ENGINE_BUILD_DRAFT_API
 
