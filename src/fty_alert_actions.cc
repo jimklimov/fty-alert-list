@@ -168,7 +168,7 @@ struct _fty_alert_actions_t {
     mlm_client_t    *requestreply_client;
     zpoller_t       *requestreply_poller;
     zhash_t         *alerts_cache;
-    zhash_t         *assets_cache;
+//    zhash_t         *assets_cache;
     char            *name;
     char            *requestreply_name;
     bool            integration_test;
@@ -180,7 +180,8 @@ typedef struct {
     fty_proto_t *alert_msg;
     uint64_t    last_notification;
     uint64_t    last_received;
-    fty_proto_t *related_asset;
+    const char *related_asset;
+//    fty_proto_t *related_asset;
 } s_alert_cache;
 
 
@@ -212,8 +213,8 @@ fty_alert_actions_new (void)
     assert (self->requestreply_poller);
     self->alerts_cache = zhash_new ();
     assert (self->alerts_cache);
-    self->assets_cache = zhash_new ();
-    assert (self->assets_cache);
+    //self->assets_cache = zhash_new ();
+    //assert (self->assets_cache);
     self->integration_test = false;
     self->notification_override = 0;
     self->name = NULL;
@@ -245,9 +246,9 @@ fty_alert_actions_destroy (fty_alert_actions_t **self_p)
         if (NULL != self->alerts_cache) {
             zhash_destroy (&self->alerts_cache);
         }
-        if (NULL != self->assets_cache) {
-            zhash_destroy (&self->assets_cache);
-        }
+        //if (NULL != self->assets_cache) {
+        //    zhash_destroy (&self->assets_cache);
+        //}
         if (NULL != self->requestreply_name) {
             zstr_free(&self->requestreply_name);
         }
@@ -267,7 +268,8 @@ get_alert_interval(s_alert_cache *alert_cache, uint64_t override_time = 0)
         return override_time;
     }
     std::string severity = fty_proto_severity(alert_cache->alert_msg);
-    uint8_t priority = (uint8_t) fty_proto_aux_number(alert_cache->related_asset, "priority", 0);
+    uint8_t priority = (uint8_t) FullAssetDatabase::getInstance().getAsset (alert_cache->related_asset).getAuxItem ("priority", 0);
+    //uint8_t priority = (uint8_t) fty_proto_aux_number(alert_cache->related_asset, "priority", 0);
     std::pair <std::string, uint8_t> key = {severity, priority};
     auto it = times.find(key);
     if (it != times.end()) {
@@ -293,8 +295,9 @@ new_alert_cache_item(fty_alert_actions_t *self, fty_proto_t *msg)
     c->last_received = c->last_notification;
     log_debug ("searching for %s", fty_proto_name (msg));
 
-    c->related_asset = (fty_proto_t *) zhash_lookup(self->assets_cache, fty_proto_name(msg));
-    if (NULL == c->related_asset && !self->integration_test) {
+    //c->related_asset = (fty_proto_t *) zhash_lookup(self->assets_cache, fty_proto_name(msg));
+    if (nullptr == FullAssetDatabase::getInstance ().getAsset (fty_proto_name (msg)) && !self->integration_test) {
+    //if (NULL == c->related_asset && !self->integration_test) {
         // we don't know an asset we receieved alert about, ask fty-asset about it
         log_debug ("ask ASSET AGENT for ASSET_DETAIL about %s", fty_proto_name(msg));
         zuuid_t *uuid = zuuid_new ();
@@ -312,7 +315,9 @@ new_alert_cache_item(fty_alert_actions_t *self, fty_proto_t *msg)
                 log_debug("received alert for unknown asset, asked for it and was successful.");
                 fty_proto_t *reply_proto_msg = fty_proto_decode (&reply_msg);
                 s_handle_stream_deliver_asset (self, &reply_proto_msg, mlm_client_subject (self->client));
-                c->related_asset = (fty_proto_t *) zhash_lookup(self->assets_cache, fty_proto_name(msg));
+                FullAsset related_asset (reply_proto_msg);
+                FullAssetDatabase::getInstance ().insertOrUpdateAsset (related_asset);
+                //c->related_asset = (fty_proto_t *) zhash_lookup(self->assets_cache, fty_proto_name(msg));
             }
             else {
                 log_warning("received alert for unknown asset, ignoring.");
@@ -353,17 +358,17 @@ send_email(fty_alert_actions_t *self, s_alert_cache *alert_item, char action_ema
     zmsg_t *email_msg = fty_proto_encode(&alert_dup);
     zuuid_t *uuid = zuuid_new ();
     char *subject = NULL;
-    const char *sname = fty_proto_ext_string(alert_item->related_asset, "name", "");
+    const char *sname = FullAssetDatabase::getInstance().getAsset (alert_item->related_asset).getExtItem ("name", "");
     if (EMAIL_ACTION_VALUE == action_email) {
-        const char *contact_email = fty_proto_ext_string(alert_item->related_asset, "contact_email", "");
+        const char *contact_email = FullAssetDatabase::getInstance().getAsset (alert_item->related_asset).getExtItem ("contact_email", "");
         zmsg_pushstr (email_msg, contact_email);
         subject = (char *) "SENDMAIL_ALERT";
     } else {
-        const char *contact_sms = fty_proto_ext_string(alert_item->related_asset, "contact_sms", "");
-        zmsg_pushstr (email_msg, contact_sms);
+        const char *contact_phone = FullAssetDatabase::getInstance().getAsset (alert_item->related_asset).getExtItem ("contact_phone", "");
+        zmsg_pushstr (email_msg, contact_phone);
         subject = (char *) "SENDSMS_ALERT";
     }
-    const char *priority = fty_proto_aux_string(alert_item->related_asset, "priority", "");
+    const char *priority = FullAssetDatabase::getInstance().getAsset (alert_item->related_asset).getAuxItem ("priority", "");
     zmsg_pushstr (email_msg, sname);
     zmsg_pushstr (email_msg, priority);
     zmsg_pushstr (email_msg, zuuid_str_canonical (uuid));
@@ -778,7 +783,18 @@ s_handle_stream_deliver_asset(fty_alert_actions_t *self, fty_proto_t **asset_p, 
     if (streq (operation, FTY_PROTO_ASSET_OP_DELETE)
     || !streq (fty_proto_aux_string (asset, FTY_PROTO_ASSET_STATUS, "active"), "active")) {
         log_debug("received delete for asset %s", assetname);
-        fty_proto_t *item = (fty_proto_t *)zhash_lookup (self->assets_cache, assetname);
+        // TODO FIXME Since we can't delete now, just resolve alerts
+        s_alert_cache *it = (s_alert_cache *) zhash_first(self->alerts_cache);
+        while (NULL != it) {
+            if (it->related_asset == assetname) {
+                // delete all alerts related to deleted asset
+                action_resolve(self, it);
+                zhash_delete(self->alerts_cache, zhash_cursor(self->alerts_cache));
+            }
+            it = (s_alert_cache *) zhash_next(self->alerts_cache);
+        }
+
+        /*fty_proto_t *item = (fty_proto_t *)zhash_lookup (self->assets_cache, assetname);
         if (NULL != item) {
             s_alert_cache *it = (s_alert_cache *) zhash_first(self->alerts_cache);
             while (NULL != it) {
@@ -790,52 +806,56 @@ s_handle_stream_deliver_asset(fty_alert_actions_t *self, fty_proto_t **asset_p, 
                 it = (s_alert_cache *) zhash_next(self->alerts_cache);
             }
             zhash_delete (self->assets_cache, assetname);
-        }
+        }*/
         fty_proto_destroy (asset_p);
     }
     else if (streq (operation, FTY_PROTO_ASSET_OP_UPDATE)) {
         log_debug("received update for asset %s", assetname);
-        fty_proto_t *known = (fty_proto_t *) zhash_lookup(self->assets_cache, assetname);
-        if (NULL != known) {
-            char changed = 0;
-            if (!streq(fty_proto_ext_string(known, "contact_email", ""),
-                        fty_proto_ext_string(asset, "contact_email", "")) ||
-                    !streq(fty_proto_ext_string(known, "contact_phone", ""),
-                        fty_proto_ext_string(asset, "contact_phone", ""))) {
-                changed = 1;
+        FullAsset new_asset (asset);
+        if (nullptr != FullAssetDatabase::getInstance ().getAsset (assetname)) {
+            FullAsset old_asset = FullAssetDatabase::getInstance ().getAsset (assetname);
+            bool changed = false;
+            std::string old_contact_email = old_asset.getExtItem ("contact_email", "");
+            std::string old_contact_phone = old_asset.getExtItem ("contact_phone", "");
+            std::string new_contact_email = new_asset.getExtItem ("contact_email", "");
+            std::string new_contact_phone = new_asset.getExtItem ("contact_phone", "");
+            if (old_contact_email != new_contact_email || old_contact_phone != new_contact_phone ) {
+                changed = true;
             }
-            if (1 == changed) {
+
+            if (changed) {
                 // simple workaround to handle alerts for assets changed during alert being active
                 log_debug("known asset was updated, resolving previous alert");
                 s_alert_cache *it = (s_alert_cache *) zhash_first(self->alerts_cache);
                 while (NULL != it) {
-                    if (it->related_asset == known) {
+                    if (it->related_asset == assetname) {
                         // just resolve, will be activated again
                         action_resolve(self, it);
                     }
                     it = (s_alert_cache *) zhash_next(self->alerts_cache);
                 }
             }
-            zhash_t *tmp_ext = fty_proto_get_ext(asset);
-            zhash_t *tmp_aux = fty_proto_get_aux(asset);
-            fty_proto_set_ext(known, &tmp_ext);
-            fty_proto_set_aux(known, &tmp_aux);
-            assetname = fty_proto_name (known);
-            fty_proto_destroy(asset_p);
-            if (1 == changed) {
+
+            auto tmp_ext = MlmUtils::zhash_to_map (fty_proto_get_ext (asset));
+            auto tmp_aux = MlmUtils::zhash_to_map (fty_proto_get_aux (asset));
+            old_asset.setExt (tmp_ext);
+            old_asset.setAux (tmp_aux);
+            fty_proto_destroy (asset_p);
+
+            if (changed) {
                 log_debug("known asset was updated, sending notifications");
                 s_alert_cache *it = (s_alert_cache *) zhash_first(self->alerts_cache);
                 while (NULL != it) {
-                    if (it->related_asset == known) {
+                    if (it->related_asset == assetname) {
                         // force an alert since contact info changed
                         action_alert(self, it);
                     }
                     it = (s_alert_cache *) zhash_next(self->alerts_cache);
                 }
             }
-        } else {
-            zhash_insert(self->assets_cache, assetname, asset);
-            zhash_freefn(self->assets_cache, assetname, fty_proto_destroy_wrapper);
+        }
+        else {
+            FullAssetDatabase::insertOrUpdateAsset (new_asset);
         }
     }
     else {
@@ -1030,7 +1050,7 @@ fty_alert_actions_test (bool verbose)
     }
 
     // test 2, check alert interval calculation
-    {
+    /*{
         log_debug("test 2");
         s_alert_cache *cache = (s_alert_cache *) malloc(sizeof(s_alert_cache));
         cache->alert_msg = fty_proto_new(FTY_PROTO_ALERT);
@@ -1075,16 +1095,13 @@ fty_alert_actions_test (bool verbose)
         fty_proto_destroy(&cache->alert_msg);
         fty_proto_destroy(&cache->related_asset);
         free(cache);
-    }
+    }*/
 
     // test 3, simple create/destroy cache item test without need to send ASSET_DETAILS
     {
         log_debug("test 3");
         fty_alert_actions_t *self = fty_alert_actions_new ();
         assert (self);
-        fty_proto_t *asset = fty_proto_new(FTY_PROTO_ASSET);
-        assert (asset);
-        zhash_insert(self->assets_cache, "myasset-3", asset);
         fty_proto_t *msg = fty_proto_new(FTY_PROTO_ALERT);
         assert (msg);
         fty_proto_set_name(msg, "myasset-3");
@@ -1093,7 +1110,6 @@ fty_alert_actions_test (bool verbose)
         assert(cache);
         delete_alert_cache_item(cache);
 
-        fty_proto_destroy(&asset);
         fty_alert_actions_destroy (&self);
     }
 
@@ -1202,7 +1218,7 @@ fty_alert_actions_test (bool verbose)
         CLEAN_RECV;
     }
     // test 6, processing of assets from stream
-    {
+    /*{
         log_debug("test 6");
         fty_alert_actions_t *self = fty_alert_actions_new ();
         assert (self);
@@ -1238,7 +1254,7 @@ fty_alert_actions_test (bool verbose)
 
         assert ( zhash_size (self->assets_cache) == 0 );
         fty_alert_actions_destroy (&self);
-    }
+    }*/
     {
         //test 7, send asset + send an alert on the already known correct asset
         // + delete the asset + check that alert disappeared
