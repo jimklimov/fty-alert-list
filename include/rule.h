@@ -204,6 +204,22 @@ class RuleTest : public Rule {
         RuleTest (const std::string json) : Rule (json) { };
 };
 
+class GenericRule : public Rule {
+    public:
+        std::string whoami () const { return rule_type_; };
+        VectorStrings evaluate (const VectorStrings &metrics) { return VectorStrings{"eval"}; };
+        GenericRule (const std::string name, const VectorStrings metrics, const VectorStrings assets,
+                const VectorStrings categories, const ResultsMap results) : Rule (name, metrics, assets, categories,
+                results) { };
+        GenericRule (const cxxtools::SerializationInfo &si) : Rule (si) {
+            auto elem = si.getMember (0);
+            elem >>= rule_type_;
+        };
+        GenericRule (const std::string json) : Rule (json) { };
+    private:
+        std::string rule_type_;
+};
+
 class RuleMatcher {
 public:
     virtual bool operator ()(const Rule &rule) = 0;

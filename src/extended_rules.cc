@@ -27,6 +27,28 @@ void loadLuaFromSerializedObject (const cxxtools::SerializationInfo &si, std::st
     }
 }
 
+void SingleRule::loadFromSerializedObject (const cxxtools::SerializationInfo &si) {
+    int outcome_items = -1;
+    std::string code = std::string ();
+    loadLuaFromSerializedObject (si, code, outcome_items);
+    if (outcome_items != -1)
+        setOutcomeItems (outcome_items);
+    if (!code.empty ()) {
+        DecoratorLuaEvaluate::setGlobalVariables (variables_);
+        setCode (code);
+    } else {
+        std::ostringstream oss;
+        si.dump (oss);
+        log_error ("No evaluation function provided for rule %s", oss.str ().c_str ());
+        throw std::runtime_error ("No evaluation function provided for rule " + oss.str ());
+    }
+}
+
+void SingleRule::saveToSerializedObject (cxxtools::SerializationInfo &si) const {
+    Rule::saveToSerializedObject (si);
+    saveLuaToSerializedObject (si, whoami (), getCode (), getOutcomeItems ());
+}
+
 SingleRule::SingleRule (const std::string name, const Rule::VectorStrings metrics, const Rule::VectorStrings assets,
         const Rule::VectorStrings categories, const ResultsMap results, std::string code,
         DecoratorLuaEvaluate::VariableMap variables) :
@@ -38,6 +60,28 @@ SingleRule::SingleRule (const std::string name, const Rule::VectorStrings metric
 
 Rule::VectorStrings SingleRule::evaluate (const Rule::VectorStrings &metrics) {
     return DecoratorLuaEvaluate::evaluate (metrics);
+}
+
+void PatternRule::loadFromSerializedObject (const cxxtools::SerializationInfo &si) {
+    int outcome_items = -1;
+    std::string code = std::string ();
+    loadLuaFromSerializedObject (si, code, outcome_items);
+    if (outcome_items != -1)
+        setOutcomeItems (outcome_items);
+    if (!code.empty ()) {
+        DecoratorLuaEvaluate::setGlobalVariables (variables_);
+        setCode (code);
+    } else {
+        std::ostringstream oss;
+        si.dump (oss);
+        log_error ("No evaluation function provided for rule %s", oss.str ().c_str ());
+        throw std::runtime_error ("No evaluation function provided for rule " + oss.str ());
+    }
+}
+
+void PatternRule::saveToSerializedObject (cxxtools::SerializationInfo &si) const {
+    Rule::saveToSerializedObject (si);
+    saveLuaToSerializedObject (si, whoami (), getCode (), getOutcomeItems ());
 }
 
 PatternRule::PatternRule (const std::string name, const Rule::VectorStrings metrics, const Rule::VectorStrings assets,
@@ -67,6 +111,28 @@ Rule::VectorStrings PatternRule::evaluate (const Rule::VectorStrings &metrics) {
     } else {
         throw std::logic_error ("Invalid metrics count for pattern rule");
     }
+}
+
+void ThresholdRule::loadFromSerializedObject (const cxxtools::SerializationInfo &si) {
+    int outcome_items = -1;
+    std::string code = std::string ();
+    loadLuaFromSerializedObject (si, code, outcome_items);
+    if (outcome_items != -1)
+        setOutcomeItems (outcome_items);
+    if (!code.empty ()) {
+        DecoratorLuaEvaluate::setGlobalVariables (variables_);
+        setCode (code);
+    } else {
+        std::ostringstream oss;
+        si.dump (oss);
+        log_error ("No evaluation function provided for rule %s", oss.str ().c_str ());
+        throw std::runtime_error ("No evaluation function provided for rule " + oss.str ());
+    }
+}
+
+void ThresholdRule::saveToSerializedObject (cxxtools::SerializationInfo &si) const {
+    Rule::saveToSerializedObject (si);
+    saveLuaToSerializedObject (si, whoami (), getCode (), getOutcomeItems ());
 }
 
 ThresholdRule::ThresholdRule (const std::string name, const Rule::VectorStrings metrics,
