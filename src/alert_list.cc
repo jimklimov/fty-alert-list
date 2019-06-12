@@ -444,7 +444,7 @@ AlertList::process_mailbox (zmsg_t *msg)
 }
 
 void
-AlertList::alert_list_actor (zsock_t *pipe, void *args)
+AlertList::alert_list_run (zsock_t *pipe)
 {
     zpoller_t *poller = zpoller_new (pipe, mlm_client_msgpipe (m_Mailbox_client), mlm_client_msgpipe (m_Stream_client), NULL);
     zsock_signal (pipe, 0);
@@ -499,6 +499,13 @@ AlertList::alert_list_actor (zsock_t *pipe, void *args)
              log_warning ("Unexpected message");
         }
     }
+}
+
+void
+alert_list_actor (zsock_t *pipe, void *args)
+{
+    AlertList alert_list_server;
+    alert_list_server.alert_list_run (pipe);
 }
 
 

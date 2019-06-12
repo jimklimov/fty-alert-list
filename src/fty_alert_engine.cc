@@ -66,18 +66,17 @@ int main (int argc, char *argv [])
     if (verbose)
         log_info ("fty_alert_list - agent for alert REST API interface");
 
-    AlertList alert_list_server;
-    zactor_t *alert_list_actor = zactor_new (std::mem_fun (&AlertList::alert_list_actor), AGENT_FTY_ALERT_LIST);
-    zstr_sendx (alert_list_actor, "CONNECT", DEFAULT_ENDPOINT, AGENT_FTY_ALERT_LIST, NULL);
-    zstr_sendx (alert_list_actor, "CONSUMER", FTY_PROTO_STREAM_ALERTS_SYS, ".*", NULL);
-    zstr_sendx (alert_list_actor, "CONSUMER", FTY_PROTO_STREAM_ASSETS, ".*", NULL);
-    zstr_sendx (alert_list_actor, "PRODUCER", FTY_PROTO_STREAM_ALERTS, NULL);
+    zactor_t *alert_list_server = zactor_new (alert_list_actor, (void *) AGENT_FTY_ALERT_LIST);
+    zstr_sendx (alert_list_server, "CONNECT", DEFAULT_ENDPOINT, AGENT_FTY_ALERT_LIST, NULL);
+    zstr_sendx (alert_list_server, "CONSUMER", FTY_PROTO_STREAM_ALERTS_SYS, ".*", NULL);
+    zstr_sendx (alert_list_server, "CONSUMER", FTY_PROTO_STREAM_ASSETS, ".*", NULL);
+    zstr_sendx (alert_list_server, "PRODUCER", FTY_PROTO_STREAM_ALERTS, NULL);
 
     zloop_t *ttlcleanup = zloop_new ();
-    zloop_timer (ttlcleanup, 60 * 1000, 0, s_ttl_cleanup_timer, alert_list_actor);
+    zloop_timer (ttlcleanup, 60 * 1000, 0, s_ttl_cleanup_timer, alert_list_server);
     zloop_start (ttlcleanup);
 
     zloop_destroy (&ttlcleanup);
-    zactor_destroy (&alert_list_actor);
+    zactor_destroy (&alert_list_server);
     return 0;
 }
