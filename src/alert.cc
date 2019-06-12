@@ -92,10 +92,10 @@ Alert::overwrite (fty_proto_t *msg)
 }
 
 void
-Alert::overwrite (std::unique_ptr<Rule>& rule)
+Alert::overwrite (GenericRule rule)
 {
-    m_Id = rule->getName ();
-    m_Results = rule->getResults ();
+    m_Id = rule.getName ();
+    m_Results = rule.getResults ();
     m_State = RESOLVED;
     m_Outcome = "OK";
     m_Ctime = 0;
@@ -360,22 +360,22 @@ alert_test (bool verbose)
         // do update and overwrite
         fty_proto_t *fty_msg = fty_proto_decode (&msg);
         alert.update (fty_msg);
-        assert (alert.m_Outcome == "HIGH_CRITICAL");
-        assert (alert.m_Ctime == now);
-        assert (alert.m_Ttl == ttl);
-        assert (alert.m_Severity == "CRITICAL");
-        assert (alert.m_Description == "Average temperature in __ename__ is critically high");
-        assert (alert.m_Actions[0] == "EMAIL");
-        assert (alert.m_Actions[1] == "SMS");
+        assert (alert.outcome () == "HIGH_CRITICAL");
+        assert (alert.ctime () == now);
+        assert (alert.ttl () == ttl);
+        assert (alert.severity () == "CRITICAL");
+        assert (alert.description () == "Average temperature in __ename__ is critically high");
+        assert (alert.actions ()[0] == "EMAIL");
+        assert (alert.actions ()[1] == "SMS");
 
         alert.overwrite (fty_msg);
-        assert (alert.m_Ctime == now);
-        assert (alert.m_Mtime == now);
-        assert (alert.AlertStateToString (alert.m_State) == "ACTIVE");
+        assert (alert.ctime () == now);
+        assert (alert.mtime () == now);
+        assert (alert.state () == "ACTIVE");
 
         // switch state
         alert.switchState ("ACK-SILENCE");
-        assert (alert.AlertStateToString (alert.m_State) == "ACK-SILENCE");
+        assert (alert.state () == "ACK-SILENCE");
 
         // do toFtyProto
         zmsg_t *alert_msg =  alert.toFtyProto ("DC-Roztoky", "", "", "", "");
@@ -393,11 +393,11 @@ alert_test (bool verbose)
 
         // cleanup the first alert
         alert.cleanup ();
-        assert (alert.AlertStateToString (alert.m_State) == "RESOLVED");
-        assert (alert.m_Outcome == "OK");
-        assert (alert.m_Severity == "");
-        assert (alert.m_Description == "");
-        assert (alert.m_Actions.empty ());
+        assert (alert.state () == "RESOLVED");
+        assert (alert.outcome () == "OK");
+        assert (alert.severity () == "");
+        assert (alert.description () == "");
+        assert (alert.actions ().empty ());
         // call StaleToFtyProto
         zmsg_t *alert_stale_msg = alert.StaleToFtyProto ();
         fty_proto_t *fty_alert_stale_msg = fty_proto_decode (&alert_stale_msg);

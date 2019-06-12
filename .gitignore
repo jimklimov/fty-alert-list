@@ -23,23 +23,22 @@ save.xml
 *.lo
 
 # Executables
-src/fty-alert-engine_selftest
-src/fty-alert-engine
-src/fty_alert_engine_selftest
+src/fty-alert-list_selftest
+src/fty-alert-list
+src/fty_alert_list_selftest
 *.exe
 *.out
 *.app
 core
 
 # Generated from templates
-src/fty-alert-engine.service
-src/fty-alert-engine.cfg
-src/*.rule
+src/fty-alert-list.service
+src/fty-alert-list.cfg
 
 # Distcheck workspace and archives
-fty-alert-engine-*/
-fty-alert-engine-*.tar.gz
-fty-alert-engine-*.zip
+fty-alert-list-*/
+fty-alert-list-*.tar.gz
+fty-alert-list-*.zip
 
 # Man pages
 doc/*.1

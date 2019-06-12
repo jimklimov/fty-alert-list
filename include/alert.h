@@ -55,7 +55,7 @@ class Alert {
         std::vector<std::string> actions () { return m_Actions; }
 
         void overwrite (fty_proto_t *msg);
-        void overwrite (std::unique_ptr<Rule>& rule);
+        void overwrite (GenericRule rule);
         void update (fty_proto_t *msg);
         void cleanup ();
         int switchState (std::string state_str);
@@ -68,7 +68,6 @@ class Alert {
                 std::string port);
         zmsg_t *StaleToFtyProto ();
         zmsg_t *TriggeredToFtyProto ();
-        friend void alert_test (bool verbose);
     private:
         enum AlertState : uint8_t
         {
@@ -131,6 +130,7 @@ class Alert {
         std::string m_Description;
         std::vector<std::string> m_Actions;
 };
+void alert_test (bool verbose);
 //  @end
 
 #endif

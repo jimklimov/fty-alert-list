@@ -1,5 +1,5 @@
 /*
-    fty-alert-engine - 42ity service evaluating rules written in Lua and producing alerts
+    fty-alert-list - Daemon evaluating rules and producing alerts
 
     Copyright (C) 2014 - 2018 Eaton
 
@@ -49,7 +49,7 @@ pipeline {
             description: 'If the deployment is done, should THIS job wait for it to complete and include its success or failure as the build result (true), or should it schedule the job and exit quickly to free up the executor (false)',
             name: 'DEPLOY_REPORT_RESULT')
         booleanParam (
-            defaultValue: true,
+            defaultValue: false,
             description: 'Attempt stable build without DRAFT API in this run?',
             name: 'DO_BUILD_WITHOUT_DRAFT_API')
         booleanParam (

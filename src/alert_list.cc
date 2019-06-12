@@ -26,7 +26,7 @@
 @end
 */
 
-#include "fty_alert_engine_classes.h"
+#include "fty_alert_list_classes.h"
 
 #define RFC_ALERTS_LIST_SUBJECT "rfc-alerts-list"
 #define RFC_ALERTS_ACKNOWLEDGE_SUBJECT  "rfc-alerts-acknowledge"
@@ -101,12 +101,12 @@ std::string
 AlertList::handle_rule (std::string rule)
 {
     //TODO: deserialize rule
-    std::unique_ptr<Rule> deserialized_rule =  RuleFactory::createFromJson (rule);
-    std::string id = deserialized_rule->getName ();
+    GenericRule deserialized_rule (rule);
+    std::string id = deserialized_rule.getName ();
     auto pos = m_Alert_cache.find (id);
     // new rule
     if (pos == m_Alert_cache.end ()) {
-        for (auto asset : deserialized_rule->getAssets ()) {
+        for (auto asset : deserialized_rule.getAssets ()) {
             if (FullAssetDatabase::getInstance ().getAsset (asset) == nullptr) {
                 // ask FTY_ASSET_AGENT for ASSET_DETAILS
                 zuuid_t *uuid = zuuid_new ();
@@ -125,7 +125,7 @@ AlertList::handle_rule (std::string rule)
                             log_warning("unexpected response from ASSET AGENT, ignoring this alert.");
                         }
                         log_debug("received alert for %s, asked for it and was successful", asset.c_str ());
-                        Alert rule_alert (id, deserialized_rule->getResults());
+                        Alert rule_alert (id, deserialized_rule.getResults());
 			            std::shared_ptr<Alert> rule_alert_ptr = std::make_shared<Alert> (rule_alert);
                         m_Alert_cache.insert (std::pair<std::string, Alert> (id, rule_alert));
                         m_Asset_alerts[asset].push_back (rule_alert_ptr);

@@ -33,7 +33,6 @@ class AlertList {
             m_Stream_client = mlm_client_new ();
         }
         void alert_list_run (zsock_t *pipe);
-        void alert_list_test (bool verbose);
         ~AlertList ()
         {
             mlm_client_destroy (&m_Mailbox_client);
@@ -56,7 +55,7 @@ class AlertList {
         std::map<std::string, std::vector<std::shared_ptr<Alert>>> m_Asset_alerts;
         std::map<std::string, uint64_t> m_Last_send;
 };
-//  @end
 void alert_list_actor (zsock_t *pipe, void *args);
-
+void alert_list_test (bool verbose);
+//  @end
 #endif

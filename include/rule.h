@@ -7,6 +7,7 @@
 #include <memory>
 #include <cassert>
 #include <cxxtools/serializationinfo.h>
+#include <cxxtools/jsondeserializer.h>
 #include <fty_log.h>
 
 //  1  - equals
@@ -211,11 +212,15 @@ class GenericRule : public Rule {
         GenericRule (const std::string name, const VectorStrings metrics, const VectorStrings assets,
                 const VectorStrings categories, const ResultsMap results) : Rule (name, metrics, assets, categories,
                 results) { };
-        GenericRule (const cxxtools::SerializationInfo &si) : Rule (si) {
+        GenericRule (const cxxtools::SerializationInfo &si) : Rule (si) { };
+        GenericRule (const std::string json) : Rule (json) {
+            std::istringstream iss (json);
+            cxxtools::JsonDeserializer jd (iss);
+            cxxtools::SerializationInfo si;
+            jd.deserialize (si);
             auto elem = si.getMember (0);
             elem >>= rule_type_;
         };
-        GenericRule (const std::string json) : Rule (json) { };
     private:
         std::string rule_type_;
 };

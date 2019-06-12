@@ -6,7 +6,7 @@
 #include <string>
 #include <cstdint>
 #include "fty_proto.h"
-#include "fty_common_mlm.h"
+#include "fty_common_mlm_utils.h"
 
 /*
  * \brief Class that provides C++ interface for assets

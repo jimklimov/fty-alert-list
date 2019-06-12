@@ -19,13 +19,15 @@ AM_CPPFLAGS = \
     ${log4cplus_CFLAGS} \
     ${fty_common_logging_CFLAGS} \
     ${fty_proto_CFLAGS} \
+    ${openssl_CFLAGS} \
+    ${fty_common_mlm_CFLAGS} \
     ${cxxtools_CFLAGS} \
     ${fty_common_CFLAGS} \
     ${fty_shm_CFLAGS} \
     -D__STDC_FORMAT_MACROS \
     -I$(srcdir)/include
 
-project_libs = ${libsodium_LIBS} ${libzmq_LIBS} ${czmq_LIBS} ${malamute_LIBS} ${log4cplus_LIBS} ${fty_common_logging_LIBS} ${fty_proto_LIBS} ${cxxtools_LIBS} ${fty_common_LIBS} ${fty_shm_LIBS}
+project_libs = ${libsodium_LIBS} ${libzmq_LIBS} ${czmq_LIBS} ${malamute_LIBS} ${log4cplus_LIBS} ${fty_common_logging_LIBS} ${fty_proto_LIBS} ${openssl_LIBS} ${fty_common_mlm_LIBS} ${cxxtools_LIBS} ${fty_common_LIBS} ${fty_shm_LIBS}
 
 SUBDIRS = doc
 SUBDIRS += include
@@ -53,6 +55,8 @@ EXTRA_DIST += \
     Findlog4cplus.cmake \
     Findfty_common_logging.cmake \
     Findfty_proto.cmake \
+    Findopenssl.cmake \
+    Findfty_common_mlm.cmake \
     Findcxxtools.cmake \
     Findfty_common.cmake \
     Findfty_shm.cmake \
