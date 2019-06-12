@@ -27,7 +27,7 @@
 */
 
 #include "alert.h"
-#include "fty_alert_engine_classes.h"
+#include "fty_alert_list_classes.h"
 
 std::string
 s_replace_tokens (

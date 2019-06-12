@@ -1,9 +1,9 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: fty-alert-engine
+Upstream-Name: fty-alert-list
 
 Files: *
-Copyright: 2015- fty-alert-engine Developers <eatonipcopensource@eaton.com>
-License: fty-alert-engine_license
+Copyright: 2015- fty-alert-list Developers <eatonipcopensource@eaton.com>
+License: fty-alert-list_license
  Copyright (C) 2014 - 2018 Eaton
  .
  This program is free software; you can redistribute it and/or modify

@@ -1,11 +1,11 @@
 <project
-    name = "fty-alert-engine"
-    description = "42ity service evaluating rules written in Lua and producing alerts"
+    name = "fty-alert-list"
+    description = "Daemon evaluating rules and producing alerts"
     script = "zproject.gsl"
     email = "EatonIPCOpenSource@eaton.com"
     url = "https://42ity.org"
     license = "GPL-2.0+"
-    repository = "https://github.com/42ity/fty-alert-engine"
+    repository = "https://github.com/42ity/fty-alert-list"
     >
 
     <target name = "debian" />
@@ -123,9 +123,8 @@
         </use>
     </use>
 
-    <use project = "lua-5.1" />
+    <!--<use project = "lua-5.1" />-->
 
-    <!-- alert engine uses patched cxxtools, point to 42ity fork instead of upstream -->
     <use project = "cxxtools"
         test = "cxxtools::Utf8Codec::Utf8Codec"
         header = "cxxtools/allocator.h"
@@ -182,7 +181,7 @@
     <header name = "thresholdruledevice" private = "1" >thresholdruledevice</header>
     <header name = "regexrule" private = "1" >regexrule</header>-->
     <class name = "alert_list">Actor to serve REST API requests about alerts</class>
-    <main name = "fty-alert-engine" service = "1">
+    <main name = "fty-alert-list" service = "1">
         Daemon evaluating rules and producing alerts
     </main>
 </project>

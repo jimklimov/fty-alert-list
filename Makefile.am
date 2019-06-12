@@ -19,14 +19,13 @@ AM_CPPFLAGS = \
     ${log4cplus_CFLAGS} \
     ${fty_common_logging_CFLAGS} \
     ${fty_proto_CFLAGS} \
-    ${lua_5_1_CFLAGS} \
     ${cxxtools_CFLAGS} \
     ${fty_common_CFLAGS} \
     ${fty_shm_CFLAGS} \
     -D__STDC_FORMAT_MACROS \
     -I$(srcdir)/include
 
-project_libs = ${libsodium_LIBS} ${libzmq_LIBS} ${czmq_LIBS} ${malamute_LIBS} ${log4cplus_LIBS} ${fty_common_logging_LIBS} ${fty_proto_LIBS} ${lua_5_1_LIBS} ${cxxtools_LIBS} ${fty_common_LIBS} ${fty_shm_LIBS}
+project_libs = ${libsodium_LIBS} ${libzmq_LIBS} ${czmq_LIBS} ${malamute_LIBS} ${log4cplus_LIBS} ${fty_common_logging_LIBS} ${fty_proto_LIBS} ${cxxtools_LIBS} ${fty_common_LIBS} ${fty_shm_LIBS}
 
 SUBDIRS = doc
 SUBDIRS += include
@@ -54,7 +53,6 @@ EXTRA_DIST += \
     Findlog4cplus.cmake \
     Findfty_common_logging.cmake \
     Findfty_proto.cmake \
-    Findlua_5_1.cmake \
     Findcxxtools.cmake \
     Findfty_common.cmake \
     Findfty_shm.cmake \
@@ -66,7 +64,7 @@ endif
 
 EXTRA_DIST += \
     README.md \
-    src/fty_alert_engine_classes.h
+    src/fty_alert_list_classes.h
 
 # NOTE: this "include" syntax is not a "make" but an "autotools" keyword,
 # see https://www.gnu.org/software/automake/manual/html_node/Include.html
