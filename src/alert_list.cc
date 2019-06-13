@@ -110,7 +110,7 @@ AlertList::handle_rule (std::string rule)
             if (FullAssetDatabase::getInstance ().getAsset (asset) == nullptr) {
                 // ask FTY_ASSET_AGENT for ASSET_DETAILS
                 zuuid_t *uuid = zuuid_new ();
-		zpoller_t *asset_helper = zpoller_new (mlm_client_msgpipe (m_Mailbox_client), NULL);
+                zpoller_t *asset_helper = zpoller_new (mlm_client_msgpipe (m_Mailbox_client), NULL);
                 mlm_client_sendtox (m_Mailbox_client, AGENT_FTY_ASSET, "ASSET_DETAIL", "GET",
                         zuuid_str_canonical (uuid), asset.c_str (), NULL);
                 void *which = zpoller_wait (asset_helper, 5);
@@ -532,13 +532,57 @@ alert_list_test (bool verbose)
 
     //  @selftest
     //  Simple create/destroy test
-    AlertList alert_list_server();
+    {
+        AlertList alert_list_server_tmp();
+    }
+
+    static const char* endpoint = "inproc://fty-alert-list-test";
+
+    zactor_t *server = zactor_new (mlm_server, (void *) "Malamute");
+    zstr_sendx (server, "BIND", endpoint, NULL);
+    if (verbose)
+        zstr_send (server, "VERBOSE");
+
+    zactor_t *alert_list_server = zactor_new (alert_list_actor, (void *) "fty-alert-list-test");
+    zstr_sendx (alert_list_server, "CONNECT", endpoint, "fty-alert-list-test", NULL);
+    zstr_sendx (alert_list_server, "CONSUMER", FTY_PROTO_STREAM_ALERTS_SYS, ".*", NULL);
+    zstr_sendx (alert_list_server, "CONSUMER", FTY_PROTO_STREAM_ASSETS, ".*", NULL);
+    zstr_sendx (alert_list_server, "PRODUCER", FTY_PROTO_STREAM_ALERTS, NULL);
+
+    mlm_client_t *asset_producer = mlm_client_new ();
+    int rv = mlm_client_connect (asset_producer, endpoint, 1000, "ASSETPRODUCER");
+    assert (rv == 0);
+    rv = mlm_client_set_producer (asset_producer, "ASSETS");
+    assert (rv == 0);
+
+    mlm_client_t *alert_producer = mlm_client_new ();
+    rv = mlm_client_connect (alert_producer, endpoint, 1000, "ALERTPRODUCER");
+    assert (rv == 0);
+    rv = mlm_client_set_producer (alert_producer, "_ALERTS_SYS");
+    assert (rv == 0);
+
+    mlm_client_t *ui = mlm_client_new ();
+    rv = mlm_client_connect (ui, endpoint, 1000, "UI");
+    assert (rv == 0);
 
     // send asset - DC
+    // fill in ename, type, subtype
+    zhash_t *aux = zhash_new ();
+    zhash_autofree (aux);
+    zhash_insert (aux, "type", (void *) "datacenter");
+    zhash_insert (aux, "subtype", (void *) "N/A");
+    zhash_t *ext = zhash_new ();
+    zhash_autofree (ext);
+    zhash_insert (ext, "name", (void *) "DC-Roztoky");
+    zmsg_t *dc = fty_proto_encode_asset (aux, "testdatacenter", FTY_PROTO_ASSET_OP_CREATE, ext);
+    mlm_client_send (asset_producer, "CREATE", &dc);
     // add rule
+
     // send ACTIVE alert
     // LIST ALL
     // send RESOLVED alert
+    // LIST ALL
+    zstr_sendx (alert_list_server, "PRODUCER", FTY_PROTO_STREAM_ALERTS, NULL);
     // LIST ALL
     //  @end
     printf ("OK\n");
