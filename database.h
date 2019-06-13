@@ -117,7 +117,7 @@ class ObservedGenericDatabase : public GenericDatabase<KeyT, ElementT> {
     using typename GD::ElementPtr;
     using GD::end;
     public:
-        using CallbackFunction = std::function<void (void)>;
+        using CallbackFunction = std::function<void (const ElementPtr)>;
     private:
         CallbackFunction on_create;
         CallbackFunction on_update;
@@ -134,26 +134,30 @@ class ObservedGenericDatabase : public GenericDatabase<KeyT, ElementT> {
         /// throws any errors, notably element_not_found
         void insertElement (KeyT key, ElementT element) {
             GD::insertOrUpdateElement (key, element);
-            if (on_create)
-                on_create ();
+            if (on_create) {
+                ElementPtr e = this->getElement (key);
+                on_create (e);
+            }
         }
         /// throws any errors, notably element_not_found
         void insertElement (KeyT key, ElementPtr element) {
             GD::insertOrUpdateElement (key, element);
             if (on_create)
-                on_create ();
+                on_create (element);
         }
         /// throws any errors, notably element_not_found
         void updateElement (KeyT key, ElementT element) {
             GD::insertOrUpdateElement (key, element);
-            if (on_update)
-                on_update ();
+            if (on_update) {
+                ElementPtr e = this->getElement (key);
+                on_update (e);
+            }
         }
         /// throws any errors, notably element_not_found
         void updateElement (KeyT key, ElementPtr element) {
             GD::insertOrUpdateElement (key, element);
             if (on_update)
-                on_update ();
+                on_update (element);
         }
         void insertOrUpdateElement (KeyT key, ElementT element) {
             if (GD::getElementIt (key) != end ()) {
@@ -175,9 +179,10 @@ class ObservedGenericDatabase : public GenericDatabase<KeyT, ElementT> {
         }
         /// throws any errors, notably element_not_found
         void deleteElement (KeyT key) {
+            ElementPtr e = this->getElement (key);
             GD::deleteElement (key);
             if (on_delete)
-                on_delete ();
+                on_delete (e);
         }
 };
 

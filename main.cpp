@@ -367,17 +367,42 @@ bool assetDatabaseUT2 () {
     return true;
 }
 
+using namespace std::placeholders;
+
+class AssetDatabaseUT3 {
+    public:
+        void externalFunctionInsert (const std::shared_ptr<FullAsset> a) {
+            std::cout << "An element " << a->getId () << " was created, noted by external class function" << std::endl;
+        }
+        void internalFunctionInsert (const std::shared_ptr<FullAsset> a) {
+            std::cout << "An element " << a->getId () << " was created, noted by internal class function" << std::endl;
+        }
+        void internalTest () {
+            FullAsset fa7 ("id-15", "active", "device", "rackcontroller", "MyRack", "id-1", 1, {{"aux15", "aval15"}},
+                    {{"ext15", "eval15"}});
+            FullAssetDatabase::getInstance ().setOnCreate (std::bind (&AssetDatabaseUT3::internalFunctionInsert, this,
+                    _1));
+            FullAssetDatabase::getInstance ().insertOrUpdateAsset (fa7);
+        }
+};
+
 bool assetDatabaseUT3 () {
-    FullAssetDatabase::getInstance ().setOnCreate ([](void){
-            std::cout << "An element was created" << std::endl; });
-    FullAssetDatabase::getInstance ().setOnUpdate ([](void){
-            std::cout << "An element was updated" << std::endl; });
-    FullAssetDatabase::getInstance ().setOnDelete ([](void){
-            std::cout << "An element was deleted" << std::endl; });
+    FullAssetDatabase::getInstance ().setOnCreate ([](const std::shared_ptr<FullAsset> a){
+            std::cout << "An element " << a->getId () << " was created" << std::endl; });
+    FullAssetDatabase::getInstance ().setOnUpdate ([](const std::shared_ptr<FullAsset> a){
+            std::cout << "An element " << a->getId () << " was updated" << std::endl; });
+    FullAssetDatabase::getInstance ().setOnDelete ([](const std::shared_ptr<FullAsset> a){
+            std::cout << "An element " << a->getId () << " was deleted" << std::endl; });
     FullAsset fa5 ("id-13", "active", "device", "rackcontroller", "MyRack", "id-1", 1, {{"aux13", "aval13"}},
             {{"ext13", "eval13"}});
     FullAssetDatabase::getInstance ().insertOrUpdateAsset (fa5);
     FullAssetDatabase::getInstance ().insertOrUpdateAsset (fa5);
+    AssetDatabaseUT3 adut3;
+    FullAsset fa6 ("id-14", "active", "device", "rackcontroller", "MyRack", "id-1", 1, {{"aux14", "aval14"}},
+            {{"ext14", "eval14"}});
+    FullAssetDatabase::getInstance ().setOnCreate (std::bind (&AssetDatabaseUT3::externalFunctionInsert, &adut3, _1));
+    FullAssetDatabase::getInstance ().insertOrUpdateAsset (fa6);
+    adut3.internalTest ();
     return true;
 }
 
