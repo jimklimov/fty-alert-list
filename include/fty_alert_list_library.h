@@ -98,6 +98,7 @@ typedef struct _alert_list_t alert_list_t;
 
 //  Public classes, each with its own header file
 #include "asset_database.h"
+#include "database.h"
 #ifdef FTY_ALERT_LIST_BUILD_DRAFT_API
 #include "alert.h"
 #include "asset.h"

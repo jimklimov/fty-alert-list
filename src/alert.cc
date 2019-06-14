@@ -71,8 +71,10 @@ Alert::update (fty_proto_t *msg)
     }
     std::string outcome = fty_proto_aux_string (msg, "outcome", "OK");
     m_Outcome = outcome;
-    if (m_Ctime == 0)
+    if (m_Ctime == 0) {
         m_Ctime = fty_proto_time (msg);
+        m_Mtime = fty_proto_time (msg);
+    }
     m_Ttl = fty_proto_ttl (msg);
     m_Severity = m_Results[outcome].severity_;
     m_Description = m_Results[outcome].description_;
@@ -86,8 +88,10 @@ Alert::overwrite (fty_proto_t *msg)
         std::string msg ("Wrong fty-proto type");
         throw std::runtime_error (msg);
     }
-    if (!isAckState (m_State))
+    if (!isAckState (m_State)) {
+        log_error ("switching state to %s", fty_proto_state (msg));
         m_State = StringToAlertState (fty_proto_state (msg));
+    }
     m_Ctime = fty_proto_time (msg);
     m_Mtime = fty_proto_time (msg);
 }
@@ -502,7 +506,7 @@ alert_test (bool verbose)
         zmsg_t *alert_msg =  alert3.toFtyProto ("DC-Roztoky", "", "", "", "");
         fty_proto_t *fty_alert_msg = fty_proto_decode (&alert_msg);
         assert (fty_proto_aux_number (fty_alert_msg, "ctime", 0) == now);
-        assert (fty_proto_time (fty_alert_msg) == 0);
+        assert (fty_proto_time (fty_alert_msg) == now);
         assert (streq (fty_proto_rule (fty_alert_msg), "metric"));
         assert (streq (fty_proto_name (fty_alert_msg), "asset1"));
         assert (fty_proto_ttl (fty_alert_msg) == ttl);
