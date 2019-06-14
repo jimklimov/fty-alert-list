@@ -537,14 +537,15 @@ alert_list_test (bool verbose)
     }
 
     static const char* endpoint = "inproc://fty-alert-list-test";
+    static const char* alert_list_test_address = "fty-alert-list-test";
 
     zactor_t *server = zactor_new (mlm_server, (void *) "Malamute");
     zstr_sendx (server, "BIND", endpoint, NULL);
     if (verbose)
         zstr_send (server, "VERBOSE");
 
-    zactor_t *alert_list_server = zactor_new (alert_list_actor, (void *) "fty-alert-list-test");
-    zstr_sendx (alert_list_server, "CONNECT", endpoint, "fty-alert-list-test", NULL);
+    zactor_t *alert_list_server = zactor_new (alert_list_actor, (void *) alert_list_test_address);
+    zstr_sendx (alert_list_server, "CONNECT", endpoint, alert_list_test_address, NULL);
     zstr_sendx (alert_list_server, "CONSUMER", FTY_PROTO_STREAM_ALERTS_SYS, ".*", NULL);
     zstr_sendx (alert_list_server, "CONSUMER", FTY_PROTO_STREAM_ASSETS, ".*", NULL);
     zstr_sendx (alert_list_server, "PRODUCER", FTY_PROTO_STREAM_ALERTS, NULL);
@@ -575,15 +576,253 @@ alert_list_test (bool verbose)
     zhash_autofree (ext);
     zhash_insert (ext, "name", (void *) "DC-Roztoky");
     zmsg_t *dc = fty_proto_encode_asset (aux, "testdatacenter", FTY_PROTO_ASSET_OP_CREATE, ext);
-    mlm_client_send (asset_producer, "CREATE", &dc);
+    rv = mlm_client_send (asset_producer, "CREATE", &dc);
+
     // add rule
+    zmsg_t *rule_msg = zmsg_new ();
+    zuuid_t *uuid = zuuid_new ();
+    zmsg_addstr (rule_msg, "RULE");
+    zmsg_addstr (rule_msg, zuuid_str_canonical (uuid));
+    std::string rule_json ("{\"test\":{\"name\":\"average.mana@testdatacenter\",\"categories\":[\"CAT_ALL\"],\"metrics\":[\"");
+    rule_json += "average.mana1\"],\"results\":[{\"OK\":{\"action\":[],\"severity\":\"critical\",\"description\":\"";
+    rule_json += "ok_description\",\"threshold_name\":\"\"}}, {\"HIGH_CRITICAL\":{\"action\":[\"EMAIL\"],\"severity\":\""
+    rule_json += "critical\",\"description\":\"critical_high_description\",\"threshold_name\":\"\"}}}],\"assets\":[\"";
+    rule_json += "testdatacenter\"],\"values\":[{\"var1\":\"val1\"},{\"var2\":\"val2\"}]}}";
+    zmsg_addstr (rule_msg, rule_json.c_str ());
+    rv = mlm_client_sendto (ui, alert_list_test_address, "rule-handling", NULL, 5000, &rule_msg);
+
+    zmsg_t *reply = mlm_client_recv (ui);
+    char *str = zmsg_popstr (reply);
+    assert (streq (str, "RULE"));
+    zstr_free (&str);
+    str = zmsg_popstr (reply);
+    assert (streq (str, zuuid_str_canonical (uuid)));
+    zstr_free (&str);
+    zuuid_destroy (&uuid);
+    str = zmsg_popstr (reply);
+    assert (streq (str, "average.mana@testdatacenter"));
+    zstr_free (&str);
 
     // send ACTIVE alert
-    // LIST ALL
+    zhash_t *aux = zhash_new ();
+    zhash_autofree (aux);
+    zhash_insert (aux, "outcome", (void *) "HIGH_CRITICAL");
+    zlist_t *fty_actions = zlist_new ();
+
+    uint64_t mtime = now;
+    uint64_t ttl = 5;
+
+    zmsg_t *active_alert = fty_proto_encode_alert (
+            aux,
+            mtime,
+            ttl,
+            "average.mana",
+            "testdatacenter",
+            "ACTIVE",
+            "",
+            "",
+            fty_actions
+            );
+    zlist_destroy (&fty_actions);
+    zhash_destroy (&aux);
+    rv = mlm_client_send (alert_producer, "CREATE", &active_alert);
+
+    // LISTALL
+    zmsg_t *listall_msg = zmsg_new ();
+    uuid = zuuid_new ();
+    zmsg_addstr (listall_msg, "LISTALL");
+    zmsg_addstr (listall_msg, zuuid_str_canonical (uuid));
+    zmsg_addstr (listall_msg, "ALL");
+    rv = mlm_client_sendto (ui, alert_list_test_address, RFC_ALERTS_LIST_SUBJECT, NULL, 5000, &listall_msg);
+
+    zmsg_t *reply = mlm_client_recv (ui);
+    char *str = zmsg_popstr (reply);
+    assert (streq (str, "LISTALL"));
+    zstr_free (&str);
+    str = zmsg_popstr (reply);
+    assert (streq (str, zuuid_str_canonical (uuid)));
+    zstr_free (&str);
+    zuuid_destroy (&uuid);
+    str = zmsg_popstr (reply);
+    assert (streq (str, "ALL"));
+    zstr_free (&str);
+    zmsg_t *tmp = zmsg_popmsg (reply);
+    fty_proto_t *fty_tmp = fty_proto_decode (tmp);
+    assert (fty_proto_id (fty_tmp) == FTY_PROTO_ALERT);
+    assert (fty_proto_aux_number (fty_tmp, "ctime", 0) == now);
+    assert (fty_proto_time (fty_tmp) == now);
+    assert (streq (fty_proto_rule (fty_tmp), "average.mana"));
+    assert (streq (fty_proto_name (fty_tmp), "testdatacenter"));
+    assert (fty_proto_ttl (fty_tmp) == ttl);
+    assert (streq (fty_proto_severity (fty_tmp), "CRITICAL"));
+    assert (streq (fty_proto_state (fty_tmp), "ACTIVE"));
+    assert (streq (fty_proto_description (fty_tmp), "high_critical_description"));
+    zlist_t *fty_alert_msg_actions = fty_proto_action (fty_tmp);
+    assert (streq ((const char *) zlist_first (fty_alert_msg_actions), "EMAIL"));
+    zmsg_destroy (&tmp);
+    tmp = zmsg_popmsg (reply);
+    assert (tmp == NULL);
+
+    // LIST/testdatacenter
+    zmsg_t *list_msg = zmsg_new ();
+    uuid = zuuid_new ();
+    zmsg_addstr (list_msg, "LIST");
+    zmsg_addstr (list_msg, zuuid_str_canonical (uuid));
+    zmsg_addstr (list_msg, "ALL");
+    zmsg_addstr (list_msg, "testdatacenter");
+    rv = mlm_client_sendto (ui, alert_list_test_address, RFC_ALERTS_LIST_SUBJECT, NULL, 5000, &list_msg);
+
+    zmsg_t *reply = mlm_client_recv (ui);
+    char *str = zmsg_popstr (reply);
+    assert (streq (str, "LIST"));
+    zstr_free (&str);
+    str = zmsg_popstr (reply);
+    assert (streq (str, zuuid_str_canonical (uuid)));
+    zstr_free (&str);
+    str = zmsg_popstr (reply);
+    assert (streq (str, "ALL"));
+    zstr_free (&str);
+    str = zmsg_popstr (reply);
+    assert (streq (str, "testdatacenter"));
+    zstr_free (&str);
+    zmsg_t *tmp = zmsg_popmsg (reply);
+    fty_proto_t *fty_tmp = fty_proto_decode (tmp);
+    assert (fty_proto_id (fty_tmp) == FTY_PROTO_ALERT);
+    assert (fty_proto_aux_number (fty_tmp, "ctime", 0) == now);
+    assert (fty_proto_time (fty_tmp) == now);
+    assert (streq (fty_proto_rule (fty_tmp), "average.mana"));
+    assert (streq (fty_proto_name (fty_tmp), "testdatacenter"));
+    assert (fty_proto_ttl (fty_tmp) == ttl);
+    assert (streq (fty_proto_severity (fty_tmp), "CRITICAL"));
+    assert (streq (fty_proto_state (fty_tmp), "ACTIVE"));
+    assert (streq (fty_proto_description (fty_tmp), "high_critical_description"));
+    zlist_t *fty_alert_msg_actions = fty_proto_action (fty_tmp);
+    assert (streq ((const char *) zlist_first (fty_alert_msg_actions), "EMAIL"));
+    zmsg_destroy (&tmp);
+    tmp = zmsg_popmsg (reply);
+    assert (tmp == NULL);
+
     // send RESOLVED alert
+    zhash_t *aux = zhash_new ();
+    zhash_autofree (aux);
+    zhash_insert (aux, "outcome", (void *) "OK");
+    zlist_t *fty_actions = zlist_new ();
+
+    uint64_t mtime = zclock_time () / 1000;
+    uint64_t ttl = 5;
+
+    zmsg_t *resolved_alert = fty_proto_encode_alert (
+            aux,
+            mtime,
+            ttl,
+            "average.mana",
+            "testdatacenter",
+            "RESOLVED",
+            "",
+            "",
+            fty_actions
+            );
+    zlist_destroy (&fty_actions);
+    zhash_destroy (&aux);
+    rv = mlm_client_send (alert_producer, "CREATE", &resolved_alert);
+
+    // LISTALL
+    zmsg_t *listall_msg = zmsg_new ();
+    uuid = zuuid_new ();
+    zmsg_addstr (listall_msg, "LISTALL");
+    zmsg_addstr (listall_msg, zuuid_str_canonical (uuid));
+    zmsg_addstr (listall_msg, "ALL");
+    rv = mlm_client_sendto (ui, alert_list_test_address, RFC_ALERTS_LIST_SUBJECT, NULL, 5000, &listall_msg);
+
+    zmsg_t *reply = mlm_client_recv (ui);
+    char *str = zmsg_popstr (reply);
+    assert (streq (str, "LISTALL"));
+    zstr_free (&str);
+    str = zmsg_popstr (reply);
+    assert (streq (str, zuuid_str_canonical (uuid)));
+    zstr_free (&str);
+    zuuid_destroy (&uuid);
+    str = zmsg_popstr (reply);
+    assert (streq (str, "ALL"));
+    zstr_free (&str);
+    zmsg_t *tmp = zmsg_popmsg (reply);
+    fty_proto_t *fty_tmp = fty_proto_decode (tmp);
+    assert (fty_proto_id (fty_tmp) == FTY_PROTO_ALERT);
+    assert (fty_proto_aux_number (fty_tmp, "ctime", 0) == mtime);
+    assert (fty_proto_time (fty_tmp) == mtime);
+    assert (streq (fty_proto_rule (fty_tmp), "average.mana"));
+    assert (streq (fty_proto_name (fty_tmp), "testdatacenter"));
+    assert (fty_proto_ttl (fty_tmp) == ttl);
+    assert (streq (fty_proto_severity (fty_tmp), "OK"));
+    assert (streq (fty_proto_state (fty_tmp), "RESOLVED"));
+    assert (streq (fty_proto_description (fty_tmp), "ok_description"));
+    zlist_t *fty_alert_msg_actions = fty_proto_action (fty_tmp);
+    assert (streq ((const char *) zlist_first (fty_alert_msg_actions), ""));
+    zmsg_destroy (&tmp);
+    tmp = zmsg_popmsg (reply);
+    assert (tmp == NULL);
+
+    // send ACTIVE alert
+    zhash_t *aux = zhash_new ();
+    zhash_autofree (aux);
+    zhash_insert (aux, "outcome", (void *) "HIGH_CRITICAL");
+    zlist_t *fty_actions = zlist_new ();
+
+    uint64_t mtime = zclock_time () / 1000;
+    uint64_t ttl = 5;
+
+    zmsg_t *active_alert = fty_proto_encode_alert (
+            aux,
+            mtime,
+            ttl,
+            "average.mana",
+            "testdatacenter",
+            "ACTIVE",
+            "",
+            "",
+            fty_actions
+            );
+    zlist_destroy (&fty_actions);
+    zhash_destroy (&aux);
+    rv = mlm_client_send (alert_producer, "CREATE", &active_alert);
+    // wait for TTL to time out
+    zclock_wait (6000);
+    zstr_sendx (alert_list_server, "TTLCLEANUP", NULL);
     // LIST ALL
-    zstr_sendx (alert_list_server, "PRODUCER", FTY_PROTO_STREAM_ALERTS, NULL);
-    // LIST ALL
+    zmsg_t *listall_msg = zmsg_new ();
+    uuid = zuuid_new ();
+    zmsg_addstr (listall_msg, "LISTALL");
+    zmsg_addstr (listall_msg, zuuid_str_canonical (uuid));
+    zmsg_addstr (listall_msg, "ALL");
+    rv = mlm_client_sendto (ui, alert_list_test_address, RFC_ALERTS_LIST_SUBJECT, NULL, 5000, &listall_msg);
+
+    zmsg_t *reply = mlm_client_recv (ui);
+    char *str = zmsg_popstr (reply);
+    assert (streq (str, "LISTALL"));
+    zstr_free (&str);
+    str = zmsg_popstr (reply);
+    assert (streq (str, zuuid_str_canonical (uuid)));
+    zstr_free (&str);
+    zuuid_destroy (&uuid);
+    str = zmsg_popstr (reply);
+    assert (streq (str, "ALL"));
+    zstr_free (&str);
+    zmsg_t *tmp = zmsg_popmsg (reply);
+    fty_proto_t *fty_tmp = fty_proto_decode (tmp);
+    assert (fty_proto_id (fty_tmp) == FTY_PROTO_ALERT);
+    assert (fty_proto_aux_number (fty_tmp, "ctime", 0) == mtime);
+    assert (fty_proto_time (fty_tmp) == mtime);
+    assert (streq (fty_proto_rule (fty_tmp), "average.mana"));
+    assert (streq (fty_proto_name (fty_tmp), "testdatacenter"));
+    assert (fty_proto_ttl (fty_tmp) == ttl);
+    assert (streq (fty_proto_severity (fty_tmp), "OK"));
+    assert (streq (fty_proto_state (fty_tmp), "RESOLVED"));
+    assert (streq (fty_proto_description (fty_tmp), "ok_description"));
+    zlist_t *fty_alert_msg_actions = fty_proto_action (fty_tmp);
+    assert (streq ((const char *) zlist_first (fty_alert_msg_actions), ""));
+    zmsg_destroy (&tmp);
+    tmp = zmsg_popmsg (reply);
+    assert (tmp == NULL);
     //  @end
     printf ("OK\n");
 }
