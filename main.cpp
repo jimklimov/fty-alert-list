@@ -208,33 +208,47 @@ bool assetDatabaseUT1 () {
         return false;
     if (b->getSubtypeString () != "rackcontroller")
         return false;
-    b = BasicAssetDatabase::getInstance ().getAsset ("id-0");
-    if (b != nullptr)
+    try {
+        b = BasicAssetDatabase::getInstance ().getAsset ("id-0");
         return false;
-    auto e = ExtendedAssetDatabase::getInstance ().getAsset ("id-1");
-    if (e != nullptr)
+    } catch (element_not_found &eerror) {
+    }
+    try {
+        auto e = ExtendedAssetDatabase::getInstance ().getAsset ("id-1");
         return false;
-    auto f = FullAssetDatabase::getInstance ().getAsset ("id-1");
-    if (f != nullptr)
+    } catch (element_not_found &eerror) {
+    }
+    try {
+        auto f = FullAssetDatabase::getInstance ().getAsset ("id-1");
         return false;
+    } catch (element_not_found &eerror) {
+    }
     ExtendedAssetDatabase::getInstance ().insertOrUpdateAsset (ea1);
     ExtendedAssetDatabase::getInstance ().insertOrUpdateAsset (ea2);
     ExtendedAssetDatabase::getInstance ().insertOrUpdateAsset (eap4);
-    e = ExtendedAssetDatabase::getInstance ().getAsset ("id-5");
-    if (e == nullptr)
+    try {
+        auto e = ExtendedAssetDatabase::getInstance ().getAsset ("id-5");
+    } catch (element_not_found &eerror) {
         return false;
-    e = ExtendedAssetDatabase::getInstance ().getAsset ("id-8");
-    if (e == nullptr)
+    }
+    try {
+        auto e = ExtendedAssetDatabase::getInstance ().getAsset ("id-8");
+    } catch (element_not_found &eerror) {
         return false;
+    }
     FullAssetDatabase::getInstance ().insertOrUpdateAsset (fa1);
     FullAssetDatabase::getInstance ().insertOrUpdateAsset (fa2);
     FullAssetDatabase::getInstance ().insertOrUpdateAsset (fap4);
-    f = FullAssetDatabase::getInstance ().getAsset ("id-9");
-    if (f == nullptr)
+    try {
+        auto f = FullAssetDatabase::getInstance ().getAsset ("id-9");
+    } catch (element_not_found &eerror) {
         return false;
-    f = FullAssetDatabase::getInstance ().getAsset ("id-12");
-    if (f == nullptr)
+    }
+    try {
+        auto f = FullAssetDatabase::getInstance ().getAsset ("id-12");
+    } catch (element_not_found &eerror) {
         return false;
+    }
     // mixing basic assets into extended and full asset DB is unsupported
     // ExtendedAssetDatabase::getInstance ().insertOrUpdateAsset (ba1);
     // ExtendedAssetDatabase::getInstance ().insertOrUpdateAsset (bap4);
@@ -247,22 +261,30 @@ bool assetDatabaseUT1 () {
     BasicAssetDatabase::getInstance ().insertOrUpdateAsset (fap4);
     ExtendedAssetDatabase::getInstance ().insertOrUpdateAsset (fa1);
     ExtendedAssetDatabase::getInstance ().insertOrUpdateAsset (fap4);
-    b = BasicAssetDatabase::getInstance ().getAsset ("id-5");
-    if (b == nullptr)
-        return false;
-    b = BasicAssetDatabase::getInstance ().getAsset ("id-8");
-    if (b == nullptr)
-        return false;
-    // while it is OK to insert assets via value, make_shared strips them to base class so extended attributes are lost
-    b = BasicAssetDatabase::getInstance ().getAsset ("id-9");
-    if (b == nullptr)
-        return false;
-    // but not when assets are passed as shared_ptrs
-    b = BasicAssetDatabase::getInstance ().getAsset ("id-12");
-    if (b == nullptr)
-        return false;
     try {
-        f = std::dynamic_pointer_cast<FullAsset>(b);
+        b = BasicAssetDatabase::getInstance ().getAsset ("id-5");
+    } catch (element_not_found &eerror) {
+        return false;
+    }
+    try {
+        b = BasicAssetDatabase::getInstance ().getAsset ("id-8");
+    } catch (element_not_found &eerror) {
+        return false;
+    }
+    // while it is OK to insert assets via value, make_shared strips them to base class so extended attributes are lost
+    try {
+        b = BasicAssetDatabase::getInstance ().getAsset ("id-9");
+    } catch (element_not_found &eerror) {
+        return false;
+    }
+    // but not when assets are passed as shared_ptrs
+    try {
+        b = BasicAssetDatabase::getInstance ().getAsset ("id-12");
+    } catch (element_not_found &eerror) {
+        return false;
+    }
+    try {
+        auto f = std::dynamic_pointer_cast<FullAsset>(b);
         if (f == nullptr)
             return false;
         if (f->getItem ("aux1") != "aval1")
@@ -270,14 +292,14 @@ bool assetDatabaseUT1 () {
     } catch (std::exception &e) {
         return false;
     }
-    e = ExtendedAssetDatabase::getInstance ().getAsset ("id-9");
-    if (e == nullptr)
-        return false;
-    e = ExtendedAssetDatabase::getInstance ().getAsset ("id-12");
-    if (e == nullptr)
-        return false;
     try {
-        f = std::dynamic_pointer_cast<FullAsset>(e);
+        auto e = ExtendedAssetDatabase::getInstance ().getAsset ("id-9");
+    } catch (element_not_found &eerror) {
+        return false;
+    }
+    try {
+        auto e = ExtendedAssetDatabase::getInstance ().getAsset ("id-12");
+        auto f = std::dynamic_pointer_cast<FullAsset>(e);
         if (f == nullptr)
             return false;
         if (f->getItem ("aux1") != "aval1")
@@ -319,15 +341,68 @@ bool assetDatabaseUT2 () {
         return false;
     if (b->getSubtypeString () != "rackcontroller")
         return false;
-    b = BasicAssetDatabase::getInstance ().getAsset ("id-0");
-    if (b != nullptr)
+    try {
+        b = BasicAssetDatabase::getInstance ().getAsset ("id-0");
         return false;
-    auto e = ExtendedAssetDatabase::getInstance ().getAsset ("id-1");
-    if (e != nullptr)
+    } catch (element_not_found &eerror) {
+    }
+    try {
+        auto e = ExtendedAssetDatabase::getInstance ().getAsset ("id-1");
         return false;
-    auto f = FullAssetDatabase::getInstance ().getAsset ("id-1");
-    if (f != nullptr)
+    } catch (element_not_found &eerror) {
+    }
+    try {
+        auto f = FullAssetDatabase::getInstance ().getAsset ("id-1");
         return false;
+    } catch (element_not_found &eerror) {
+    }
+    int count = 0;
+    for (auto asset_it : FullAssetDatabase::getInstance ()) {
+        if (asset_it.first != "id-10" && asset_it.first != "id-12" && asset_it.first != "id-9")
+            return false;
+        ++count;
+    }
+    if (count != 3)
+        return false;
+    return true;
+}
+
+using namespace std::placeholders;
+
+class AssetDatabaseUT3 {
+    public:
+        void externalFunctionInsert (const std::shared_ptr<FullAsset> a) {
+            std::cout << "An element " << a->getId () << " was created, noted by external class function" << std::endl;
+        }
+        void internalFunctionInsert (const std::shared_ptr<FullAsset> a) {
+            std::cout << "An element " << a->getId () << " was created, noted by internal class function" << std::endl;
+        }
+        void internalTest () {
+            FullAsset fa7 ("id-15", "active", "device", "rackcontroller", "MyRack", "id-1", 1, {{"aux15", "aval15"}},
+                    {{"ext15", "eval15"}});
+            FullAssetDatabase::getInstance ().setOnCreate (std::bind (&AssetDatabaseUT3::internalFunctionInsert, this,
+                    _1));
+            FullAssetDatabase::getInstance ().insertOrUpdateAsset (fa7);
+        }
+};
+
+bool assetDatabaseUT3 () {
+    FullAssetDatabase::getInstance ().setOnCreate ([](const std::shared_ptr<FullAsset> a){
+            std::cout << "An element " << a->getId () << " was created" << std::endl; });
+    FullAssetDatabase::getInstance ().setOnUpdate ([](const std::shared_ptr<FullAsset> a){
+            std::cout << "An element " << a->getId () << " was updated" << std::endl; });
+    FullAssetDatabase::getInstance ().setOnDelete ([](const std::shared_ptr<FullAsset> a){
+            std::cout << "An element " << a->getId () << " was deleted" << std::endl; });
+    FullAsset fa5 ("id-13", "active", "device", "rackcontroller", "MyRack", "id-1", 1, {{"aux13", "aval13"}},
+            {{"ext13", "eval13"}});
+    FullAssetDatabase::getInstance ().insertOrUpdateAsset (fa5);
+    FullAssetDatabase::getInstance ().insertOrUpdateAsset (fa5);
+    AssetDatabaseUT3 adut3;
+    FullAsset fa6 ("id-14", "active", "device", "rackcontroller", "MyRack", "id-1", 1, {{"aux14", "aval14"}},
+            {{"ext14", "eval14"}});
+    FullAssetDatabase::getInstance ().setOnCreate (std::bind (&AssetDatabaseUT3::externalFunctionInsert, &adut3, _1));
+    FullAssetDatabase::getInstance ().insertOrUpdateAsset (fa6);
+    adut3.internalTest ();
     return true;
 }
 
@@ -383,6 +458,8 @@ int main () {
     if (!assetDatabaseUT1 ())
         std::cout << "Asset database unit tests failed" << std::endl;
     if (!assetDatabaseUT2 ())
+        std::cout << "Asset database unit tests failed" << std::endl;
+    if (!assetDatabaseUT3 ())
         std::cout << "Asset database unit tests failed" << std::endl;
     if (!ruleUT ())
         std::cout << "Rule unit tests failed" << std::endl;
