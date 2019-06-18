@@ -211,7 +211,7 @@
         </use>
     </use>
 
-    <use project = "fty_shm" libname = "libfty_shm" header="fty_shm.h" min_major = "1" test = "fty_shm_test" 
+    <use project = "fty_shm" libname = "libfty_shm" header="fty_shm.h" min_major = "1" test = "fty_shm_test"
         repository = "https://github.com/42ity/fty-shm.git"/>
 
     <!--TODO FIXME : duplicated class -->
@@ -235,11 +235,11 @@
     <class name = "RuleConfigurator" private = "1" selftest = "0">Rule Configurator</class>
     <class name = "TemplateRuleConfigurator" private = "1" selftest = "0">Template rule configurator</class>
     <class name = "fty_alert_engine_server" state = "stable" >Actor evaluating rules</class>
-    <class name = "fty_alert_actions" state = "stable" >Actor performing actions on alert (sending notifications)</class>
     <header name = "normalrule" private = "1" >normalrule</header>
     <header name = "thresholdrulesimple" private = "1" >thresholdrulesimple</header>
     <header name = "thresholdruledevice" private = "1" >thresholdruledevice</header>
     <header name = "regexrule" private = "1" >regexrule</header>-->
+    <class name = "fty_alert_actions" state = "stable" >Actor performing actions on alert (sending notifications)</class>
     <class name = "alert_list">Actor to serve REST API requests about alerts</class>
     <main name = "fty-alert-list" service = "1">
         Daemon evaluating rules and producing alerts

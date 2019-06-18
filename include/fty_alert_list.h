@@ -27,4 +27,6 @@
 
 //  Add your own public definitions here, if you need them
 
+#define AGENT_FTY_ALERT_ACTIONS "fty-alert-actions"
+
 #endif

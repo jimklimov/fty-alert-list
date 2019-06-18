@@ -26,7 +26,7 @@
 @end
 */
 
-#include "fty_alert_engine_classes.h"
+#include "fty_alert_list_classes.h"
 #include "fty_common_mlm_utils.h"
 
 #define EMAIL_ACTION            "EMAIL"
@@ -960,7 +960,7 @@ s_handle_pipe_deliver(fty_alert_actions_t *self, zmsg_t** msg_p, uint64_t &timeo
 //  fty_alert_actions actor function
 
 void
-fty_alert_actions(zsock_t *pipe, void* args)
+fty_alert_actions (zsock_t *pipe, void* args)
 {
     log_trace("fty_alert_actions called");
     fty_alert_actions_t *self = fty_alert_actions_new ();

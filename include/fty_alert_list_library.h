@@ -37,7 +37,6 @@
 #include <fty_common_mlm.h>
 #include <cxxtools/allocator.h>
 #include <fty_common.h>
-#include <fty_common_mlm.h>
 #include <fty_shm.h>
 
 //  FTY_ALERT_LIST version macros for compile-time API detection
@@ -78,12 +77,10 @@
 #   endif
 #endif
 
-//  Project has no stable classes, so we build the draft API
-#undef  FTY_ALERT_LIST_BUILD_DRAFT_API
-#define FTY_ALERT_LIST_BUILD_DRAFT_API
-
 //  Opaque class structures to allow forward references
 //  These classes are stable or legacy and built in all releases
+typedef struct _fty_alert_actions_t fty_alert_actions_t;
+#define FTY_ALERT_ACTIONS_T_DEFINED
 //  Draft classes are by default not built in stable releases
 #ifdef FTY_ALERT_LIST_BUILD_DRAFT_API
 typedef struct _alert_t alert_t;
@@ -100,6 +97,7 @@ typedef struct _alert_list_t alert_list_t;
 //  Public classes, each with its own header file
 #include "asset_database.h"
 #include "database.h"
+#include "fty_alert_actions.h"
 #ifdef FTY_ALERT_LIST_BUILD_DRAFT_API
 #include "alert.h"
 #include "asset.h"
