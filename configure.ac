@@ -193,6 +193,7 @@ AS_IF([test x"${search_libsodium}" = xyes], [
     found_pkgconfig=""
     PKG_CHECK_MODULES([libsodium], [libsodium >= 0.0.0],
     [
+        PKGCFG_LIBS_PRIVATE="$PKGCFG_LIBS_PRIVATE $libsodium_LIBS"
         was_libsodium_check_lib_detected=pkgcfg
         found_pkgconfig="libsodium"
     ],
@@ -226,11 +227,12 @@ AS_IF([test x"${search_libsodium}" = xyes], [
 dnl END of PKG_CHECK_MODULES and/or direct tests for libsodium
     AS_CASE(["x${was_libsodium_check_lib_detected}"],
         [xpkgcfg], [
-                PKGCFG_NAMES_PRIVATE="$PKGCFG_NAMES_PRIVATE ${found_pkgconfig}"
+                AC_SUBST([pkgconfig_name_libsodium],["${found_pkgconfig}"])
                 CFLAGS="${libsodium_CFLAGS} ${CFLAGS}"
                 LIBS="${libsodium_LIBS} ${LIBS}"
             ],
         [xyes], [
+                AC_SUBST([pkgconfig_name_libsodium],[""])
                 CFLAGS="${libsodium_synthetic_cflags} ${CFLAGS}"
                 LDFLAGS="${libsodium_synthetic_libs} ${LDFLAGS}"
                 LIBS="${libsodium_synthetic_libs} ${LIBS}"
@@ -239,6 +241,7 @@ dnl END of PKG_CHECK_MODULES and/or direct tests for libsodium
                 AC_SUBST([libsodium_LIBS],[${libsodium_synthetic_libs}])
             ],
         [xno], [
+                AC_SUBST([pkgconfig_name_libsodium],[""])
             AC_MSG_ERROR([Cannot find pkg-config metadata for libsodium 0.0.0 or higher])
     ])
 ])
@@ -267,7 +270,7 @@ AS_CASE([x"${with_libzmq}"],
 dnl We do not abort right now, because the maintainer/developer may have
 dnl something particular in mind, e.g. to build just parts of a project.
 AS_IF([test x"${search_libzmq}" = xno],
-    [AC_MSG_WARN([Required dependency on libzmq was explicitly disabled during configuration by '--with-libzmq=no'; subsequent full build of fty-alert-list may fail])])
+    [AC_MSG_WARN([Required dependency on libzmq was explicitly disabled during configuration by '--with-libzmq=no'; subsequent full build of fty-alert-engine may fail])])
 
 AS_IF([test x"${search_libzmq}" = xyes], [
     # Archive previously detected and supplied flags
@@ -277,6 +280,7 @@ AS_IF([test x"${search_libzmq}" = xyes], [
     found_pkgconfig=""
     PKG_CHECK_MODULES([libzmq], [libzmq >= 0.0.0],
     [
+        PKGCFG_LIBS_PRIVATE="$PKGCFG_LIBS_PRIVATE $libzmq_LIBS"
         was_libzmq_check_lib_detected=pkgcfg
         found_pkgconfig="libzmq"
     ],
@@ -310,11 +314,12 @@ AS_IF([test x"${search_libzmq}" = xyes], [
 dnl END of PKG_CHECK_MODULES and/or direct tests for libzmq
     AS_CASE(["x${was_libzmq_check_lib_detected}"],
         [xpkgcfg], [
-                PKGCFG_NAMES_PRIVATE="$PKGCFG_NAMES_PRIVATE ${found_pkgconfig}"
+                AC_SUBST([pkgconfig_name_libzmq],["${found_pkgconfig}"])
                 CFLAGS="${libzmq_CFLAGS} ${CFLAGS}"
                 LIBS="${libzmq_LIBS} ${LIBS}"
             ],
         [xyes], [
+                AC_SUBST([pkgconfig_name_libzmq],[""])
                 CFLAGS="${libzmq_synthetic_cflags} ${CFLAGS}"
                 LDFLAGS="${libzmq_synthetic_libs} ${LDFLAGS}"
                 LIBS="${libzmq_synthetic_libs} ${LIBS}"
@@ -323,6 +328,7 @@ dnl END of PKG_CHECK_MODULES and/or direct tests for libzmq
                 AC_SUBST([libzmq_LIBS],[${libzmq_synthetic_libs}])
             ],
         [xno], [
+                AC_SUBST([pkgconfig_name_libzmq],[""])
             AC_MSG_ERROR([Cannot find pkg-config metadata for libzmq 0.0.0 or higher])
     ])
 ])
@@ -351,7 +357,7 @@ AS_CASE([x"${with_libczmq}"],
 dnl We do not abort right now, because the maintainer/developer may have
 dnl something particular in mind, e.g. to build just parts of a project.
 AS_IF([test x"${search_libczmq}" = xno],
-    [AC_MSG_WARN([Required dependency on czmq was explicitly disabled during configuration by '--with-libczmq=no'; subsequent full build of fty-alert-list may fail])])
+    [AC_MSG_WARN([Required dependency on czmq was explicitly disabled during configuration by '--with-libczmq=no'; subsequent full build of fty-alert-engine may fail])])
 
 AS_IF([test x"${search_libczmq}" = xyes], [
     # Archive previously detected and supplied flags
@@ -361,6 +367,7 @@ AS_IF([test x"${search_libczmq}" = xyes], [
     found_pkgconfig=""
     PKG_CHECK_MODULES([czmq], [libczmq >= 3.0.2],
     [
+        PKGCFG_LIBS_PRIVATE="$PKGCFG_LIBS_PRIVATE $czmq_LIBS"
         was_czmq_check_lib_detected=pkgcfg
         found_pkgconfig="libczmq"
     ],
@@ -394,11 +401,12 @@ AS_IF([test x"${search_libczmq}" = xyes], [
 dnl END of PKG_CHECK_MODULES and/or direct tests for libczmq
     AS_CASE(["x${was_czmq_check_lib_detected}"],
         [xpkgcfg], [
-                PKGCFG_NAMES_PRIVATE="$PKGCFG_NAMES_PRIVATE ${found_pkgconfig} >= 3.0.2"
+                AC_SUBST([pkgconfig_name_libczmq],["${found_pkgconfig} >= 3.0.2"])
                 CFLAGS="${czmq_CFLAGS} ${CFLAGS}"
                 LIBS="${czmq_LIBS} ${LIBS}"
             ],
         [xyes], [
+                AC_SUBST([pkgconfig_name_libczmq],[""])
                 CFLAGS="${czmq_synthetic_cflags} ${CFLAGS}"
                 LDFLAGS="${czmq_synthetic_libs} ${LDFLAGS}"
                 LIBS="${czmq_synthetic_libs} ${LIBS}"
@@ -407,6 +415,7 @@ dnl END of PKG_CHECK_MODULES and/or direct tests for libczmq
                 AC_SUBST([czmq_LIBS],[${czmq_synthetic_libs}])
             ],
         [xno], [
+                AC_SUBST([pkgconfig_name_libczmq],[""])
             AC_MSG_ERROR([Cannot find pkg-config metadata for libczmq 3.0.2 or higher])
     ])
 ])
@@ -435,7 +444,7 @@ AS_CASE([x"${with_libmlm}"],
 dnl We do not abort right now, because the maintainer/developer may have
 dnl something particular in mind, e.g. to build just parts of a project.
 AS_IF([test x"${search_libmlm}" = xno],
-    [AC_MSG_WARN([Required dependency on malamute was explicitly disabled during configuration by '--with-libmlm=no'; subsequent full build of fty-alert-list may fail])])
+    [AC_MSG_WARN([Required dependency on malamute was explicitly disabled during configuration by '--with-libmlm=no'; subsequent full build of fty-alert-engine may fail])])
 
 AS_IF([test x"${search_libmlm}" = xyes], [
     # Archive previously detected and supplied flags
@@ -445,6 +454,7 @@ AS_IF([test x"${search_libmlm}" = xyes], [
     found_pkgconfig=""
     PKG_CHECK_MODULES([malamute], [libmlm >= 1.0.0],
     [
+        PKGCFG_LIBS_PRIVATE="$PKGCFG_LIBS_PRIVATE $malamute_LIBS"
         was_malamute_check_lib_detected=pkgcfg
         found_pkgconfig="libmlm"
     ],
@@ -478,11 +488,12 @@ AS_IF([test x"${search_libmlm}" = xyes], [
 dnl END of PKG_CHECK_MODULES and/or direct tests for libmlm
     AS_CASE(["x${was_malamute_check_lib_detected}"],
         [xpkgcfg], [
-                PKGCFG_NAMES_PRIVATE="$PKGCFG_NAMES_PRIVATE ${found_pkgconfig} >= 1.0.0"
+                AC_SUBST([pkgconfig_name_libmlm],["${found_pkgconfig} >= 1.0.0"])
                 CFLAGS="${malamute_CFLAGS} ${CFLAGS}"
                 LIBS="${malamute_LIBS} ${LIBS}"
             ],
         [xyes], [
+                AC_SUBST([pkgconfig_name_libmlm],[""])
                 CFLAGS="${malamute_synthetic_cflags} ${CFLAGS}"
                 LDFLAGS="${malamute_synthetic_libs} ${LDFLAGS}"
                 LIBS="${malamute_synthetic_libs} ${LIBS}"
@@ -491,6 +502,7 @@ dnl END of PKG_CHECK_MODULES and/or direct tests for libmlm
                 AC_SUBST([malamute_LIBS],[${malamute_synthetic_libs}])
             ],
         [xno], [
+                AC_SUBST([pkgconfig_name_libmlm],[""])
             AC_MSG_ERROR([Cannot find pkg-config metadata for libmlm 1.0.0 or higher])
     ])
 ])
@@ -519,7 +531,7 @@ AS_CASE([x"${with_log4cplus}"],
 dnl We do not abort right now, because the maintainer/developer may have
 dnl something particular in mind, e.g. to build just parts of a project.
 AS_IF([test x"${search_log4cplus}" = xno],
-    [AC_MSG_WARN([Required dependency on log4cplus was explicitly disabled during configuration by '--with-log4cplus=no'; subsequent full build of fty-alert-list may fail])])
+    [AC_MSG_WARN([Required dependency on log4cplus was explicitly disabled during configuration by '--with-log4cplus=no'; subsequent full build of fty-alert-engine may fail])])
 
 AS_IF([test x"${search_log4cplus}" = xyes], [
     # Archive previously detected and supplied flags
@@ -529,6 +541,7 @@ AS_IF([test x"${search_log4cplus}" = xyes], [
     found_pkgconfig=""
     PKG_CHECK_MODULES([log4cplus], [log4cplus >= 0.0.0],
     [
+        PKGCFG_LIBS_PRIVATE="$PKGCFG_LIBS_PRIVATE $log4cplus_LIBS"
         was_log4cplus_check_lib_detected=pkgcfg
         found_pkgconfig="log4cplus"
     ],
@@ -562,11 +575,12 @@ AS_IF([test x"${search_log4cplus}" = xyes], [
 dnl END of PKG_CHECK_MODULES and/or direct tests for log4cplus
     AS_CASE(["x${was_log4cplus_check_lib_detected}"],
         [xpkgcfg], [
-                PKGCFG_NAMES_PRIVATE="$PKGCFG_NAMES_PRIVATE ${found_pkgconfig}"
+                AC_SUBST([pkgconfig_name_log4cplus],["${found_pkgconfig}"])
                 CFLAGS="${log4cplus_CFLAGS} ${CFLAGS}"
                 LIBS="${log4cplus_LIBS} ${LIBS}"
             ],
         [xyes], [
+                AC_SUBST([pkgconfig_name_log4cplus],[""])
                 CFLAGS="${log4cplus_synthetic_cflags} ${CFLAGS}"
                 LDFLAGS="${log4cplus_synthetic_libs} ${LDFLAGS}"
                 LIBS="${log4cplus_synthetic_libs} ${LIBS}"
@@ -575,6 +589,7 @@ dnl END of PKG_CHECK_MODULES and/or direct tests for log4cplus
                 AC_SUBST([log4cplus_LIBS],[${log4cplus_synthetic_libs}])
             ],
         [xno], [
+                AC_SUBST([pkgconfig_name_log4cplus],[""])
             AC_MSG_ERROR([Cannot find pkg-config metadata for log4cplus 0.0.0 or higher])
     ])
 ])
@@ -603,7 +618,7 @@ AS_CASE([x"${with_libfty_common_logging}"],
 dnl We do not abort right now, because the maintainer/developer may have
 dnl something particular in mind, e.g. to build just parts of a project.
 AS_IF([test x"${search_libfty_common_logging}" = xno],
-    [AC_MSG_WARN([Required dependency on fty_common_logging was explicitly disabled during configuration by '--with-libfty_common_logging=no'; subsequent full build of fty-alert-list may fail])])
+    [AC_MSG_WARN([Required dependency on fty_common_logging was explicitly disabled during configuration by '--with-libfty_common_logging=no'; subsequent full build of fty-alert-engine may fail])])
 
 AS_IF([test x"${search_libfty_common_logging}" = xyes], [
     # Archive previously detected and supplied flags
@@ -613,6 +628,7 @@ AS_IF([test x"${search_libfty_common_logging}" = xyes], [
     found_pkgconfig=""
     PKG_CHECK_MODULES([fty_common_logging], [libfty_common_logging >= 0.0.0],
     [
+        PKGCFG_LIBS_PRIVATE="$PKGCFG_LIBS_PRIVATE $fty_common_logging_LIBS"
         was_fty_common_logging_check_lib_detected=pkgcfg
         found_pkgconfig="libfty_common_logging"
     ],
@@ -646,11 +662,12 @@ AS_IF([test x"${search_libfty_common_logging}" = xyes], [
 dnl END of PKG_CHECK_MODULES and/or direct tests for libfty_common_logging
     AS_CASE(["x${was_fty_common_logging_check_lib_detected}"],
         [xpkgcfg], [
-                PKGCFG_NAMES_PRIVATE="$PKGCFG_NAMES_PRIVATE ${found_pkgconfig}"
+                AC_SUBST([pkgconfig_name_libfty_common_logging],["${found_pkgconfig}"])
                 CFLAGS="${fty_common_logging_CFLAGS} ${CFLAGS}"
                 LIBS="${fty_common_logging_LIBS} ${LIBS}"
             ],
         [xyes], [
+                AC_SUBST([pkgconfig_name_libfty_common_logging],[""])
                 CFLAGS="${fty_common_logging_synthetic_cflags} ${CFLAGS}"
                 LDFLAGS="${fty_common_logging_synthetic_libs} ${LDFLAGS}"
                 LIBS="${fty_common_logging_synthetic_libs} ${LIBS}"
@@ -659,6 +676,7 @@ dnl END of PKG_CHECK_MODULES and/or direct tests for libfty_common_logging
                 AC_SUBST([fty_common_logging_LIBS],[${fty_common_logging_synthetic_libs}])
             ],
         [xno], [
+                AC_SUBST([pkgconfig_name_libfty_common_logging],[""])
             AC_MSG_ERROR([Cannot find pkg-config metadata for libfty_common_logging 0.0.0 or higher])
     ])
 ])
@@ -687,7 +705,7 @@ AS_CASE([x"${with_libfty_proto}"],
 dnl We do not abort right now, because the maintainer/developer may have
 dnl something particular in mind, e.g. to build just parts of a project.
 AS_IF([test x"${search_libfty_proto}" = xno],
-    [AC_MSG_WARN([Required dependency on fty_proto was explicitly disabled during configuration by '--with-libfty_proto=no'; subsequent full build of fty-alert-list may fail])])
+    [AC_MSG_WARN([Required dependency on fty_proto was explicitly disabled during configuration by '--with-libfty_proto=no'; subsequent full build of fty-alert-engine may fail])])
 
 AS_IF([test x"${search_libfty_proto}" = xyes], [
     # Archive previously detected and supplied flags
@@ -697,6 +715,7 @@ AS_IF([test x"${search_libfty_proto}" = xyes], [
     found_pkgconfig=""
     PKG_CHECK_MODULES([fty_proto], [libfty_proto >= 1.0.0],
     [
+        PKGCFG_LIBS_PRIVATE="$PKGCFG_LIBS_PRIVATE $fty_proto_LIBS"
         was_fty_proto_check_lib_detected=pkgcfg
         found_pkgconfig="libfty_proto"
     ],
@@ -730,11 +749,12 @@ AS_IF([test x"${search_libfty_proto}" = xyes], [
 dnl END of PKG_CHECK_MODULES and/or direct tests for libfty_proto
     AS_CASE(["x${was_fty_proto_check_lib_detected}"],
         [xpkgcfg], [
-                PKGCFG_NAMES_PRIVATE="$PKGCFG_NAMES_PRIVATE ${found_pkgconfig} >= 1.0.0"
+                AC_SUBST([pkgconfig_name_libfty_proto],["${found_pkgconfig} >= 1.0.0"])
                 CFLAGS="${fty_proto_CFLAGS} ${CFLAGS}"
                 LIBS="${fty_proto_LIBS} ${LIBS}"
             ],
         [xyes], [
+                AC_SUBST([pkgconfig_name_libfty_proto],[""])
                 CFLAGS="${fty_proto_synthetic_cflags} ${CFLAGS}"
                 LDFLAGS="${fty_proto_synthetic_libs} ${LDFLAGS}"
                 LIBS="${fty_proto_synthetic_libs} ${LIBS}"
@@ -743,6 +763,7 @@ dnl END of PKG_CHECK_MODULES and/or direct tests for libfty_proto
                 AC_SUBST([fty_proto_LIBS],[${fty_proto_synthetic_libs}])
             ],
         [xno], [
+                AC_SUBST([pkgconfig_name_libfty_proto],[""])
             AC_MSG_ERROR([Cannot find pkg-config metadata for libfty_proto 1.0.0 or higher])
     ])
 ])
@@ -916,7 +937,7 @@ AS_CASE([x"${with_cxxtools}"],
 dnl We do not abort right now, because the maintainer/developer may have
 dnl something particular in mind, e.g. to build just parts of a project.
 AS_IF([test x"${search_cxxtools}" = xno],
-    [AC_MSG_WARN([Required dependency on cxxtools was explicitly disabled during configuration by '--with-cxxtools=no'; subsequent full build of fty-alert-list may fail])])
+    [AC_MSG_WARN([Required dependency on cxxtools was explicitly disabled during configuration by '--with-cxxtools=no'; subsequent full build of fty-alert-engine may fail])])
 
 AS_IF([test x"${search_cxxtools}" = xyes], [
     # Archive previously detected and supplied flags
@@ -926,6 +947,7 @@ AS_IF([test x"${search_cxxtools}" = xyes], [
     found_pkgconfig=""
     PKG_CHECK_MODULES([cxxtools], [cxxtools >= 0.0.0],
     [
+        PKGCFG_LIBS_PRIVATE="$PKGCFG_LIBS_PRIVATE $cxxtools_LIBS"
         was_cxxtools_check_lib_detected=pkgcfg
         found_pkgconfig="cxxtools"
     ],
@@ -959,11 +981,12 @@ AS_IF([test x"${search_cxxtools}" = xyes], [
 dnl END of PKG_CHECK_MODULES and/or direct tests for cxxtools
     AS_CASE(["x${was_cxxtools_check_lib_detected}"],
         [xpkgcfg], [
-                PKGCFG_NAMES_PRIVATE="$PKGCFG_NAMES_PRIVATE ${found_pkgconfig}"
+                AC_SUBST([pkgconfig_name_cxxtools],["${found_pkgconfig}"])
                 CFLAGS="${cxxtools_CFLAGS} ${CFLAGS}"
                 LIBS="${cxxtools_LIBS} ${LIBS}"
             ],
         [xyes], [
+                AC_SUBST([pkgconfig_name_cxxtools],[""])
                 CFLAGS="${cxxtools_synthetic_cflags} ${CFLAGS}"
                 LDFLAGS="${cxxtools_synthetic_libs} ${LDFLAGS}"
                 LIBS="${cxxtools_synthetic_libs} ${LIBS}"
@@ -972,6 +995,7 @@ dnl END of PKG_CHECK_MODULES and/or direct tests for cxxtools
                 AC_SUBST([cxxtools_LIBS],[${cxxtools_synthetic_libs}])
             ],
         [xno], [
+                AC_SUBST([pkgconfig_name_cxxtools],[""])
             AC_MSG_ERROR([Cannot find pkg-config metadata for cxxtools 0.0.0 or higher])
     ])
 ])
@@ -1000,7 +1024,7 @@ AS_CASE([x"${with_libfty_common}"],
 dnl We do not abort right now, because the maintainer/developer may have
 dnl something particular in mind, e.g. to build just parts of a project.
 AS_IF([test x"${search_libfty_common}" = xno],
-    [AC_MSG_WARN([Required dependency on fty_common was explicitly disabled during configuration by '--with-libfty_common=no'; subsequent full build of fty-alert-list may fail])])
+    [AC_MSG_WARN([Required dependency on fty_common was explicitly disabled during configuration by '--with-libfty_common=no'; subsequent full build of fty-alert-engine may fail])])
 
 AS_IF([test x"${search_libfty_common}" = xyes], [
     # Archive previously detected and supplied flags
@@ -1010,6 +1034,7 @@ AS_IF([test x"${search_libfty_common}" = xyes], [
     found_pkgconfig=""
     PKG_CHECK_MODULES([fty_common], [libfty_common >= 0.0.0],
     [
+        PKGCFG_LIBS_PRIVATE="$PKGCFG_LIBS_PRIVATE $fty_common_LIBS"
         was_fty_common_check_lib_detected=pkgcfg
         found_pkgconfig="libfty_common"
     ],
@@ -1043,11 +1068,12 @@ AS_IF([test x"${search_libfty_common}" = xyes], [
 dnl END of PKG_CHECK_MODULES and/or direct tests for libfty_common
     AS_CASE(["x${was_fty_common_check_lib_detected}"],
         [xpkgcfg], [
-                PKGCFG_NAMES_PRIVATE="$PKGCFG_NAMES_PRIVATE ${found_pkgconfig}"
+                AC_SUBST([pkgconfig_name_libfty_common],["${found_pkgconfig}"])
                 CFLAGS="${fty_common_CFLAGS} ${CFLAGS}"
                 LIBS="${fty_common_LIBS} ${LIBS}"
             ],
         [xyes], [
+                AC_SUBST([pkgconfig_name_libfty_common],[""])
                 CFLAGS="${fty_common_synthetic_cflags} ${CFLAGS}"
                 LDFLAGS="${fty_common_synthetic_libs} ${LDFLAGS}"
                 LIBS="${fty_common_synthetic_libs} ${LIBS}"
@@ -1056,6 +1082,7 @@ dnl END of PKG_CHECK_MODULES and/or direct tests for libfty_common
                 AC_SUBST([fty_common_LIBS],[${fty_common_synthetic_libs}])
             ],
         [xno], [
+                AC_SUBST([pkgconfig_name_libfty_common],[""])
             AC_MSG_ERROR([Cannot find pkg-config metadata for libfty_common 0.0.0 or higher])
     ])
 ])
@@ -1084,7 +1111,7 @@ AS_CASE([x"${with_libfty_shm}"],
 dnl We do not abort right now, because the maintainer/developer may have
 dnl something particular in mind, e.g. to build just parts of a project.
 AS_IF([test x"${search_libfty_shm}" = xno],
-    [AC_MSG_WARN([Required dependency on fty_shm was explicitly disabled during configuration by '--with-libfty_shm=no'; subsequent full build of fty-alert-list may fail])])
+    [AC_MSG_WARN([Required dependency on fty_shm was explicitly disabled during configuration by '--with-libfty_shm=no'; subsequent full build of fty-alert-engine may fail])])
 
 AS_IF([test x"${search_libfty_shm}" = xyes], [
     # Archive previously detected and supplied flags
@@ -1094,6 +1121,7 @@ AS_IF([test x"${search_libfty_shm}" = xyes], [
     found_pkgconfig=""
     PKG_CHECK_MODULES([fty_shm], [libfty_shm >= 1.0.0],
     [
+        PKGCFG_LIBS_PRIVATE="$PKGCFG_LIBS_PRIVATE $fty_shm_LIBS"
         was_fty_shm_check_lib_detected=pkgcfg
         found_pkgconfig="libfty_shm"
     ],
@@ -1127,11 +1155,12 @@ AS_IF([test x"${search_libfty_shm}" = xyes], [
 dnl END of PKG_CHECK_MODULES and/or direct tests for libfty_shm
     AS_CASE(["x${was_fty_shm_check_lib_detected}"],
         [xpkgcfg], [
-                PKGCFG_NAMES_PRIVATE="$PKGCFG_NAMES_PRIVATE ${found_pkgconfig} >= 1.0.0"
+                AC_SUBST([pkgconfig_name_libfty_shm],["${found_pkgconfig} >= 1.0.0"])
                 CFLAGS="${fty_shm_CFLAGS} ${CFLAGS}"
                 LIBS="${fty_shm_LIBS} ${LIBS}"
             ],
         [xyes], [
+                AC_SUBST([pkgconfig_name_libfty_shm],[""])
                 CFLAGS="${fty_shm_synthetic_cflags} ${CFLAGS}"
                 LDFLAGS="${fty_shm_synthetic_libs} ${LDFLAGS}"
                 LIBS="${fty_shm_synthetic_libs} ${LIBS}"
@@ -1140,6 +1169,7 @@ dnl END of PKG_CHECK_MODULES and/or direct tests for libfty_shm
                 AC_SUBST([fty_shm_LIBS],[${fty_shm_synthetic_libs}])
             ],
         [xno], [
+                AC_SUBST([pkgconfig_name_libfty_shm],[""])
             AC_MSG_ERROR([Cannot find pkg-config metadata for libfty_shm 1.0.0 or higher])
     ])
 ])
@@ -1150,7 +1180,6 @@ CFLAGS="${PREVIOUS_CFLAGS}"
 LIBS="${PREVIOUS_LIBS}"
 
 AC_SUBST(pkg_config_libs_private, $PKGCFG_LIBS_PRIVATE)
-AC_SUBST(pkg_config_names_private, $PKGCFG_NAMES_PRIVATE)
 
 # Platform specific checks
 fty_alert_list_on_mingw32="no"
@@ -1395,8 +1424,27 @@ AM_COND_IF([WITH_SYSTEMD_UNITS],
     AC_SUBST(WITH_SYSTEMD_UNITS)],
     [])
 
-#   Project has no stable classes so enable draft API by default
-enable_drafts=yes
+if test "x$cross_compiling" = "xyes"; then
+    #   Enable draft by default when cross-compiling
+    defaultval=yes
+else
+    # enable draft API by default if we're in a git repository
+    # else disable it by default; then allow --enable-drafts=yes/no override
+    AC_CHECK_FILE($srcdir/.git, [defaultval=yes],
+        [AC_MSG_CHECKING([running under a git repository workspace])
+         AS_IF([git rev-parse --show-toplevel 2>/dev/null],
+            [defaultval=yes],
+            [defaultval=no])
+         AC_MSG_RESULT($defaultval)
+        ])
+fi
+
+AC_ARG_ENABLE([drafts],
+    AS_HELP_STRING([--enable-drafts],
+        [Build and install draft classes and methods [default=yes]]),
+    [enable_drafts=$enableval],
+    [enable_drafts=$defaultval])
+
 AM_CONDITIONAL([ENABLE_DRAFTS], [test x$enable_drafts != xno])
 
 if test "x$enable_drafts" = "xyes"; then
