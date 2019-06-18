@@ -69,7 +69,7 @@ Alert::update (fty_proto_t *msg)
         std::string msg ("Wrong fty-proto type");
         throw std::runtime_error (msg);
     }
-    std::string outcome = fty_proto_aux_string (msg, "outcome", "OK");
+    std::string outcome = fty_proto_aux_string (msg, "outcome", "ok");
     m_Outcome = outcome;
     if (m_Ctime == 0) {
         m_Ctime = fty_proto_time (msg);
@@ -89,7 +89,7 @@ Alert::overwrite (fty_proto_t *msg)
         throw std::runtime_error (msg);
     }
     if (!isAckState (m_State)) {
-        log_error ("switching state to %s", fty_proto_state (msg));
+        log_trace ("switching state to %s", fty_proto_state (msg));
         m_State = StringToAlertState (fty_proto_state (msg));
     }
     m_Ctime = fty_proto_time (msg);
@@ -102,7 +102,7 @@ Alert::overwrite (GenericRule rule)
     m_Id = rule.getName ();
     m_Results = rule.getResults ();
     m_State = RESOLVED;
-    m_Outcome = "OK";
+    m_Outcome = "ok";
     m_Ctime = 0;
     m_Mtime = 0;
     m_Ttl = std::numeric_limits<uint64_t>::max ();
@@ -116,7 +116,7 @@ Alert::cleanup ()
 {
     uint64_t now = zclock_mono ()/1000;
     m_State = RESOLVED;
-    m_Outcome = "OK";
+    m_Outcome = "ok";
     m_Ctime = now;
     m_Mtime = now;
     m_Severity.clear ();
@@ -195,7 +195,7 @@ Alert::toFtyProto (
             normal_state,
             port);
 
-    log_debug ("ALert description is %s", description.c_str ());
+    log_debug ("Alert description is '%s'", description.c_str ());
 
     zmsg_t *tmp = fty_proto_encode_alert (
             aux,
@@ -326,7 +326,7 @@ alert_test (bool verbose)
     // create fty-proto msg
     {
         Alert alert (rule + "@" + name, tmp);
-        assert (alert.outcome () == "OK");
+        assert (alert.outcome () == "ok");
         assert (alert.ctime () == 0);
         assert (alert.mtime () == 0);
         assert (alert.ttl () == std::numeric_limits<uint64_t>::max ());
@@ -336,7 +336,7 @@ alert_test (bool verbose)
 
         zhash_t *aux = zhash_new ();
         zhash_autofree (aux);
-        zhash_insert (aux, "outcome", (void *) "HIGH_WARNING");
+        zhash_insert (aux, "outcome", (void *) "high_warning");
         zlist_t *fty_actions = zlist_new ();
 
         uint64_t mtime = now;
@@ -357,7 +357,7 @@ alert_test (bool verbose)
         fty_proto_t *fty_msg = fty_proto_decode (&msg);
 
         alert.update (fty_msg);
-        assert (alert.outcome () == "HIGH_WARNING");
+        assert (alert.outcome () == "high_warning");
         assert (alert.ctime () == now);
         assert (alert.ttl () == ttl);
         assert (alert.severity () == "WARNING");
@@ -396,7 +396,7 @@ alert_test (bool verbose)
         // cleanup the first alert
         alert.cleanup ();
         assert (alert.state () == "RESOLVED");
-        assert (alert.outcome () == "OK");
+        assert (alert.outcome () == "ok");
         assert (alert.severity () == "");
         assert (alert.description () == "");
         assert (alert.actions ().empty ());
@@ -421,7 +421,7 @@ alert_test (bool verbose)
 
         zhash_t *aux = zhash_new ();
         zhash_autofree (aux);
-        zhash_insert (aux, "outcome", (void *) "HIGH_CRITICAL");
+        zhash_insert (aux, "outcome", (void *) "high_critical");
         zlist_t *fty_actions = zlist_new ();
 
         uint64_t mtime = now;
@@ -447,7 +447,7 @@ alert_test (bool verbose)
         // convert basic alert (triggered by rule evaluation) to fty-proto
         zmsg_t *alert2_msg = alert2.TriggeredToFtyProto ();
         fty_proto_t *fty_alert2_msg = fty_proto_decode (&alert2_msg);
-        assert (streq (fty_proto_aux_string (fty_alert2_msg, "outcome", ""), "HIGH_CRITICAL"));
+        assert (streq (fty_proto_aux_string (fty_alert2_msg, "outcome", ""), "high_critical"));
         assert (streq (fty_proto_rule (fty_alert2_msg), rule.c_str ()));
         assert (streq (fty_proto_name (fty_alert2_msg), name.c_str ()));
         fty_proto_destroy (&fty_alert2_msg);
@@ -462,7 +462,7 @@ alert_test (bool verbose)
         rule_json += "var2\":\"val2\"}]}}";
         GenericRule generic_rule (rule_json);
         alert3.overwrite (generic_rule);
-        assert (alert3.outcome () == "OK");
+        assert (alert3.outcome () == "ok");
         assert (alert3.ctime () == 0);
         assert (alert3.mtime () == 0);
         assert (alert3.ttl () == std::numeric_limits<uint64_t>::max ());
@@ -473,7 +473,7 @@ alert_test (bool verbose)
         // update it from fty-proto
         zhash_t *aux = zhash_new ();
         zhash_autofree (aux);
-        zhash_insert (aux, "outcome", (void *) "OK");
+        zhash_insert (aux, "outcome", (void *) "ok");
         zlist_t *fty_actions = zlist_new ();
 
         uint64_t mtime = now;
@@ -492,7 +492,7 @@ alert_test (bool verbose)
                 );
         fty_proto_t *fty_msg = fty_proto_decode (&msg);
         alert3.update (fty_msg);
-        assert (alert3.outcome () == "OK");
+        assert (alert3.outcome () == "ok");
         assert (alert3.ctime () == now);
         assert (alert3.ttl () == ttl);
         assert (alert3.severity () == "critical");

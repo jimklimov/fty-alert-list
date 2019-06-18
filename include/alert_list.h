@@ -51,8 +51,8 @@ class AlertList {
 
         mlm_client_t *m_Mailbox_client;
         mlm_client_t *m_Stream_client;
-        std::map<std::string, Alert> m_Alert_cache;
-        std::map<std::string, std::map<std::string, std::shared_ptr<Alert>>> m_Asset_alerts;
+        std::map<std::string, std::shared_ptr<Alert>> m_Alert_cache;
+        std::map<std::string, std::vector<std::shared_ptr<Alert>>> m_Asset_alerts;
         std::map<std::string, uint64_t> m_Last_send;
 };
 void alert_list_actor (zsock_t *pipe, void *args);

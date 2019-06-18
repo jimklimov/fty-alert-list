@@ -1,4 +1,4 @@
-/*  =========================================================================
+/*  ==========================================================================
     alert_list - Actor to serve REST API requests about alerts
 
     Copyright (C) 2014 - 2018 Eaton
@@ -34,17 +34,18 @@
 void
 AlertList::alert_cache_clean ()
 {
+    log_trace ("cleaning up cache..");
     uint64_t now = zclock_mono ()/1000;
     for (auto alert_pair : m_Alert_cache) {
-        Alert alert = alert_pair.second;
-        if ((alert.mtime () + alert.ttl () < now) && (alert.state() != "RESOLVED")) {
-            log_error ("cleaning up alert %s", alert.id().c_str ());
-            alert.cleanup ();
+        std::shared_ptr<Alert> alert = alert_pair.second;
+        if ((alert->mtime () + alert->ttl () < now) && (alert->state() != "RESOLVED")) {
+            log_debug ("cleaning up alert %s", alert->id().c_str ());
+            alert->cleanup ();
 
-            zmsg_t *fty_alert = alert.StaleToFtyProto ();
-            int rv = mlm_client_send (m_Stream_client, alert.id().c_str (), &fty_alert);
+            zmsg_t *fty_alert = alert->StaleToFtyProto ();
+            int rv = mlm_client_send (m_Stream_client, alert->id().c_str (), &fty_alert);
             if (rv == -1) {
-                log_error ("mlm_client_send (subject = '%s') failed", alert.id ().c_str ());
+                log_error ("mlm_client_send (subject = '%s') failed", alert->id ().c_str ());
                 zmsg_destroy (&fty_alert);
             }
         }
@@ -57,11 +58,6 @@ AlertList::filter_alerts_for_publishing
      std::function<bool(Alert alert)> filter,
      zmsg_t *msg)
 {
-    /*std::vector<Alert> values;
-    values.reserve (m_Alert_cache.size ());
-    std::transform (m_Alert_cache.begin (), m_Alert_cache.end (), std::back_inserter (values),
-            [](const std::pair<std::string, Alert> &p) { return p.second; });
-    */
     std::vector<Alert> filtered_alerts;
     std::copy_if (
             alerts.begin(),
@@ -71,11 +67,9 @@ AlertList::filter_alerts_for_publishing
             );
 
     for (auto alert : filtered_alerts) {
-        log_error ("alert %s, state %s", alert.id().c_str (), alert.state().c_str ());
         int sep = alert.id().find ('@');
         std::string name = alert.id().substr (sep+1);
-        // TODO FIXME we should use getAsset, but it doesn't work
-        std::shared_ptr<FullAsset> asset = FullAssetDatabase::getInstance ().getAssetForManipulation (name);
+        std::shared_ptr<FullAsset> asset = FullAssetDatabase::getInstance ().getAsset (name);
 
         std::string ename = asset->getName ();
         std::string logical_asset_name, logical_asset_ename, normal_state, port;
@@ -83,8 +77,7 @@ AlertList::filter_alerts_for_publishing
             logical_asset_name = asset->getAuxItem ("logical_asset");
             if (logical_asset_name.empty ())
                 logical_asset_name = asset->getParentId ();
-            // TODO FIXME we should use getAsset, but it doesn't work
-            std::shared_ptr<FullAsset> logical_asset = FullAssetDatabase::getInstance ().getAssetForManipulation (logical_asset_name);
+            std::shared_ptr<FullAsset> logical_asset = FullAssetDatabase::getInstance ().getAsset (logical_asset_name);
             logical_asset_ename = logical_asset->getName ();
             normal_state = asset->getExtItem ("normal_state");
             port = asset->getExtItem ("port");
@@ -104,17 +97,14 @@ AlertList::filter_alerts_for_publishing
 std::string
 AlertList::handle_rule (std::string rule)
 {
-    //TODO: deserialize rule
     GenericRule deserialized_rule (rule);
     std::string id = deserialized_rule.getName ();
     auto pos = m_Alert_cache.find (id);
     // new rule
     if (pos == m_Alert_cache.end ()) {
         for (auto asset : deserialized_rule.getAssets ()) {
-            log_error ("asset = %s", asset.c_str ()); 
-            // TODO FIXME we should use getAsset, but it doesn't work
             try {
-		std::shared_ptr<FullAsset> full_asset = FullAssetDatabase::getInstance ().getAssetForManipulation (asset);
+                std::shared_ptr<FullAsset> full_asset = FullAssetDatabase::getInstance ().getAsset (asset);
             }
             catch (element_not_found &eerror) {
                 // ask FTY_ASSET_AGENT for ASSET_DETAILS
@@ -127,17 +117,17 @@ AlertList::handle_rule (std::string rule)
                     log_warning("no response from ASSET AGENT, ignoring this alert.");
                 } else {
                     zmsg_t *reply_msg = mlm_client_recv (m_Mailbox_client);
-                    char *rcv_uuid = zmsg_popstr (reply_msg);
-                    if (0 == strcmp (rcv_uuid, zuuid_str_canonical (uuid)) && fty_proto_is (reply_msg)) {
+                    ZstrGuard rcv_uuid (zmsg_popstr (reply_msg));
+                    if ((rcv_uuid == zuuid_str_canonical (uuid)) && fty_proto_is (reply_msg)) {
                         fty_proto_t *reply_proto_msg = fty_proto_decode (&reply_msg);
                         if (fty_proto_id (reply_proto_msg) != FTY_PROTO_ASSET) {
                             log_warning("unexpected response from ASSET AGENT, ignoring this alert.");
                         }
                         log_debug("received alert for %s, asked for it and was successful", asset.c_str ());
                         Alert rule_alert (id, deserialized_rule.getResults());
-			std::shared_ptr<Alert> rule_alert_ptr = std::make_shared<Alert> (rule_alert);
-                        m_Alert_cache.insert (std::pair<std::string, Alert> (id, rule_alert));
-                        m_Asset_alerts[asset].insert (std::pair<std::string, std::shared_ptr<Alert>> (id, rule_alert_ptr));
+                        std::shared_ptr<Alert> rule_alert_ptr = std::make_shared<Alert> (rule_alert);
+                        m_Alert_cache.insert (std::pair<std::string, std::shared_ptr<Alert>> (id, rule_alert_ptr));
+                        m_Asset_alerts[asset].push_back (rule_alert_ptr);
                     }
                     else {
                         log_warning("received alert for unknown asset, ignoring.");
@@ -146,23 +136,18 @@ AlertList::handle_rule (std::string rule)
                         }
                         // msg will be destroyed by caller
                     }
-                    zstr_free(&rcv_uuid);
                 }
                 zuuid_destroy (&uuid);
             }
-	    Alert rule_alert (id, deserialized_rule.getResults());
-	    std::shared_ptr<Alert> rule_alert_ptr = std::make_shared<Alert> (rule_alert);
-	    m_Alert_cache.insert (std::pair<std::string, Alert> (id, rule_alert));
-	    m_Asset_alerts[asset].insert (std::pair<std::string, std::shared_ptr<Alert>> (id, rule_alert_ptr));
+            Alert rule_alert (id, deserialized_rule.getResults());
+            std::shared_ptr<Alert> rule_alert_ptr = std::make_shared<Alert> (rule_alert);
+            m_Alert_cache.insert (std::pair<std::string, std::shared_ptr<Alert>> (id, rule_alert_ptr));
+            m_Asset_alerts[asset].push_back (rule_alert_ptr);
         }
     }
     // update of old rule
     else {
-        //Alert rule_alert = *pos;
-        pos->second.overwrite (deserialized_rule);
-        for (auto asset : deserialized_rule.getAssets ()) {
-	    m_Asset_alerts[asset][pos->first].reset (&(pos->second));
-	}
+        pos->second->overwrite (deserialized_rule);
     }
     return id;
 }
@@ -182,16 +167,13 @@ AlertList::handle_alert (fty_proto_t *fty_new_alert, std::string subject)
          log_error ("Alert for non-existing rule %s", new_alert_id.c_str ());
     }
     else {
-        std::string old_state_str = old_alert->second.state();
+        std::string old_state_str = old_alert->second->state();
         uint64_t old_last_sent = m_Last_send [new_alert_id];
-        std::string old_outcome = old_alert->second.outcome ();
-	log_error ("old_state = %s", old_state_str.c_str ());
-        std::string new_outcome = fty_proto_aux_string (fty_new_alert, "outcome", "OK");
+        std::string old_outcome = old_alert->second->outcome ();
+        std::string new_outcome = fty_proto_aux_string (fty_new_alert, "outcome", "ok");
         bool same_outcome = (old_outcome == new_outcome);
 
-        old_alert->second.update (fty_new_alert);
-        m_Asset_alerts[fty_proto_name(fty_new_alert)][new_alert_id].reset (&(old_alert->second));
-	log_error ("old_state = %s", old_state_str.c_str ());
+        old_alert->second->update (fty_new_alert);
         const char *old_state = old_state_str.c_str ();
         // check if it has changed
         // RESOLVED comes from _ALERTS_SYS
@@ -225,7 +207,7 @@ AlertList::handle_alert (fty_proto_t *fty_new_alert, std::string subject)
                     should_send = true;
                 }
                 // always update the time - for the old alert directly in the cache
-                old_alert->second.setMtime (fty_proto_time (fty_new_alert));
+                old_alert->second->setMtime (fty_proto_time (fty_new_alert));
             }
             else { // some ACK-XXX state stored
                 if (!same_outcome) {
@@ -236,8 +218,7 @@ AlertList::handle_alert (fty_proto_t *fty_new_alert, std::string subject)
 
         if (should_overwrite) {
             fty_proto_aux_insert (fty_new_alert, "ctime", "%" PRIu64, fty_proto_time (fty_new_alert));
-            old_alert->second.overwrite (fty_new_alert);
-	    m_Asset_alerts[fty_proto_name(fty_new_alert)][new_alert_id].reset (&(old_alert->second));
+            old_alert->second->overwrite (fty_new_alert);
         }
 
         if (should_send) {
@@ -254,8 +235,8 @@ AlertList::handle_alert (fty_proto_t *fty_new_alert, std::string subject)
                 m_Last_send [new_alert_id] = zclock_mono ()/1000;
             }
         }
-        fty_proto_destroy (&fty_new_alert);
     }
+    fty_proto_destroy (&fty_new_alert);
 }
 
 
@@ -264,12 +245,14 @@ AlertList::process_stream (zmsg_t *msg)
 {
     if (!is_fty_proto (msg)) {
         log_error ("Message not fty_proto");
+        zmsg_destroy (&msg);
         return;
     }
 
     fty_proto_t *fty_msg = fty_proto_decode (&msg);
     if (!fty_msg) {
         log_error ("Failed to unpack fty_proto");
+        zmsg_destroy (&msg);
         return;
     }
     if (fty_proto_id (fty_msg) == FTY_PROTO_ALERT) {
@@ -277,15 +260,14 @@ AlertList::process_stream (zmsg_t *msg)
         handle_alert (fty_msg, subject);
     }
     else if (fty_proto_id (fty_msg) == FTY_PROTO_ASSET) {
-        //handle_asset (alert_list_server, fty_msg);
         fty_proto_print (fty_msg);
         FullAsset asset(fty_msg);
         FullAssetDatabase::getInstance ().insertOrUpdateAsset (asset);
-	std::shared_ptr<FullAsset> asset_ptr = FullAssetDatabase::getInstance ().getAssetForManipulation (asset.getId ());
-        log_error ("name = %s", asset_ptr->getName().c_str ());
+        fty_proto_destroy (&fty_msg);
     }
     else {
         log_warning ("Message neither FTY_PROTO_ASSET nor FTY_PROTO_ALERT.");
+        fty_proto_destroy (&fty_msg);
     }
 }
 
@@ -296,168 +278,115 @@ AlertList::process_mailbox (zmsg_t *msg)
 
     std::string subject = mlm_client_subject (m_Mailbox_client);
     std::string address = mlm_client_sender (m_Mailbox_client);
-    std::string cmd = zmsg_popstr (msg);
-    std::string correlation_id = zmsg_popstr (msg);
-    if (cmd == "LISTALL" || cmd == "LIST") {
+    ZstrGuard cmd (zmsg_popstr (msg));
+    ZstrGuard correlation_id (zmsg_popstr (msg));
+    if (streq (cmd, "LISTALL") || streq (cmd, "LIST")) {
         if (subject != RFC_ALERTS_LIST_SUBJECT) {
             log_error ("Expected subject %s,  got %s", RFC_ALERTS_LIST_SUBJECT, subject.c_str ());
             zmsg_addstr (reply, "ERROR");
-            zmsg_addstr (reply, correlation_id.c_str ());
+            zmsg_addstr (reply, correlation_id);
             zmsg_addstr (reply, "WRONG_SUBJECT");
         }
 
         const std::set<std::string> alert_filters =
             { "RESOLVED", "ACTIVE", "ACK-IGNORE", "ACK-PAUSE", "ACK-SILENCE", "ACK-WIP", "ALL-ACTIVE", "ALL" };
-        std::string filter = zmsg_popstr (msg);
+        char *filter = zmsg_popstr (msg);
 
         if (alert_filters.find (filter) != alert_filters.end ()) {
-            //std::vector<Alert> filtered_alerts;
             std::function<bool(Alert alert)> filter_fn;
-            if (filter == "ALL") {
+            if (streq (filter, "ALL")) {
                 // pass trivial lambda
-                filter_fn = [filter](Alert alert) -> bool { return true; } ;
+                filter_fn = [](Alert alert) -> bool { return true; } ;
             }
-            else if (filter == "ALL-ACTIVE") {
+            else if (streq (filter, "ALL-ACTIVE")) {
                 // select everything except RESOLVED
-                filter_fn = [filter](Alert alert) -> bool { return alert.state () != "RESOLVED"; } ;
+                filter_fn = [](Alert alert) -> bool { return alert.state () != "RESOLVED"; } ;
             }
             else {
                 // select by state
-                filter_fn = [filter](Alert alert) -> bool { return alert.state () == filter; } ;
+                filter_fn = [=](Alert alert) -> bool { return streq (alert.state ().c_str (), filter); } ;
             }
 
-            if (cmd == "LISTALL") {
+            if (streq (cmd, "LISTALL")) {
                 zmsg_addstr (reply, "LISTALL");
-                zmsg_addstr (reply, correlation_id.c_str ());
-                zmsg_addstr (reply, filter.c_str ());
+                zmsg_addstr (reply, correlation_id);
+                zmsg_addstr (reply, filter);
 
                 std::vector<Alert> values;
                 values.reserve (m_Alert_cache.size ());
                 std::transform (m_Alert_cache.begin (), m_Alert_cache.end (), std::back_inserter (values),
-                        [](const std::pair<std::string, Alert> &p) { return p.second; });
+                        [](const std::pair<std::string, std::shared_ptr<Alert>> p) { return *(p.second); });
                 filter_alerts_for_publishing (values, filter_fn, reply);
-
-/*                for (auto alert : filtered_alerts) {
-                    int sep = alert.id().find ('@');
-                    std::string name = alert.id().substr (sep+1);
-                    std::shared_ptr<FullAsset> asset = FullAssetDatabase::getInstance ().getAsset (name);
-
-                    std::string ename = asset->getName ();
-                    std::string logical_asset_name, logical_asset_ename, normal_state, port;
-                    if (asset->getTypeString () == "device" && asset->getSubtypeString () == "sensorgpio") {
-                        logical_asset_name = asset->getAuxItem ("logical_asset");
-                        if (logical_asset_name.empty ())
-                            logical_asset_name = asset->getParentId ();
-                        std::shared_ptr<FullAsset> logical_asset = FullAssetDatabase::getInstance ().getAsset (logical_asset_name);
-                        logical_asset_ename = logical_asset->getName ();
-                        normal_state = asset->getExtItem ("normal_state");
-                        port = asset->getExtItem ("port");
-                    }
-
-                    zmsg_t *fty_alert = alert.toFtyProto (
-                            ename,
-                            logical_asset_name,
-                            logical_asset_ename,
-                            normal_state,
-                            port
-                            );
-                    zmsg_addmsg (reply, &fty_alert);
-                }*/
             }
 
-            if (cmd == "LIST") {
+            if (streq (cmd, "LIST")) {
                 zmsg_addstr (reply, "LIST");
-                zmsg_addstr (reply, correlation_id.c_str ());
-                zmsg_addstr (reply, filter.c_str ());
+                zmsg_addstr (reply, correlation_id);
+                zmsg_addstr (reply, filter);
 
                 char *name = zmsg_popstr (msg);
                 while (name) {
-		    log_error ("alerts for asset %s", name); 
-                    std::map<std::string, std::shared_ptr<Alert>> asset_alerts = m_Asset_alerts [name];
+                    std::vector<std::shared_ptr<Alert>> asset_alerts = m_Asset_alerts [name];
 
-		    log_error ("alerts for asset  = %d", asset_alerts.size ()); 
                     std::vector<Alert> values;
                     values.reserve (asset_alerts.size ());
                     std::transform (asset_alerts.begin (), asset_alerts.end (), std::back_inserter (values),
-                            [](const std::pair<std::string, std::shared_ptr<Alert>> p) { return *(p.second); });
-                    //filtered_alerts = filter_alerts (values, filter_fn);
+                            [](const std::shared_ptr<Alert> p) { return *p; });
                     filter_alerts_for_publishing (values, filter_fn, reply);
-                    /*for (Alert alert : filtered_alerts) {
-                        std::shared_ptr<FullAsset> asset = FullAssetDatabase::getInstance ().getAsset (name);
-                        std::string ename = asset->getName ();
-                        std::string logical_asset_name, logical_asset_ename, normal_state, port;
-                        if (asset->getTypeString () == "device" && asset->getSubtypeString () == "sensorgpio") {
-                            logical_asset_name = asset->getAuxItem ("logical_asset");
-                            if (logical_asset_name.empty ())
-                                logical_asset_name = asset->getParentId ();
-                            std::shared_ptr<FullAsset> logical_asset = FullAssetDatabase::getInstance ().getAsset (logical_asset_name);
-                            logical_asset_ename = logical_asset->getName ();
-                            normal_state = asset->getExtItem ("normal_state");
-                            port = asset->getExtItem ("port");
-                        }
-
-                        zmsg_t *fty_alert = alert.toFtyProto (
-                                ename,
-                                logical_asset_name,
-                                logical_asset_ename,
-                                normal_state,
-                                port
-                                );
-                        zmsg_addmsg (reply, &fty_alert);
-                    }*/
                     zstr_free (&name);
                     name = zmsg_popstr (msg);
                 }
             }
         }
         else {
-            log_error ("Filter %s not allowed for alerts", filter.c_str ());
+            log_error ("Filter %s not allowed for alerts", filter);
             zmsg_addstr (reply, "ERROR");
-            zmsg_addstr (reply, correlation_id.c_str ());
+            zmsg_addstr (reply, correlation_id);
             zmsg_addstr (reply, "NOT_FOUND");
         }
+        zstr_free (&filter);
     }
-    else if (cmd == "ADD") {
-        std::string rule = zmsg_popstr (msg);
-        std::string rule_id = handle_rule (rule);
+    else if (streq (cmd, "ADD")) {
+        ZstrGuard rule (zmsg_popstr (msg));
+        std::string rule_id = handle_rule (rule.get ());
 
         zmsg_addstr (reply, "ADD");
-        zmsg_addstr (reply, correlation_id.c_str ());
+        zmsg_addstr (reply, correlation_id);
         zmsg_addstr (reply, rule_id.c_str ());
     }
-    else if (cmd == "CHANGESTATE") {
+    else if (streq (cmd, "CHANGESTATE")) {
         if (subject != RFC_ALERTS_ACKNOWLEDGE_SUBJECT) {
             log_error ("Expected subject %s,  got %s", RFC_ALERTS_ACKNOWLEDGE_SUBJECT, subject.c_str ());
             zmsg_addstr (reply, "ERROR");
-            zmsg_addstr (reply, correlation_id.c_str ());
+            zmsg_addstr (reply, correlation_id);
             zmsg_addstr (reply, "WRONG_SUBJECT");
         }
 
-        std::string alert_id = zmsg_popstr (msg);
-        auto pos = m_Alert_cache.find (alert_id);
+        ZstrGuard alert_id (zmsg_popstr (msg));
+        auto pos = m_Alert_cache.find (alert_id.get ());
         if (pos == m_Alert_cache.end ()) {
             zmsg_addstr (reply, "ERROR");
-            zmsg_addstr (reply, correlation_id.c_str ());
+            zmsg_addstr (reply, correlation_id);
             zmsg_addstr (reply, "NOT_FOUND");
         }
-        std::string new_state = zmsg_popstr (msg);
-        Alert alert = pos->second;
-        int rv = alert.switchState (new_state);
+        ZstrGuard new_state (zmsg_popstr (msg));
+        std::shared_ptr<Alert> alert = pos->second;
+        int rv = alert->switchState (new_state.get ());
 
         if (rv) {
             zmsg_addstr (reply, "ERROR");
-            zmsg_addstr (reply, correlation_id.c_str ());
+            zmsg_addstr (reply, correlation_id);
             zmsg_addstr (reply, "BAD_STATE");
         }
         else {
             zmsg_addstr (reply, "CHANGESTATE");
-            zmsg_addstr (reply, correlation_id.c_str ());
-            zmsg_addstr (reply, alert.id().c_str ());
+            zmsg_addstr (reply, correlation_id);
+            zmsg_addstr (reply, alert->id().c_str ());
         }
     }
     else {
         zmsg_addstr (reply, "ERROR");
-        zmsg_addstr (reply, correlation_id.c_str ());
+        zmsg_addstr (reply, correlation_id);
         zmsg_addstr (reply, "BAD_COMMAND");
     }
 
@@ -475,35 +404,35 @@ AlertList::alert_list_run (zsock_t *pipe)
     zsock_signal (pipe, 0);
 
     while (!zsys_interrupted) {
-        void *which = zpoller_wait (poller, 1000);
+        void *which = zpoller_wait (poller, -1);
         if (which == pipe) {
             zmsg_t *msg = zmsg_recv (pipe);
-            std::string cmd = zmsg_popstr (msg);
-            if (cmd == "$TERM") {
+            ZstrGuard cmd (zmsg_popstr (msg));
+            if (streq (cmd, "$TERM")) {
                 zmsg_destroy (&msg);
                 break;
             }
-            else if (cmd == "CONNECT") {
-                std::string endpoint = zmsg_popstr (msg);
-                std::string name = zmsg_popstr (msg);
-                std::string stream_name = name + "-stream";
-                mlm_client_connect (m_Mailbox_client, endpoint.c_str (), 1000, name.c_str ());
-                mlm_client_connect (m_Stream_client, endpoint.c_str (), 1000, stream_name.c_str ());
+            else if (streq (cmd, "CONNECT")) {
+                ZstrGuard endpoint (zmsg_popstr (msg));
+                ZstrGuard name (zmsg_popstr (msg));
+                std::string stream_name = name.get () + std::string ("-stream");
+                mlm_client_connect (m_Mailbox_client, endpoint, 1000, name);
+                mlm_client_connect (m_Stream_client, endpoint, 1000, stream_name.c_str ());
             }
-            else if (cmd == "PRODUCER") {
-                std::string stream = zmsg_popstr (msg);
-                mlm_client_set_producer (m_Stream_client, stream.c_str ());
+            else if (streq (cmd, "PRODUCER")) {
+                ZstrGuard stream (zmsg_popstr (msg));
+                mlm_client_set_producer (m_Stream_client, stream);
             }
-            else if (cmd == "CONSUMER") {
-                std::string stream = zmsg_popstr (msg);
-                std::string pattern = zmsg_popstr (msg);
-                mlm_client_set_consumer (m_Stream_client, stream.c_str (), pattern.c_str ());
+            else if (streq (cmd, "CONSUMER")) {
+                ZstrGuard stream (zmsg_popstr (msg));
+                ZstrGuard pattern (zmsg_popstr (msg));
+                mlm_client_set_consumer (m_Stream_client, stream, pattern);
             }
-            else if (cmd == "TTLCLEANUP") {
+            else if (streq (cmd , "TTLCLEANUP")) {
                 alert_cache_clean ();
             }
             else {
-                log_warning ("Unknown command '%s' on pipe", cmd.c_str ());
+                log_warning ("Unknown command '%s' on pipe", cmd.get ());
             }
             zmsg_destroy (&msg);
         } else if (which == mlm_client_msgpipe (m_Mailbox_client)) {
@@ -519,11 +448,11 @@ AlertList::alert_list_run (zsock_t *pipe)
                 break;
             }
             process_stream (msg);
-            //zmsg_destroy (&msg);
         } else {
              log_warning ("Unexpected message");
         }
     }
+    zpoller_destroy (&poller);
 }
 
 void
@@ -591,8 +520,9 @@ alert_list_test (bool verbose)
     rv = mlm_client_connect (ui, endpoint, 1000, "UI");
     assert (rv == 0);
 
+    zclock_sleep (1000);
     {
-    uint64_t now = zclock_time () / 1000;
+    uint64_t now = zclock_mono () / 1000;
 
     // send asset - DC
     // fill in ename, type, subtype
@@ -609,8 +539,8 @@ alert_list_test (bool verbose)
     zhash_destroy (&ext);
     zhash_destroy (&asset_aux);
 
-    zclock_sleep (6000);
-    
+    zclock_sleep (1000);
+
     // add rule
     zmsg_t *rule_msg = zmsg_new ();
     zuuid_t *uuid = zuuid_new ();
@@ -618,8 +548,8 @@ alert_list_test (bool verbose)
     zmsg_addstr (rule_msg, zuuid_str_canonical (uuid));
     std::string rule_json ("{\"test\":{\"name\":\"average.mana@testdatacenter\",\"categories\":[\"CAT_ALL\"],\"metrics\":[\"");
     rule_json += "average.mana1\"],\"results\":[{\"OK\":{\"action\":[],\"severity\":\"critical\",\"description\":\"";
-    rule_json += "ok_description\",\"threshold_name\":\"\"}}, {\"HIGH_CRITICAL\":{\"action\":[\"EMAIL\"],\"severity\":\"";
-    rule_json += "critical\",\"description\":\"critical_high_description\",\"threshold_name\":\"\"}}],\"assets\":[\"";
+    rule_json += "ok_description for __ename__\",\"threshold_name\":\"\"}}, {\"HIGH_CRITICAL\":{\"action\":[\"EMAIL\"],\"severity\":\"";
+    rule_json += "critical\",\"description\":\"critical_high_description for __ename__\",\"threshold_name\":\"\"}}],\"assets\":[\"";
     rule_json += "testdatacenter\"],\"values\":[{\"var1\":\"val1\"},{\"var2\":\"val2\"}]}}";
     zmsg_addstr (rule_msg, rule_json.c_str ());
     rv = mlm_client_sendto (ui, alert_list_test_address, "rule-handling", NULL, 5000, &rule_msg);
@@ -642,7 +572,7 @@ alert_list_test (bool verbose)
     // send ACTIVE alert
     zhash_t *alert_aux = zhash_new ();
     zhash_autofree (alert_aux);
-    zhash_insert (alert_aux, "outcome", (void *) "HIGH_CRITICAL");
+    zhash_insert (alert_aux, "outcome", (void *) "high_critical");
     zlist_t *fty_actions = zlist_new ();
 
     uint64_t mtime = now;
@@ -659,13 +589,13 @@ alert_list_test (bool verbose)
             "",
             fty_actions
             );
-    zlist_destroy (&fty_actions);
-    zhash_destroy (&alert_aux);
     rv = mlm_client_send (alert_producer, "CREATE", &active_alert);
     assert (rv == 0);
+    zlist_destroy (&fty_actions);
+    zhash_destroy (&alert_aux);
 
-    zclock_sleep (6000);
-    
+    zclock_sleep (1000);
+
     // LISTALL
     zmsg_t *listall_msg = zmsg_new ();
     uuid = zuuid_new ();
@@ -686,22 +616,22 @@ alert_list_test (bool verbose)
     str = zmsg_popstr (listall_reply);
     assert (streq (str, "ALL"));
     zstr_free (&str);
+
     zmsg_t *tmp = zmsg_popmsg (listall_reply);
     fty_proto_t *fty_tmp = fty_proto_decode (&tmp);
     assert (fty_proto_id (fty_tmp) == FTY_PROTO_ALERT);
     assert (fty_proto_aux_number (fty_tmp, "ctime", 0) == now);
-    log_error ("%u", fty_proto_time (fty_tmp)); 
     assert (fty_proto_time (fty_tmp) == now);
     assert (streq (fty_proto_rule (fty_tmp), "average.mana"));
     assert (streq (fty_proto_name (fty_tmp), "testdatacenter"));
     assert (fty_proto_ttl (fty_tmp) == ttl);
     assert (streq (fty_proto_severity (fty_tmp), "critical"));
-    log_error ("%s", fty_proto_state (fty_tmp)); 
     assert (streq (fty_proto_state (fty_tmp), "ACTIVE"));
-    assert (streq (fty_proto_description (fty_tmp), "critical_high_description"));
+    assert (streq (fty_proto_description (fty_tmp), "critical_high_description for DC-Roztoky"));
     zlist_t *fty_alert_msg_actions = fty_proto_action (fty_tmp);
     assert (streq ((const char *) zlist_first (fty_alert_msg_actions), "EMAIL"));
-    zmsg_destroy (&tmp);
+    fty_proto_destroy (&fty_tmp);
+
     tmp = zmsg_popmsg (listall_reply);
     assert (tmp == NULL);
     zmsg_destroy (&listall_reply);
@@ -723,37 +653,38 @@ alert_list_test (bool verbose)
     str = zmsg_popstr (list_reply);
     assert (streq (str, zuuid_str_canonical (uuid)));
     zstr_free (&str);
+    zuuid_destroy (&uuid);
     str = zmsg_popstr (list_reply);
     assert (streq (str, "ALL"));
     zstr_free (&str);
+
     tmp = zmsg_popmsg (list_reply);
     fty_tmp = fty_proto_decode (&tmp);
     assert (fty_proto_id (fty_tmp) == FTY_PROTO_ALERT);
-    log_error ("%d", fty_proto_aux_number (fty_tmp, "ctime", -1)); 
-    //assert (fty_proto_aux_number (fty_tmp, "ctime", 0) == now);
-    //assert (fty_proto_time (fty_tmp) == now);
-    //assert (streq (fty_proto_rule (fty_tmp), "average.mana"));
-    //assert (streq (fty_proto_name (fty_tmp), "testdatacenter"));
-    //assert (fty_proto_ttl (fty_tmp) == ttl);
-    //assert (streq (fty_proto_severity (fty_tmp), "CRITICAL"));
-    //assert (streq (fty_proto_state (fty_tmp), "ACTIVE"));
-    //assert (streq (fty_proto_description (fty_tmp), "critical_high_description"));
-    //fty_alert_msg_actions = fty_proto_action (fty_tmp);
-    //assert (streq ((const char *) zlist_first (fty_alert_msg_actions), "EMAIL"));
-    zmsg_destroy (&tmp);
-    assert (reply == NULL);
-    tmp = zmsg_popmsg (reply);
+    assert (fty_proto_aux_number (fty_tmp, "ctime", 0) == now);
+    assert (fty_proto_time (fty_tmp) == now);
+    assert (streq (fty_proto_rule (fty_tmp), "average.mana"));
+    assert (streq (fty_proto_name (fty_tmp), "testdatacenter"));
+    assert (fty_proto_ttl (fty_tmp) == ttl);
+    assert (streq (fty_proto_severity (fty_tmp), "critical"));
+    assert (streq (fty_proto_state (fty_tmp), "ACTIVE"));
+    assert (streq (fty_proto_description (fty_tmp), "critical_high_description for DC-Roztoky"));
+    fty_alert_msg_actions = fty_proto_action (fty_tmp);
+    assert (streq ((const char *) zlist_first (fty_alert_msg_actions), "EMAIL"));
+    fty_proto_destroy (&fty_tmp);
+
+    tmp = zmsg_popmsg (list_reply);
     assert (tmp == NULL);
     zmsg_destroy (&list_reply);
     }
 
-    /*{
+    {
     // send RESOLVED alert
-    uint64_t now = zclock_time () / 1000;
+    uint64_t now = zclock_mono () / 1000;
 
     zhash_t *aux = zhash_new ();
     zhash_autofree (aux);
-    zhash_insert (aux, "outcome", (void *) "OK");
+    zhash_insert (aux, "outcome", (void *) "ok");
     zlist_t *fty_actions = zlist_new ();
 
     uint64_t mtime = now;
@@ -775,6 +706,7 @@ alert_list_test (bool verbose)
     rv = mlm_client_send (alert_producer, "CREATE", &resolved_alert);
     assert (rv == 0);
 
+    zclock_sleep (1000);
     // LISTALL
     zmsg_t *listall_msg = zmsg_new ();
     zuuid_t *uuid = zuuid_new ();
@@ -795,6 +727,7 @@ alert_list_test (bool verbose)
     str = zmsg_popstr (reply);
     assert (streq (str, "ALL"));
     zstr_free (&str);
+
     zmsg_t *tmp = zmsg_popmsg (reply);
     fty_proto_t *fty_tmp = fty_proto_decode (&tmp);
     assert (fty_proto_id (fty_tmp) == FTY_PROTO_ALERT);
@@ -803,12 +736,13 @@ alert_list_test (bool verbose)
     assert (streq (fty_proto_rule (fty_tmp), "average.mana"));
     assert (streq (fty_proto_name (fty_tmp), "testdatacenter"));
     assert (fty_proto_ttl (fty_tmp) == ttl);
-    assert (streq (fty_proto_severity (fty_tmp), "OK"));
+    assert (streq (fty_proto_severity (fty_tmp), "critical"));
     assert (streq (fty_proto_state (fty_tmp), "RESOLVED"));
-    assert (streq (fty_proto_description (fty_tmp), "ok_description"));
+    assert (streq (fty_proto_description (fty_tmp), "ok_description for DC-Roztoky"));
     zlist_t *fty_alert_msg_actions = fty_proto_action (fty_tmp);
-    assert (streq ((const char *) zlist_first (fty_alert_msg_actions), ""));
-    zmsg_destroy (&tmp);
+    assert (zlist_first (fty_alert_msg_actions) == NULL);
+    fty_proto_destroy (&fty_tmp);
+
     tmp = zmsg_popmsg (reply);
     assert (tmp == NULL);
     zmsg_destroy (&reply);
@@ -816,14 +750,14 @@ alert_list_test (bool verbose)
 
     {
     // send ACTIVE alert
-    uint64_t now = zclock_time () / 1000;
+    uint64_t now = zclock_mono () / 1000;
 
     zhash_t *aux = zhash_new ();
     zhash_autofree (aux);
-    zhash_insert (aux, "outcome", (void *) "HIGH_CRITICAL");
+    zhash_insert (aux, "outcome", (void *) "high_critical");
     zlist_t *fty_actions = zlist_new ();
 
-    uint64_t mtime = now; 
+    uint64_t mtime = now;
     uint64_t ttl = 5;
 
     zmsg_t *active_alert = fty_proto_encode_alert (
@@ -865,24 +799,26 @@ alert_list_test (bool verbose)
     str = zmsg_popstr (reply);
     assert (streq (str, "ALL"));
     zstr_free (&str);
+
     zmsg_t *tmp = zmsg_popmsg (reply);
     fty_proto_t *fty_tmp = fty_proto_decode (&tmp);
     assert (fty_proto_id (fty_tmp) == FTY_PROTO_ALERT);
-    assert (fty_proto_aux_number (fty_tmp, "ctime", 0) == mtime);
-    assert (fty_proto_time (fty_tmp) == mtime);
+    assert (fty_proto_aux_number (fty_tmp, "ctime", 0) >= mtime);
+    assert (fty_proto_time (fty_tmp) >= mtime );
     assert (streq (fty_proto_rule (fty_tmp), "average.mana"));
     assert (streq (fty_proto_name (fty_tmp), "testdatacenter"));
     assert (fty_proto_ttl (fty_tmp) == ttl);
-    assert (streq (fty_proto_severity (fty_tmp), "OK"));
+    assert (streq (fty_proto_severity (fty_tmp), ""));
     assert (streq (fty_proto_state (fty_tmp), "RESOLVED"));
-    assert (streq (fty_proto_description (fty_tmp), "ok_description"));
+    assert (streq (fty_proto_description (fty_tmp), ""));
     zlist_t *fty_alert_msg_actions = fty_proto_action (fty_tmp);
-    assert (streq ((const char *) zlist_first (fty_alert_msg_actions), ""));
-    zmsg_destroy (&tmp);
+    assert (zlist_first (fty_alert_msg_actions) == NULL);
+    fty_proto_destroy (&fty_tmp);
+
     tmp = zmsg_popmsg (reply);
     assert (tmp == NULL);
     zmsg_destroy (&reply);
-    }*/
+    }
 
     mlm_client_destroy (&ui);
     mlm_client_destroy (&alert_producer);

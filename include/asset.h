@@ -163,8 +163,8 @@ class FullAsset : public ExtendedAsset {
         FullAsset (fty_proto_t *msg): ExtendedAsset (msg)
         {
             // get our own copies since zhash_to_map doesn't do copying
-            zhash_t *aux = fty_proto_get_aux (msg);
-            zhash_t *ext = fty_proto_get_ext (msg);
+            zhash_t *aux = fty_proto_aux (msg);
+            zhash_t *ext = fty_proto_ext (msg);
             aux_ = MlmUtils::zhash_to_map (aux);
             ext_ = MlmUtils::zhash_to_map (ext);
         }

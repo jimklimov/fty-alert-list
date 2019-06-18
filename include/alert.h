@@ -33,7 +33,7 @@ class Alert {
             m_Id (id),
             m_Results (results),
             m_State (RESOLVED),
-            m_Outcome ("OK"),
+            m_Outcome ("ok"),
             m_Ctime (0),
             m_Mtime (0),
             m_Ttl (std::numeric_limits<uint64_t>::max ())
