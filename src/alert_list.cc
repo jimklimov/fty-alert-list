@@ -547,9 +547,9 @@ alert_list_test (bool verbose)
     zmsg_addstr (rule_msg, "ADD");
     zmsg_addstr (rule_msg, zuuid_str_canonical (uuid));
     std::string rule_json ("{\"test\":{\"name\":\"average.mana@testdatacenter\",\"categories\":[\"CAT_ALL\"],\"metrics\":[\"");
-    rule_json += "average.mana1\"],\"results\":[{\"OK\":{\"action\":[],\"severity\":\"critical\",\"description\":\"";
-    rule_json += "ok_description for __ename__\",\"threshold_name\":\"\"}}, {\"HIGH_CRITICAL\":{\"action\":[\"EMAIL\"],\"severity\":\"";
-    rule_json += "critical\",\"description\":\"critical_high_description for __ename__\",\"threshold_name\":\"\"}}],\"assets\":[\"";
+    rule_json += "average.mana1\"],\"results\":[{\"ok\":{\"action\":[],\"severity\":\"CRITICAL\",\"description\":\"";
+    rule_json += "ok_description for __ename__\",\"threshold_name\":\"\"}}, {\"high_critical\":{\"action\":[\"EMAIL\"],\"severity\":\"";
+    rule_json += "CRITICAL\",\"description\":\"critical_high_description for __ename__\",\"threshold_name\":\"\"}}],\"assets\":[\"";
     rule_json += "testdatacenter\"],\"values\":[{\"var1\":\"val1\"},{\"var2\":\"val2\"}]}}";
     zmsg_addstr (rule_msg, rule_json.c_str ());
     rv = mlm_client_sendto (ui, alert_list_test_address, "rule-handling", NULL, 5000, &rule_msg);
@@ -625,7 +625,7 @@ alert_list_test (bool verbose)
     assert (streq (fty_proto_rule (fty_tmp), "average.mana"));
     assert (streq (fty_proto_name (fty_tmp), "testdatacenter"));
     assert (fty_proto_ttl (fty_tmp) == ttl);
-    assert (streq (fty_proto_severity (fty_tmp), "critical"));
+    assert (streq (fty_proto_severity (fty_tmp), "CRITICAL"));
     assert (streq (fty_proto_state (fty_tmp), "ACTIVE"));
     assert (streq (fty_proto_description (fty_tmp), "critical_high_description for DC-Roztoky"));
     zlist_t *fty_alert_msg_actions = fty_proto_action (fty_tmp);
@@ -666,7 +666,7 @@ alert_list_test (bool verbose)
     assert (streq (fty_proto_rule (fty_tmp), "average.mana"));
     assert (streq (fty_proto_name (fty_tmp), "testdatacenter"));
     assert (fty_proto_ttl (fty_tmp) == ttl);
-    assert (streq (fty_proto_severity (fty_tmp), "critical"));
+    assert (streq (fty_proto_severity (fty_tmp), "CRITICAL"));
     assert (streq (fty_proto_state (fty_tmp), "ACTIVE"));
     assert (streq (fty_proto_description (fty_tmp), "critical_high_description for DC-Roztoky"));
     fty_alert_msg_actions = fty_proto_action (fty_tmp);
@@ -736,7 +736,7 @@ alert_list_test (bool verbose)
     assert (streq (fty_proto_rule (fty_tmp), "average.mana"));
     assert (streq (fty_proto_name (fty_tmp), "testdatacenter"));
     assert (fty_proto_ttl (fty_tmp) == ttl);
-    assert (streq (fty_proto_severity (fty_tmp), "critical"));
+    assert (streq (fty_proto_severity (fty_tmp), "CRITICAL"));
     assert (streq (fty_proto_state (fty_tmp), "RESOLVED"));
     assert (streq (fty_proto_description (fty_tmp), "ok_description for DC-Roztoky"));
     zlist_t *fty_alert_msg_actions = fty_proto_action (fty_tmp);

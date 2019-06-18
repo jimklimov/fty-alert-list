@@ -317,10 +317,10 @@ alert_test (bool verbose)
     low_critical.actions_ = actions;
 
     Rule::ResultsMap tmp;
-    tmp.insert (std::pair<std::string, Rule::Outcome> ("HIGH_CRITICAL", high_critical));
-    tmp.insert (std::pair<std::string, Rule::Outcome> ("HIGH_WARNING", high_warning));
-    tmp.insert (std::pair<std::string, Rule::Outcome> ("LOW_WARNING", low_warning));
-    tmp.insert (std::pair<std::string, Rule::Outcome> ("LOW_CRITICAL", low_critical));
+    tmp.insert (std::pair<std::string, Rule::Outcome> ("high_critical", high_critical));
+    tmp.insert (std::pair<std::string, Rule::Outcome> ("high_warning", high_warning));
+    tmp.insert (std::pair<std::string, Rule::Outcome> ("low_warning", low_warning));
+    tmp.insert (std::pair<std::string, Rule::Outcome> ("low_critical", low_critical));
 
     uint64_t now = zclock_time () / 1000;
     // create fty-proto msg
@@ -457,7 +457,7 @@ alert_test (bool verbose)
         // create alert3, overwrite it with a Rule
         Alert alert3 (rule + "@" + name, tmp);
         std::string rule_json ("{\"test\":{\"name\":\"metric@asset1\",\"categories\":[\"CAT_ALL\"],\"metrics\":[\"");
-        rule_json += "metric1\"],\"results\":[{\"OK\":{\"action\":[],\"severity\":\"critical\",\"description\":\"";
+        rule_json += "metric1\"],\"results\":[{\"ok\":{\"action\":[],\"severity\":\"CRITICAL\",\"description\":\"";
         rule_json += "ok_description\",\"threshold_name\":\"\"}}],\"assets\":[\"asset1\"],\"values\":[{\"var1\":\"val1\"},{\"";
         rule_json += "var2\":\"val2\"}]}}";
         GenericRule generic_rule (rule_json);
@@ -495,7 +495,7 @@ alert_test (bool verbose)
         assert (alert3.outcome () == "ok");
         assert (alert3.ctime () == now);
         assert (alert3.ttl () == ttl);
-        assert (alert3.severity () == "critical");
+        assert (alert3.severity () == "CRITICAL");
         assert (alert3.description () == "ok_description");
         assert (alert3.actions ().empty ());
         fty_proto_destroy (&fty_msg);
@@ -510,7 +510,7 @@ alert_test (bool verbose)
         assert (streq (fty_proto_rule (fty_alert_msg), "metric"));
         assert (streq (fty_proto_name (fty_alert_msg), "asset1"));
         assert (fty_proto_ttl (fty_alert_msg) == ttl);
-        assert (streq (fty_proto_severity (fty_alert_msg), "critical"));
+        assert (streq (fty_proto_severity (fty_alert_msg), "CRITICAL"));
         assert (streq (fty_proto_state (fty_alert_msg), "RESOLVED"));
         assert (streq (fty_proto_description (fty_alert_msg), "ok_description"));
         zlist_t *fty_alert_msg_actions = fty_proto_action (fty_alert_msg);
