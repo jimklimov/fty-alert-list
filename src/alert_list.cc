@@ -261,9 +261,11 @@ AlertList::process_stream (zmsg_t *msg)
     }
     else if (fty_proto_id (fty_msg) == FTY_PROTO_ASSET) {
         fty_proto_print (fty_msg);
-        FullAsset asset(fty_msg);
-        FullAssetDatabase::getInstance ().insertOrUpdateAsset (asset);
-        fty_proto_destroy (&fty_msg);
+        if (streq (fty_proto_operation (fty_msg), FTY_PROTO_ASSET_OP_CREATE) || streq (fty_proto_operation (fty_msg), FTY_PROTO_ASSET_OP_UPDATE)) {
+            FullAsset asset(fty_msg);
+            FullAssetDatabase::getInstance ().insertOrUpdateAsset (asset);
+            fty_proto_destroy (&fty_msg);
+        }
     }
     else {
         log_warning ("Message neither FTY_PROTO_ASSET nor FTY_PROTO_ALERT.");
