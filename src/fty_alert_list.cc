@@ -22,7 +22,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define DEFAULT_TTLCLEANUP_INTERVAL 60
 
 #include "fty_common_agents.h"
-#include "fty_alert_list_classes.h"
+#include "fty_alert_list.h"
 
 static int
 s_ttl_cleanup_timer (zloop_t *loop, int timer_id, void *output) {

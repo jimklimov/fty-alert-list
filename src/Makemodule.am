@@ -13,17 +13,12 @@ lib_LTLIBRARIES += src/libfty_alert_list.la
 pkgconfig_DATA = src/libfty_alert_list.pc
 
 src_libfty_alert_list_la_SOURCES = \
-    src/fty_alert_actions.cc \
-    src/platform.h
-
-if ENABLE_DRAFTS
-src_libfty_alert_list_la_SOURCES += \
     src/alert.cc \
     src/asset.cc \
     src/rule.cc \
-    src/alert_list.cc
-
-endif
+    src/fty_alert_actions.cc \
+    src/alert_list.cc \
+    src/platform.h
 
 if ENABLE_DRAFTS
 src_libfty_alert_list_la_SOURCES += \

@@ -215,32 +215,17 @@
         repository = "https://github.com/42ity/fty-shm.git"/>
 
     <!--TODO FIXME : duplicated class -->
-    <class name = "alert">Alert representation</class>
+    <class name = "alert" state = "stable">Alert representation</class>
     <!--TODO FIXME : duplicated class -->
-    <class name = "asset" selftest = "0">Asset representation</class>
+    <class name = "asset" state = "stable" selftest = "0">Asset representation</class>
     <!--TODO FIXME : duplicated class -->
-    <class name = "rule" selftest = "0">Rule represenation</class>
+    <class name = "rule" state = "stable" selftest = "0">Rule represenation</class>
     <!--TODO FIXME : duplicated class -->
     <header name = "asset_database">Asset database</header>
     <!--TODO FIXME : duplicated class -->
     <header name = "database">Generic database</header>
-    <!--<class name = "metriclist" private = "1" selftest = "0">MetricList</class>
-    <class name = "alertconfiguration" private = "1">alertconfiguration</class>
-    <class name = "luarule" private = "1" selftest = "0">luaRule</class>
-    <class name = "purealert" private = "1" selftest = "0">PureAlert</class>
-    <class name = "rule" private = "1" selftest = "0">Rule</class>
-    <class name = "thresholdrulecomplex" private = "1" selftest = "0">ThresholdRuleComplex</class>
-    <class name = "utils" state = "stable">Utils</class>
-    <class name = "Autoconfig" state = "stable">Autoconfig</class>
-    <class name = "RuleConfigurator" private = "1" selftest = "0">Rule Configurator</class>
-    <class name = "TemplateRuleConfigurator" private = "1" selftest = "0">Template rule configurator</class>
-    <class name = "fty_alert_engine_server" state = "stable" >Actor evaluating rules</class>
-    <header name = "normalrule" private = "1" >normalrule</header>
-    <header name = "thresholdrulesimple" private = "1" >thresholdrulesimple</header>
-    <header name = "thresholdruledevice" private = "1" >thresholdruledevice</header>
-    <header name = "regexrule" private = "1" >regexrule</header>-->
     <class name = "fty_alert_actions" state = "stable" >Actor performing actions on alert (sending notifications)</class>
-    <class name = "alert_list">Actor to serve REST API requests about alerts</class>
+    <class name = "alert_list" state = "stable">Actor to serve REST API requests about alerts</class>
     <main name = "fty-alert-list" service = "1">
         Daemon evaluating rules and producing alerts
     </main>

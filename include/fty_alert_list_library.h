@@ -79,31 +79,26 @@
 
 //  Opaque class structures to allow forward references
 //  These classes are stable or legacy and built in all releases
-typedef struct _fty_alert_actions_t fty_alert_actions_t;
-#define FTY_ALERT_ACTIONS_T_DEFINED
-//  Draft classes are by default not built in stable releases
-#ifdef FTY_ALERT_LIST_BUILD_DRAFT_API
 typedef struct _alert_t alert_t;
 #define ALERT_T_DEFINED
 typedef struct _asset_t asset_t;
 #define ASSET_T_DEFINED
 typedef struct _rule_t rule_t;
 #define RULE_T_DEFINED
+typedef struct _fty_alert_actions_t fty_alert_actions_t;
+#define FTY_ALERT_ACTIONS_T_DEFINED
 typedef struct _alert_list_t alert_list_t;
 #define ALERT_LIST_T_DEFINED
-#endif // FTY_ALERT_LIST_BUILD_DRAFT_API
 
 
 //  Public classes, each with its own header file
 #include "asset_database.h"
 #include "database.h"
-#include "fty_alert_actions.h"
-#ifdef FTY_ALERT_LIST_BUILD_DRAFT_API
 #include "alert.h"
 #include "asset.h"
 #include "rule.h"
+#include "fty_alert_actions.h"
 #include "alert_list.h"
-#endif // FTY_ALERT_LIST_BUILD_DRAFT_API
 
 #ifdef FTY_ALERT_LIST_BUILD_DRAFT_API
 

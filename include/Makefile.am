@@ -6,17 +6,13 @@ include_HEADERS = \
     fty_alert_list.h \
     asset_database.h \
     database.h \
-    fty_alert_actions.h \
-    fty_alert_list_library.h
-
-if ENABLE_DRAFTS
-include_HEADERS += \
     alert.h \
     asset.h \
     rule.h \
-    alert_list.h
+    fty_alert_actions.h \
+    alert_list.h \
+    fty_alert_list_library.h
 
-endif
 
 
 ################################################################################
