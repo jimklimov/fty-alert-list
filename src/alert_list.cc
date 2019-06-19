@@ -161,7 +161,7 @@ AlertList::handle_alert (fty_proto_t *fty_new_alert, std::string subject)
     bool should_overwrite = false;
 
     // check if alert is in the cache
-    std::string new_alert_id = std::string (fty_proto_rule (fty_new_alert)) + "@" + std::string (fty_proto_name (fty_new_alert));
+    std::string new_alert_id = std::string (fty_proto_rule (fty_new_alert));
     auto old_alert = m_Alert_cache.find (new_alert_id);
     if (old_alert == m_Alert_cache.end ()) {
          log_error ("Alert for non-existing rule %s", new_alert_id.c_str ());
