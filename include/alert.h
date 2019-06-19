@@ -97,7 +97,7 @@ class Alert {
 
         AlertState StringToAlertState (std::string state_str)
         {
-            AlertState state;
+            AlertState state = RESOLVED;
             if (state_str == "RESOLVED")
                 state = RESOLVED;
             else if (state_str == "ACTIVE")

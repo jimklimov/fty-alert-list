@@ -203,7 +203,7 @@ AlertList::handle_alert (fty_proto_t *fty_new_alert, std::string subject)
                     should_send = true;
                 }
                 // if still active and same severity, publish only when we are at risk of timing out
-                if ((zclock_mono ()/1000) >= (old_last_sent + fty_proto_ttl (fty_new_alert)/2)) {
+                if (static_cast<uint64_t>(zclock_mono ()/1000) >= (old_last_sent + fty_proto_ttl (fty_new_alert)/2)) {
                     should_send = true;
                 }
                 // always update the time - for the old alert directly in the cache
