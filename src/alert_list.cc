@@ -352,6 +352,7 @@ AlertList::process_mailbox (zmsg_t *msg)
         ZstrGuard rule (zmsg_popstr (msg));
         std::string rule_id = handle_rule (rule.get ());
 
+        log_debug ("Rule '%s' was successfully added", rule_id.c_str ());
         zmsg_addstr (reply, "ADD");
         zmsg_addstr (reply, correlation_id);
         zmsg_addstr (reply, rule_id.c_str ());

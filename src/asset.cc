@@ -298,6 +298,8 @@ std::string BasicAsset::statusToString (BasicAsset::Status status) const {
             return "active";
         case Status::Nonactive:
             return "nonactive";
+        case Status::Spare:
+            return "spare";
         default:
             throw std::invalid_argument ("status is not known value");
     }
@@ -308,6 +310,8 @@ BasicAsset::Status BasicAsset::stringToStatus (std::string status) const {
         return Status::Active;
     } else if (status == "nonactive") {
         return Status::Nonactive;
+    } else if (status == "spare") {
+        return Status::Spare;
     } else {
         throw std::invalid_argument ("status is not known value");
     }

@@ -16,7 +16,7 @@ class BasicAsset {
     public:
         /// List of valid asset statuses
         enum Status {
-            Active, Nonactive
+            Active, Nonactive, Spare
         };
         /// List of valid asset types
         enum Type {
