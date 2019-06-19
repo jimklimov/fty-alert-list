@@ -39,13 +39,14 @@ typedef struct {
 
 static test_item_t
 all_tests [] = {
-// Tests for stable public classes:
+/*// Tests for stable public classes:
     { "fty_alert_actions", fty_alert_actions_test, true, true, NULL },
 #ifdef FTY_ALERT_LIST_BUILD_DRAFT_API
 // Tests for draft public classes:
     { "alert", alert_test, false, true, NULL },
     { "alert_list", alert_list_test, false, true, NULL },
 #endif // FTY_ALERT_LIST_BUILD_DRAFT_API
+*/
     {NULL, NULL, 0, 0, NULL}          //  Sentinel
 };
 
