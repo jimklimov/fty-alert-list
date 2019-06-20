@@ -72,7 +72,9 @@ int main (int argc, char *argv [])
     // actions actor
     zactor_t *alert_actions_server = zactor_new (fty_alert_actions, (void *) AGENT_FTY_ALERT_ACTIONS);
     zstr_sendx (alert_actions_server, "CONNECT", DEFAULT_ENDPOINT, AGENT_FTY_ALERT_ACTIONS, NULL);
-    // no communication on streams for actions
+    zstr_sendx (alert_actions_server, "CONSUMER", FTY_PROTO_STREAM_ASSETS, ".*", NULL);
+    zstr_sendx (alert_actions_server, "CONSUMER", FTY_PROTO_STREAM_ALERTS, ".*", NULL);
+    zstr_sendx (alert_actions_server, "ASKFORASSETS", NULL);
 
     zloop_t *ttlcleanup = zloop_new ();
     zloop_timer (ttlcleanup, 60 * 1000, 0, s_ttl_cleanup_timer, alert_list_server);

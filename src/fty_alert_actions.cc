@@ -181,7 +181,7 @@ typedef struct {
     fty_proto_t *alert_msg;
     uint64_t    last_notification;
     uint64_t    last_received;
-    const char *related_asset;
+    char *related_asset;
 //    fty_proto_t *related_asset;
 } s_alert_cache;
 
@@ -295,6 +295,7 @@ new_alert_cache_item(fty_alert_actions_t *self, fty_proto_t *msg)
     c->alert_msg = msg;
     c->last_notification = zclock_mono ();
     c->last_received = c->last_notification;
+    c->related_asset = strdup (fty_proto_name (msg));
     log_debug ("searching for %s", fty_proto_name (msg));
 
     //c->related_asset = (fty_proto_t *) zhash_lookup(self->assets_cache, fty_proto_name(msg));
@@ -345,6 +346,7 @@ void
 delete_alert_cache_item(void *c)
 {
     fty_proto_destroy (&((s_alert_cache *)c)->alert_msg);
+    zstr_free (&((s_alert_cache *)c)->related_asset);
     free(c);
 }
 
