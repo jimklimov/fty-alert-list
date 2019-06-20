@@ -1,7 +1,7 @@
 /*  ==========================================================================
     alert_list - Actor to serve REST API requests about alerts
 
-    Copyright (C) 2014 - 2018 Eaton
+    Copyright (C) 2014 - 2019 Eaton
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -273,123 +273,148 @@ AlertList::process_stream (zmsg_t *msg)
     }
 }
 
-void
-AlertList::process_mailbox (zmsg_t *msg)
+zmsg_t *
+AlertList::process_LIST (zmsg_t *msg, std::string subject, char *cmd, char *correlation_id)
 {
     zmsg_t *reply = zmsg_new ();
 
-    std::string subject = mlm_client_subject (m_Mailbox_client);
-    std::string address = mlm_client_sender (m_Mailbox_client);
-    ZstrGuard cmd (zmsg_popstr (msg));
-    ZstrGuard correlation_id (zmsg_popstr (msg));
-    if (streq (cmd, "LISTALL") || streq (cmd, "LIST")) {
-        if (subject != RFC_ALERTS_LIST_SUBJECT) {
-            log_error ("Expected subject %s,  got %s", RFC_ALERTS_LIST_SUBJECT, subject.c_str ());
-            zmsg_addstr (reply, "ERROR");
-            zmsg_addstr (reply, correlation_id);
-            zmsg_addstr (reply, "WRONG_SUBJECT");
+    if (subject != RFC_ALERTS_LIST_SUBJECT) {
+        log_error ("Expected subject %s,  got %s", RFC_ALERTS_LIST_SUBJECT, subject.c_str ());
+        zmsg_addstr (reply, correlation_id);
+        zmsg_addstr (reply, "ERROR");
+        zmsg_addstr (reply, "WRONG_SUBJECT");
+        return reply;
+    }
+
+    const std::set<std::string> alert_filters =
+        { "RESOLVED", "ACTIVE", "ACK-IGNORE", "ACK-PAUSE", "ACK-SILENCE", "ACK-WIP", "ALL-ACTIVE", "ALL" };
+    char *filter = zmsg_popstr (msg);
+
+    if (alert_filters.find (filter) != alert_filters.end ()) {
+        std::function<bool(Alert alert)> filter_fn;
+        if (streq (filter, "ALL")) {
+            // pass trivial lambda
+            filter_fn = [](Alert alert) -> bool { return true; } ;
         }
-
-        const std::set<std::string> alert_filters =
-            { "RESOLVED", "ACTIVE", "ACK-IGNORE", "ACK-PAUSE", "ACK-SILENCE", "ACK-WIP", "ALL-ACTIVE", "ALL" };
-        char *filter = zmsg_popstr (msg);
-
-        if (alert_filters.find (filter) != alert_filters.end ()) {
-            std::function<bool(Alert alert)> filter_fn;
-            if (streq (filter, "ALL")) {
-                // pass trivial lambda
-                filter_fn = [](Alert alert) -> bool { return true; } ;
-            }
-            else if (streq (filter, "ALL-ACTIVE")) {
-                // select everything except RESOLVED
-                filter_fn = [](Alert alert) -> bool { return alert.state () != "RESOLVED"; } ;
-            }
-            else {
-                // select by state
-                filter_fn = [=](Alert alert) -> bool { return streq (alert.state ().c_str (), filter); } ;
-            }
-
-            if (streq (cmd, "LISTALL")) {
-                zmsg_addstr (reply, "LISTALL");
-                zmsg_addstr (reply, correlation_id);
-                zmsg_addstr (reply, filter);
-
-                std::vector<Alert> values;
-                values.reserve (m_Alert_cache.size ());
-                std::transform (m_Alert_cache.begin (), m_Alert_cache.end (), std::back_inserter (values),
-                        [](const std::pair<std::string, std::shared_ptr<Alert>> p) { return *(p.second); });
-                filter_alerts_for_publishing (values, filter_fn, reply);
-            }
-
-            if (streq (cmd, "LIST")) {
-                zmsg_addstr (reply, "LIST");
-                zmsg_addstr (reply, correlation_id);
-                zmsg_addstr (reply, filter);
-
-                char *name = zmsg_popstr (msg);
-                while (name) {
-                    std::vector<std::shared_ptr<Alert>> asset_alerts = m_Asset_alerts [name];
-
-                    std::vector<Alert> values;
-                    values.reserve (asset_alerts.size ());
-                    std::transform (asset_alerts.begin (), asset_alerts.end (), std::back_inserter (values),
-                            [](const std::shared_ptr<Alert> p) { return *p; });
-                    filter_alerts_for_publishing (values, filter_fn, reply);
-                    zstr_free (&name);
-                    name = zmsg_popstr (msg);
-                }
-            }
+        else if (streq (filter, "ALL-ACTIVE")) {
+            // select everything except RESOLVED
+            filter_fn = [](Alert alert) -> bool { return alert.state () != "RESOLVED"; } ;
         }
         else {
-            log_error ("Filter %s not allowed for alerts", filter);
-            zmsg_addstr (reply, "ERROR");
-            zmsg_addstr (reply, correlation_id);
-            zmsg_addstr (reply, "NOT_FOUND");
+            // select by state
+            filter_fn = [=](Alert alert) -> bool { return streq (alert.state ().c_str (), filter); } ;
         }
-        zstr_free (&filter);
+
+        if (streq (cmd, "LISTALL")) {
+            zmsg_addstr (reply, correlation_id);
+            zmsg_addstr (reply, "LISTALL");
+            zmsg_addstr (reply, filter);
+
+            std::vector<Alert> values;
+            values.reserve (m_Alert_cache.size ());
+            std::transform (m_Alert_cache.begin (), m_Alert_cache.end (), std::back_inserter (values),
+                    [](const std::pair<std::string, std::shared_ptr<Alert>> p) { return *(p.second); });
+            filter_alerts_for_publishing (values, filter_fn, reply);
+        }
+
+        if (streq (cmd, "LIST")) {
+            zmsg_addstr (reply, correlation_id);
+            zmsg_addstr (reply, "LIST");
+            zmsg_addstr (reply, filter);
+
+            char *name = zmsg_popstr (msg);
+            while (name) {
+                std::vector<std::shared_ptr<Alert>> asset_alerts = m_Asset_alerts [name];
+
+                std::vector<Alert> values;
+                values.reserve (asset_alerts.size ());
+                std::transform (asset_alerts.begin (), asset_alerts.end (), std::back_inserter (values),
+                        [](const std::shared_ptr<Alert> p) { return *p; });
+                filter_alerts_for_publishing (values, filter_fn, reply);
+                zstr_free (&name);
+                name = zmsg_popstr (msg);
+            }
+        }
+    }
+    else {
+        log_error ("Filter %s not allowed for alerts", filter);
+        zmsg_addstr (reply, correlation_id);
+        zmsg_addstr (reply, "ERROR");
+        zmsg_addstr (reply, "NOT_FOUND");
+    }
+    zstr_free (&filter);
+    return reply;
+}
+
+zmsg_t *
+AlertList::process_CHANGESTATE (zmsg_t *msg, std::string subject, char *correlation_id)
+{
+    zmsg_t *reply =  zmsg_new ();
+
+    if (subject != RFC_ALERTS_ACKNOWLEDGE_SUBJECT) {
+        log_error ("Expected subject %s,  got %s", RFC_ALERTS_ACKNOWLEDGE_SUBJECT, subject.c_str ());
+        zmsg_addstr (reply, correlation_id);
+        zmsg_addstr (reply, "ERROR");
+        zmsg_addstr (reply, "WRONG_SUBJECT");
+        return reply;
+    }
+
+    ZstrGuard alert_id (zmsg_popstr (msg));
+    auto pos = m_Alert_cache.find (alert_id.get ());
+    if (pos == m_Alert_cache.end ()) {
+        zmsg_addstr (reply, correlation_id);
+        zmsg_addstr (reply, "ERROR");
+        zmsg_addstr (reply, "NOT_FOUND");
+        return reply;
+    }
+    ZstrGuard new_state (zmsg_popstr (msg));
+    std::shared_ptr<Alert> alert = pos->second;
+    int rv = alert->switchState (new_state.get ());
+    if (rv) {
+        zmsg_addstr (reply, correlation_id);
+        zmsg_addstr (reply, "ERROR");
+        zmsg_addstr (reply, "BAD_STATE");
+        return reply;
+    }
+    else {
+        zmsg_addstr (reply, correlation_id);
+        zmsg_addstr (reply, "CHANGESTATE");
+        zmsg_addstr (reply, alert_id.get ());
+        return reply;
+    }
+
+    return reply;
+}
+
+void
+AlertList::process_mailbox (zmsg_t *msg)
+{
+    zmsg_t *reply;
+    zmsg_print (msg);
+    std::string subject = mlm_client_subject (m_Mailbox_client);
+    std::string address = mlm_client_sender (m_Mailbox_client);
+    ZstrGuard correlation_id (zmsg_popstr (msg));
+    ZstrGuard cmd (zmsg_popstr (msg));
+    if (streq (cmd, "LISTALL") || streq (cmd, "LIST")) {
+        reply = process_LIST (msg, subject, cmd.get (), correlation_id.get ());
     }
     else if (streq (cmd, "ADD")) {
+        reply = zmsg_new ();
         ZstrGuard rule (zmsg_popstr (msg));
         std::string rule_id = handle_rule (rule.get ());
 
         log_debug ("Rule '%s' was successfully added", rule_id.c_str ());
-        zmsg_addstr (reply, "ADD");
         zmsg_addstr (reply, correlation_id);
+        zmsg_addstr (reply, "ADD");
         zmsg_addstr (reply, rule_id.c_str ());
     }
     else if (streq (cmd, "CHANGESTATE")) {
-        if (subject != RFC_ALERTS_ACKNOWLEDGE_SUBJECT) {
-            log_error ("Expected subject %s,  got %s", RFC_ALERTS_ACKNOWLEDGE_SUBJECT, subject.c_str ());
-            zmsg_addstr (reply, "ERROR");
-            zmsg_addstr (reply, correlation_id);
-            zmsg_addstr (reply, "WRONG_SUBJECT");
-        }
-
-        ZstrGuard alert_id (zmsg_popstr (msg));
-        auto pos = m_Alert_cache.find (alert_id.get ());
-        if (pos == m_Alert_cache.end ()) {
-            zmsg_addstr (reply, "ERROR");
-            zmsg_addstr (reply, correlation_id);
-            zmsg_addstr (reply, "NOT_FOUND");
-        }
-        ZstrGuard new_state (zmsg_popstr (msg));
-        std::shared_ptr<Alert> alert = pos->second;
-        int rv = alert->switchState (new_state.get ());
-
-        if (rv) {
-            zmsg_addstr (reply, "ERROR");
-            zmsg_addstr (reply, correlation_id);
-            zmsg_addstr (reply, "BAD_STATE");
-        }
-        else {
-            zmsg_addstr (reply, "CHANGESTATE");
-            zmsg_addstr (reply, correlation_id);
-            zmsg_addstr (reply, alert->id().c_str ());
-        }
+        reply = process_CHANGESTATE (msg, subject, correlation_id.get ());
     }
     else {
-        zmsg_addstr (reply, "ERROR");
+        reply = zmsg_new ();
         zmsg_addstr (reply, correlation_id);
+        zmsg_addstr (reply, "ERROR");
         zmsg_addstr (reply, "BAD_COMMAND");
     }
 

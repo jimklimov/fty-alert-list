@@ -45,6 +45,8 @@ class AlertList {
              zmsg_t *reply);
         void alert_cache_clean ();
         void process_mailbox (zmsg_t *msg);
+        zmsg_t *process_LIST (zmsg_t *msg, std::string subject, char *cmd, char *correlation_id);
+        zmsg_t *process_CHANGESTATE (zmsg_t *msg, std::string subject, char *correlation_id);
         void process_stream (zmsg_t *msg);
         std::string handle_rule (std::string rule);
         void handle_alert (fty_proto_t *msg, std::string subject);
