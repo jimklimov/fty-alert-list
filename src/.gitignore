@@ -9,6 +9,7 @@ libfty_alert_list.pc
 # + main->extra sources (if any):
 
 # + config files for mains (if any):
+fty-alert-list.cfg
 
 # + systemd service unit for daemons (if any):
 fty-alert-list.service

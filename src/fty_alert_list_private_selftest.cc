@@ -37,11 +37,6 @@
 void
 fty_alert_list_private_selftest (bool verbose, const char *subtest)
 {
-// Tests for stable private classes:
-    if (streq (subtest, "$ALL") || streq (subtest, "alerts_utils_test"))
-        alerts_utils_test (verbose);
-    if (streq (subtest, "$ALL") || streq (subtest, "bios_proto_test"))
-        bios_proto_test (verbose);
 }
 /*
 ################################################################################

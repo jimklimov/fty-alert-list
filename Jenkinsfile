@@ -1,5 +1,5 @@
 /*
-    fty-alert-list - Provides information about active alerts
+    fty-alert-list - Daemon evaluating rules and producing alerts
 
     Copyright (C) 2014 - 2018 Eaton
 
@@ -155,6 +155,7 @@ pipeline {
                         dir("tmp") {
                             sh 'if [ -s Makefile ]; then make -k distclean || true ; fi'
                             sh 'chmod -R u+w .'
+                            sh '_PWD="`pwd`" ; cd /tmp ; rm -rf "$_PWD" || true ; mkdir -p "$_PWD"'
                             deleteDir()
                         }
                         sh 'rm -f ccache.log cppcheck.xml'
@@ -181,6 +182,7 @@ pipeline {
                     when { expression { return ( params.DO_BUILD_WITH_DRAFT_API ) } }
                     steps {
                       dir("tmp/build-withDRAFT") {
+                        sh '_PWD="`pwd`" ; cd /tmp ; rm -rf "$_PWD" || true ; mkdir -p "$_PWD"'
                         deleteDir()
                         unstash 'prepped'
                         sh """CCACHE_BASEDIR="`pwd`" ; export CCACHE_BASEDIR; if test "${params.USE_CCACHE_LOGGING}" = true ; then rm -f ccache.log ; CCACHE_LOGFILE="`pwd`/ccache.log" ; export CCACHE_LOGFILE ; fi ; ./configure --enable-drafts=yes --enable-Werror="${params.ENABLE_WERROR}" --with-docs=no"""
@@ -189,6 +191,7 @@ pipeline {
                         stash (name: 'built-draft', includes: '**/*', excludes: '**/cppcheck.xml')
                         script {
                             if ( params.DO_CLEANUP_AFTER_BUILD ) {
+                                sh '_PWD="`pwd`" ; cd /tmp ; rm -rf "$_PWD" || true ; mkdir -p "$_PWD"'
                                 deleteDir()
                             }
                         }
@@ -199,6 +202,7 @@ pipeline {
                     when { expression { return ( params.DO_BUILD_WITHOUT_DRAFT_API ) } }
                     steps {
                       dir("tmp/build-withoutDRAFT") {
+                        sh '_PWD="`pwd`" ; cd /tmp ; rm -rf "$_PWD" || true ; mkdir -p "$_PWD"'
                         deleteDir()
                         unstash 'prepped'
                         sh """CCACHE_BASEDIR="`pwd`" ; export CCACHE_BASEDIR; if test "${params.USE_CCACHE_LOGGING}" = true ; then rm -f ccache.log ; CCACHE_LOGFILE="`pwd`/ccache.log" ; export CCACHE_LOGFILE ; fi ; ./configure --enable-drafts=no --enable-Werror="${params.ENABLE_WERROR}" --with-docs=no"""
@@ -207,6 +211,7 @@ pipeline {
                         stash (name: 'built-nondraft', includes: '**/*', excludes: '**/cppcheck.xml')
                         script {
                             if ( params.DO_CLEANUP_AFTER_BUILD ) {
+                                sh '_PWD="`pwd`" ; cd /tmp ; rm -rf "$_PWD" || true ; mkdir -p "$_PWD"'
                                 deleteDir()
                             }
                         }
@@ -217,6 +222,7 @@ pipeline {
                     when { expression { return ( params.DO_BUILD_DOCS || params.DO_DIST_DOCS ) } }
                     steps {
                       dir("tmp/build-DOCS") {
+                        sh '_PWD="`pwd`" ; cd /tmp ; rm -rf "$_PWD" || true ; mkdir -p "$_PWD"'
                         deleteDir()
                         unstash 'prepped'
                         sh """CCACHE_BASEDIR="`pwd`" ; export CCACHE_BASEDIR; if test "${params.USE_CCACHE_LOGGING}" = true ; then rm -f ccache.log ; CCACHE_LOGFILE="`pwd`/ccache.log" ; export CCACHE_LOGFILE ; fi ; ./configure --enable-drafts=yes --with-docs=yes --enable-Werror=no"""
@@ -232,6 +238,7 @@ pipeline {
                         stash (name: 'built-docs', includes: '**/*', excludes: '**/cppcheck.xml')
                         script {
                             if ( params.DO_CLEANUP_AFTER_BUILD ) {
+                                sh '_PWD="`pwd`" ; cd /tmp ; rm -rf "$_PWD" || true ; mkdir -p "$_PWD"'
                                 deleteDir()
                             }
                         }
@@ -246,6 +253,7 @@ pipeline {
                     when { expression { return ( params.DO_CPPCHECK ) } }
                     steps {
                         dir("tmp/test-cppcheck") {
+                            sh '_PWD="`pwd`" ; cd /tmp ; rm -rf "$_PWD" || true ; mkdir -p "$_PWD"'
                             deleteDir()
                             script {
                                 // We need a configured source codebase to run
@@ -271,6 +279,7 @@ pipeline {
                             sh 'rm -f cppcheck.xml'
                             script {
                                 if ( params.DO_CLEANUP_AFTER_BUILD ) {
+                                    sh '_PWD="`pwd`" ; cd /tmp ; rm -rf "$_PWD" || true ; mkdir -p "$_PWD"'
                                     deleteDir()
                                 }
                             }
@@ -281,6 +290,7 @@ pipeline {
                     when { expression { return ( params.DO_CHECK_CLANG_FORMAT ) } }
                     steps {
                         dir("tmp/test-clang-format-check") {
+                            sh '_PWD="`pwd`" ; cd /tmp ; rm -rf "$_PWD" || true ; mkdir -p "$_PWD"'
                             deleteDir()
                             script {
                                 // We need a configured source codebase to run
@@ -302,6 +312,7 @@ pipeline {
                             sh """CCACHE_BASEDIR="`pwd`" ; export CCACHE_BASEDIR; if test "${params.USE_CCACHE_LOGGING}" = true ; then CCACHE_LOGFILE="`pwd`/ccache.log" ; export CCACHE_LOGFILE ; fi ; make clang-format-check-CI"""
                             script {
                                 if ( params.DO_CLEANUP_AFTER_BUILD ) {
+                                    sh '_PWD="`pwd`" ; cd /tmp ; rm -rf "$_PWD" || true ; mkdir -p "$_PWD"'
                                     deleteDir()
                                 }
                             }
@@ -314,6 +325,9 @@ pipeline {
                       dir("tmp/test-check-withDRAFT") {
                         script {
                          def RETRY_NUMBER = 0
+                         retry(3) {
+                          RETRY_NUMBER++
+                          sh '_PWD="`pwd`" ; cd /tmp ; rm -rf "$_PWD" || true ; mkdir -p "$_PWD"'
                           deleteDir()
                           unstash 'built-draft'
                           timeout (time: "${params.USE_TEST_TIMEOUT}".toInteger(), unit: 'MINUTES') {
@@ -327,10 +341,12 @@ pipeline {
                             throw e
                            }
                           }
+                         }
                         }
                         sh """ echo "Are GitIgnores good after make check with drafts?"; make CI_REQUIRE_GOOD_GITIGNORE="${params.CI_REQUIRE_GOOD_GITIGNORE}" check-gitignore """
                         script {
                             if ( params.DO_CLEANUP_AFTER_BUILD ) {
+                                sh '_PWD="`pwd`" ; cd /tmp ; rm -rf "$_PWD" || true ; mkdir -p "$_PWD"'
                                 deleteDir()
                             }
                         }
@@ -343,6 +359,9 @@ pipeline {
                       dir("tmp/test-check-withoutDRAFT") {
                         script {
                          def RETRY_NUMBER = 0
+                         retry(3) {
+                          RETRY_NUMBER++
+                          sh '_PWD="`pwd`" ; cd /tmp ; rm -rf "$_PWD" || true ; mkdir -p "$_PWD"'
                           deleteDir()
                           unstash 'built-nondraft'
                           timeout (time: "${params.USE_TEST_TIMEOUT}".toInteger(), unit: 'MINUTES') {
@@ -356,10 +375,12 @@ pipeline {
                             throw e
                            }
                           }
+                         }
                         }
                         sh """ echo "Are GitIgnores good after make check without drafts?"; make CI_REQUIRE_GOOD_GITIGNORE="${params.CI_REQUIRE_GOOD_GITIGNORE}" check-gitignore """
                         script {
                             if ( params.DO_CLEANUP_AFTER_BUILD ) {
+                                sh '_PWD="`pwd`" ; cd /tmp ; rm -rf "$_PWD" || true ; mkdir -p "$_PWD"'
                                 deleteDir()
                             }
                         }
@@ -372,6 +393,9 @@ pipeline {
                       dir("tmp/test-memcheck-withDRAFT") {
                         script {
                          def RETRY_NUMBER = 0
+                         retry(3) {
+                          RETRY_NUMBER++
+                          sh '_PWD="`pwd`" ; cd /tmp ; rm -rf "$_PWD" || true ; mkdir -p "$_PWD"'
                           deleteDir()
                           unstash 'built-draft'
                           timeout (time: "${params.USE_TEST_TIMEOUT}".toInteger(), unit: 'MINUTES') {
@@ -385,10 +409,12 @@ pipeline {
                             throw e
                            }
                           }
+                         }
                         }
                         sh """ echo "Are GitIgnores good after make memcheck with drafts?"; make CI_REQUIRE_GOOD_GITIGNORE="${params.CI_REQUIRE_GOOD_GITIGNORE}" check-gitignore """
                         script {
                             if ( params.DO_CLEANUP_AFTER_BUILD ) {
+                                sh '_PWD="`pwd`" ; cd /tmp ; rm -rf "$_PWD" || true ; mkdir -p "$_PWD"'
                                 deleteDir()
                             }
                         }
@@ -401,6 +427,9 @@ pipeline {
                       dir("tmp/test-memcheck-withoutDRAFT") {
                         script {
                          def RETRY_NUMBER = 0
+                         retry(3) {
+                          RETRY_NUMBER++
+                          sh '_PWD="`pwd`" ; cd /tmp ; rm -rf "$_PWD" || true ; mkdir -p "$_PWD"'
                           deleteDir()
                           unstash 'built-nondraft'
                           timeout (time: "${params.USE_TEST_TIMEOUT}".toInteger(), unit: 'MINUTES') {
@@ -414,10 +443,12 @@ pipeline {
                             throw e
                            }
                           }
+                         }
                         }
                         sh """ echo "Are GitIgnores good after make memcheck without drafts?"; make CI_REQUIRE_GOOD_GITIGNORE="${params.CI_REQUIRE_GOOD_GITIGNORE}" check-gitignore """
                         script {
                             if ( params.DO_CLEANUP_AFTER_BUILD ) {
+                                sh '_PWD="`pwd`" ; cd /tmp ; rm -rf "$_PWD" || true ; mkdir -p "$_PWD"'
                                 deleteDir()
                             }
                         }
@@ -430,6 +461,9 @@ pipeline {
                       dir("tmp/test-distcheck-withDRAFT") {
                         script {
                          def RETRY_NUMBER = 0
+                         retry(3) {
+                          RETRY_NUMBER++
+                          sh '_PWD="`pwd`" ; cd /tmp ; rm -rf "$_PWD" || true ; mkdir -p "$_PWD"'
                           deleteDir()
                           unstash 'built-draft'
                           timeout (time: "${params.USE_TEST_TIMEOUT}".toInteger(), unit: 'MINUTES') {
@@ -443,10 +477,12 @@ pipeline {
                             throw e
                            }
                           }
+                         }
                         }
                         sh """ echo "Are GitIgnores good after make distcheck with drafts?"; make CI_REQUIRE_GOOD_GITIGNORE="${params.CI_REQUIRE_GOOD_GITIGNORE}" check-gitignore """
                         script {
                             if ( params.DO_CLEANUP_AFTER_BUILD ) {
+                                sh '_PWD="`pwd`" ; cd /tmp ; rm -rf "$_PWD" || true ; mkdir -p "$_PWD"'
                                 deleteDir()
                             }
                         }
@@ -459,6 +495,9 @@ pipeline {
                       dir("tmp/test-distcheck-withoutDRAFT") {
                         script {
                          def RETRY_NUMBER = 0
+                         retry(3) {
+                          RETRY_NUMBER++
+                          sh '_PWD="`pwd`" ; cd /tmp ; rm -rf "$_PWD" || true ; mkdir -p "$_PWD"'
                           deleteDir()
                           unstash 'built-nondraft'
                           timeout (time: "${params.USE_TEST_TIMEOUT}".toInteger(), unit: 'MINUTES') {
@@ -472,10 +511,12 @@ pipeline {
                             throw e
                            }
                           }
+                         }
                         }
                         sh """ echo "Are GitIgnores good after make distcheck without drafts?"; make CI_REQUIRE_GOOD_GITIGNORE="${params.CI_REQUIRE_GOOD_GITIGNORE}" check-gitignore """
                         script {
                             if ( params.DO_CLEANUP_AFTER_BUILD ) {
+                                sh '_PWD="`pwd`" ; cd /tmp ; rm -rf "$_PWD" || true ; mkdir -p "$_PWD"'
                                 deleteDir()
                             }
                         }
@@ -486,15 +527,19 @@ pipeline {
                     when { expression { return ( params.DO_BUILD_WITH_DRAFT_API && params.DO_TEST_INSTALL ) } }
                     steps {
                       dir("tmp/test-install-withDRAFT") {
+                        sh '_PWD="`pwd`" ; cd /tmp ; rm -rf "$_PWD" || true ; mkdir -p "$_PWD"'
                         deleteDir()
                         unstash 'built-draft'
+                        retry(3) {
                         timeout (time: "${params.USE_TEST_TIMEOUT}".toInteger(), unit: 'MINUTES') {
                             sh """CCACHE_BASEDIR="`pwd`" ; export CCACHE_BASEDIR; if test "${params.USE_CCACHE_LOGGING}" = true ; then CCACHE_LOGFILE="`pwd`/ccache.log" ; export CCACHE_LOGFILE ; fi ; LD_LIBRARY_PATH="`pwd`/src/.libs:\${LD_LIBRARY_PATH}"; export LD_LIBRARY_PATH; make LD_LIBRARY_PATH="\${LD_LIBRARY_PATH}" DESTDIR="${params.USE_TEST_INSTALL_DESTDIR}/withDRAFT" install"""
+                        }
                         }
                         sh """cd "${params.USE_TEST_INSTALL_DESTDIR}/withDRAFT" && find . -ls"""
                         sh """ echo "Are GitIgnores good after make install with drafts?"; make CI_REQUIRE_GOOD_GITIGNORE="${params.CI_REQUIRE_GOOD_GITIGNORE}" check-gitignore """
                         script {
                             if ( params.DO_CLEANUP_AFTER_BUILD ) {
+                                sh '_PWD="`pwd`" ; cd /tmp ; rm -rf "$_PWD" || true ; mkdir -p "$_PWD"'
                                 deleteDir()
                             }
                         }
@@ -505,15 +550,19 @@ pipeline {
                     when { expression { return ( params.DO_BUILD_WITHOUT_DRAFT_API && params.DO_TEST_INSTALL ) } }
                     steps {
                       dir("tmp/test-install-withoutDRAFT") {
+                        sh '_PWD="`pwd`" ; cd /tmp ; rm -rf "$_PWD" || true ; mkdir -p "$_PWD"'
                         deleteDir()
                         unstash 'built-nondraft'
+                        retry(3) {
                         timeout (time: "${params.USE_TEST_TIMEOUT}".toInteger(), unit: 'MINUTES') {
                             sh """CCACHE_BASEDIR="`pwd`" ; export CCACHE_BASEDIR; if test "${params.USE_CCACHE_LOGGING}" = true ; then CCACHE_LOGFILE="`pwd`/ccache.log" ; export CCACHE_LOGFILE ; fi ; LD_LIBRARY_PATH="`pwd`/src/.libs:\${LD_LIBRARY_PATH}"; export LD_LIBRARY_PATH; make LD_LIBRARY_PATH="\${LD_LIBRARY_PATH}" DESTDIR="${params.USE_TEST_INSTALL_DESTDIR}/withoutDRAFT" install"""
+                        }
                         }
                         sh """cd "${params.USE_TEST_INSTALL_DESTDIR}/withoutDRAFT" && find . -ls"""
                         sh """ echo "Are GitIgnores good after make install without drafts?"; make CI_REQUIRE_GOOD_GITIGNORE="${params.CI_REQUIRE_GOOD_GITIGNORE}" check-gitignore """
                         script {
                             if ( params.DO_CLEANUP_AFTER_BUILD ) {
+                                sh '_PWD="`pwd`" ; cd /tmp ; rm -rf "$_PWD" || true ; mkdir -p "$_PWD"'
                                 deleteDir()
                             }
                         }
@@ -524,15 +573,19 @@ pipeline {
                     when { expression { return ( params.DO_BUILD_DOCS && params.DO_TEST_INSTALL ) } }
                     steps {
                       dir("tmp/test-install-withDOCS") {
+                        sh '_PWD="`pwd`" ; cd /tmp ; rm -rf "$_PWD" || true ; mkdir -p "$_PWD"'
                         deleteDir()
                         unstash 'built-docs'
+                        retry(3) {
                         timeout (time: "${params.USE_TEST_TIMEOUT}".toInteger(), unit: 'MINUTES') {
                             sh """CCACHE_BASEDIR="`pwd`" ; export CCACHE_BASEDIR; if test "${params.USE_CCACHE_LOGGING}" = true ; then CCACHE_LOGFILE="`pwd`/ccache.log" ; export CCACHE_LOGFILE ; fi ; LD_LIBRARY_PATH="`pwd`/src/.libs:\${LD_LIBRARY_PATH}"; export LD_LIBRARY_PATH; make LD_LIBRARY_PATH="\${LD_LIBRARY_PATH}" DESTDIR="${params.USE_TEST_INSTALL_DESTDIR}/withDOCS" install"""
+                        }
                         }
                         sh """cd "${params.USE_TEST_INSTALL_DESTDIR}/withDOCS" && find . -ls"""
                         sh """ echo "Are GitIgnores good after make install with docs?"; make CI_REQUIRE_GOOD_GITIGNORE="${params.CI_REQUIRE_GOOD_GITIGNORE}" check-gitignore """
                         script {
                             if ( params.DO_CLEANUP_AFTER_BUILD ) {
+                                sh '_PWD="`pwd`" ; cd /tmp ; rm -rf "$_PWD" || true ; mkdir -p "$_PWD"'
                                 deleteDir()
                             }
                         }
@@ -588,6 +641,7 @@ pipeline {
                 }
                 if ( params.DO_CLEANUP_AFTER_JOB ) {
                     dir("tmp") {
+                        sh '_PWD="`pwd`" ; cd /tmp ; rm -rf "$_PWD" || true ; mkdir -p "$_PWD"'
                         deleteDir()
                     }
                 }
@@ -603,6 +657,7 @@ pipeline {
             dir("tmp") {
                 script {
                     if ( params.DO_CLEANUP_AFTER_FAILED_JOB ) {
+                        sh '_PWD="`pwd`" ; cd /tmp ; rm -rf "$_PWD" || true ; mkdir -p "$_PWD"'
                         deleteDir()
                     } else {
                         sh """ echo "NOTE: BUILD AREA OF WORKSPACE `pwd` REMAINS FOR POST-MORTEMS ON `hostname` AND CONSUMES `du -hs . | awk '{print \$1}'` !" """

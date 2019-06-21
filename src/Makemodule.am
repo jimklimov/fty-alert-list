@@ -13,15 +13,12 @@ lib_LTLIBRARIES += src/libfty_alert_list.la
 pkgconfig_DATA = src/libfty_alert_list.pc
 
 src_libfty_alert_list_la_SOURCES = \
-    src/alerts_utils.cc \
-    src/bios_proto.cc \
+    src/alert.cc \
+    src/asset.cc \
+    src/rule.cc \
+    src/fty_alert_actions.cc \
+    src/alert_list.cc \
     src/platform.h
-
-if ENABLE_DRAFTS
-src_libfty_alert_list_la_SOURCES += \
-    src/fty_alert_list_server.cc
-
-endif
 
 if ENABLE_DRAFTS
 src_libfty_alert_list_la_SOURCES += \
@@ -59,25 +56,12 @@ src_fty_alert_list_CPPFLAGS = ${AM_CPPFLAGS}
 src_fty_alert_list_LDADD = ${program_libs}
 src_fty_alert_list_SOURCES = src/fty_alert_list.cc
 src_fty_alert_list_config_DATA =
+src_fty_alert_list_config_DATA += src/fty-alert-list.cfg
 src_fty_alert_list_configdir = $(sysconfdir)/fty-alert-list
 if WITH_SYSTEMD_UNITS
 systemdsystemunit_DATA += src/fty-alert-list.service
 endif #WITH_SYSTEMD_UNITS
 endif #ENABLE_FTY_ALERT_LIST
-
-if ENABLE_GENERATE_ALERT
-bin_PROGRAMS += src/generate_alert
-src_generate_alert_CPPFLAGS = ${AM_CPPFLAGS}
-src_generate_alert_LDADD = ${program_libs}
-src_generate_alert_SOURCES = src/generate_alert.cc
-endif #ENABLE_GENERATE_ALERT
-
-if ENABLE_FTY_ALERT_LIST_CONVERT
-bin_PROGRAMS += src/fty-alert-list-convert
-src_fty_alert_list_convert_CPPFLAGS = ${AM_CPPFLAGS}
-src_fty_alert_list_convert_LDADD = ${program_libs}
-src_fty_alert_list_convert_SOURCES = src/fty_alert_list_convert.cc
-endif #ENABLE_FTY_ALERT_LIST_CONVERT
 
 if ENABLE_FTY_ALERT_LIST_SELFTEST
 check_PROGRAMS += src/fty_alert_list_selftest
@@ -90,8 +74,6 @@ endif #ENABLE_FTY_ALERT_LIST_SELFTEST
 # define custom target for all products of /src
 src: \
 		src/fty-alert-list \
-		src/generate_alert \
-		src/fty-alert-list-convert \
 		src/fty_alert_list_selftest \
 		src/libfty_alert_list.la
 
@@ -231,6 +213,16 @@ else
 coverage: src/fty_alert_list_selftest
 	@echo "call make clean && configure --with-gcov to enable code coverage"
 	@exit 1
+endif
+
+bindings: python-bindings
+
+python-bindings:
+if ENABLE_BINDINGS_PYTHON
+	-( cd bindings/python && python setup.py install )
+else
+	@echo "Python Bindings not enabled or missing setup.py... skipping"
+
 endif
 
 # A series of tests that the codebase and recipes are pretty, easy

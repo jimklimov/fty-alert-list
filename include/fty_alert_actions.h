@@ -1,7 +1,7 @@
 /*  =========================================================================
-    fty-alert-list - Daemon evaluating rules and producing alerts
+    fty_alert_actions - Actor performing actions on alert (sending notifications)
 
-    Copyright (C) 2014 - 2018 Eaton
+    Copyright (C) 2014 - 2017 Eaton
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,14 +19,34 @@
     =========================================================================
 */
 
-#ifndef FTY_ALERT_LIST_H_H_INCLUDED
-#define FTY_ALERT_LIST_H_H_INCLUDED
+#ifndef FTY_ALERT_ACTIONS_H_INCLUDED
+#define FTY_ALERT_ACTIONS_H_INCLUDED
 
-//  Include the project library file
-#include "fty_alert_list_library.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-//  Add your own public definitions here, if you need them
+//  @interface
+//  Create a new fty_alert_actions
+FTY_ALERT_LIST_EXPORT fty_alert_actions_t *
+    fty_alert_actions_new (void);
 
-#define AGENT_FTY_ALERT_ACTIONS "fty-alert-actions"
+//  Destroy the fty_alert_actions
+FTY_ALERT_LIST_EXPORT void
+    fty_alert_actions_destroy (fty_alert_actions_t **self_p);
+
+//  Main actor function for actions module
+FTY_ALERT_LIST_EXPORT void
+    fty_alert_actions (zsock_t *pipe, void* args);
+
+//  Self test of this class
+FTY_ALERT_LIST_EXPORT void
+    fty_alert_actions_test (bool verbose);
+
+//  @end
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
