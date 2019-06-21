@@ -557,7 +557,7 @@ alert_list_test (bool verbose)
     zhash_t *asset_aux = zhash_new ();
     zhash_autofree (asset_aux);
     zhash_insert (asset_aux, "type", (void *) "datacenter");
-    zhash_insert (asset_aux, "subtype", (void *) "n_a");
+    zhash_insert (asset_aux, "subtype", (void *) "N_A");
     zhash_t *ext = zhash_new ();
     zhash_autofree (ext);
     zhash_insert (ext, "name", (void *) "DC-Roztoky");
@@ -572,8 +572,8 @@ alert_list_test (bool verbose)
     // add rule
     zmsg_t *rule_msg = zmsg_new ();
     zuuid_t *uuid = zuuid_new ();
-    zmsg_addstr (rule_msg, "ADD");
     zmsg_addstr (rule_msg, zuuid_str_canonical (uuid));
+    zmsg_addstr (rule_msg, "ADD");
     std::string rule_json ("{\"test\":{\"name\":\"average.mana@testdatacenter\",\"categories\":[\"CAT_ALL\"],\"metrics\":[\"");
     rule_json += "average.mana1\"],\"results\":[{\"ok\":{\"action\":[],\"severity\":\"CRITICAL\",\"description\":\"";
     rule_json += "ok_description for __ename__\",\"threshold_name\":\"\"}}, {\"high_critical\":{\"action\":[\"EMAIL\"],\"severity\":\"";
@@ -586,10 +586,10 @@ alert_list_test (bool verbose)
     zmsg_t *reply = mlm_client_recv (ui);
     assert (reply != NULL);
     char *str = zmsg_popstr (reply);
-    assert (streq (str, "ADD"));
+    assert (streq (str, zuuid_str_canonical (uuid)));
     zstr_free (&str);
     str = zmsg_popstr (reply);
-    assert (streq (str, zuuid_str_canonical (uuid)));
+    assert (streq (str, "ADD"));
     zstr_free (&str);
     zuuid_destroy (&uuid);
     str = zmsg_popstr (reply);
@@ -610,7 +610,7 @@ alert_list_test (bool verbose)
             alert_aux,
             mtime,
             ttl,
-            "average.mana",
+            "average.mana@testdatacenter",
             "testdatacenter",
             "ACTIVE",
             "",
@@ -627,18 +627,18 @@ alert_list_test (bool verbose)
     // LISTALL
     zmsg_t *listall_msg = zmsg_new ();
     uuid = zuuid_new ();
-    zmsg_addstr (listall_msg, "LISTALL");
     zmsg_addstr (listall_msg, zuuid_str_canonical (uuid));
+    zmsg_addstr (listall_msg, "LISTALL");
     zmsg_addstr (listall_msg, "ALL");
     rv = mlm_client_sendto (ui, alert_list_test_address, RFC_ALERTS_LIST_SUBJECT, NULL, 5000, &listall_msg);
     assert (rv == 0);
 
     zmsg_t *listall_reply = mlm_client_recv (ui);
     str = zmsg_popstr (listall_reply);
-    assert (streq (str, "LISTALL"));
+    assert (streq (str, zuuid_str_canonical (uuid)));
     zstr_free (&str);
     str = zmsg_popstr (listall_reply);
-    assert (streq (str, zuuid_str_canonical (uuid)));
+    assert (streq (str, "LISTALL"));
     zstr_free (&str);
     zuuid_destroy (&uuid);
     str = zmsg_popstr (listall_reply);
@@ -667,8 +667,8 @@ alert_list_test (bool verbose)
     // LIST/testdatacenter
     zmsg_t *list_msg = zmsg_new ();
     uuid = zuuid_new ();
-    zmsg_addstr (list_msg, "LIST");
     zmsg_addstr (list_msg, zuuid_str_canonical (uuid));
+    zmsg_addstr (list_msg, "LIST");
     zmsg_addstr (list_msg, "ALL");
     zmsg_addstr (list_msg, "testdatacenter");
     rv = mlm_client_sendto (ui, alert_list_test_address, RFC_ALERTS_LIST_SUBJECT, NULL, 5000, &list_msg);
@@ -676,10 +676,10 @@ alert_list_test (bool verbose)
 
     zmsg_t *list_reply = mlm_client_recv (ui);
     str = zmsg_popstr (list_reply);
-    assert (streq (str, "LIST"));
+    assert (streq (str, zuuid_str_canonical (uuid)));
     zstr_free (&str);
     str = zmsg_popstr (list_reply);
-    assert (streq (str, zuuid_str_canonical (uuid)));
+    assert (streq (str, "LIST"));
     zstr_free (&str);
     zuuid_destroy (&uuid);
     str = zmsg_popstr (list_reply);
@@ -722,7 +722,7 @@ alert_list_test (bool verbose)
             aux,
             mtime,
             ttl,
-            "average.mana",
+            "average.mana@testdatacenter",
             "testdatacenter",
             "RESOLVED",
             "",
@@ -738,18 +738,18 @@ alert_list_test (bool verbose)
     // LISTALL
     zmsg_t *listall_msg = zmsg_new ();
     zuuid_t *uuid = zuuid_new ();
-    zmsg_addstr (listall_msg, "LISTALL");
     zmsg_addstr (listall_msg, zuuid_str_canonical (uuid));
+    zmsg_addstr (listall_msg, "LISTALL");
     zmsg_addstr (listall_msg, "ALL");
     rv = mlm_client_sendto (ui, alert_list_test_address, RFC_ALERTS_LIST_SUBJECT, NULL, 5000, &listall_msg);
     assert (rv == 0);
 
     zmsg_t *reply = mlm_client_recv (ui);
     char *str = zmsg_popstr (reply);
-    assert (streq (str, "LISTALL"));
+    assert (streq (str, zuuid_str_canonical (uuid)));
     zstr_free (&str);
     str = zmsg_popstr (reply);
-    assert (streq (str, zuuid_str_canonical (uuid)));
+    assert (streq (str, "LISTALL"));
     zstr_free (&str);
     zuuid_destroy (&uuid);
     str = zmsg_popstr (reply);
@@ -759,6 +759,7 @@ alert_list_test (bool verbose)
     zmsg_t *tmp = zmsg_popmsg (reply);
     fty_proto_t *fty_tmp = fty_proto_decode (&tmp);
     assert (fty_proto_id (fty_tmp) == FTY_PROTO_ALERT);
+    log_error ("%d = %d", fty_proto_aux_number (fty_tmp, "ctime", 0), mtime);
     assert (fty_proto_aux_number (fty_tmp, "ctime", 0) == mtime);
     assert (fty_proto_time (fty_tmp) == mtime);
     assert (streq (fty_proto_rule (fty_tmp), "average.mana"));
@@ -792,7 +793,7 @@ alert_list_test (bool verbose)
             aux,
             mtime,
             ttl,
-            "average.mana",
+            "average.mana@testdatacenter",
             "testdatacenter",
             "ACTIVE",
             "",
@@ -811,17 +812,17 @@ alert_list_test (bool verbose)
     // LIST ALL
     zmsg_t *listall_msg = zmsg_new ();
     zuuid_t *uuid = zuuid_new ();
-    zmsg_addstr (listall_msg, "LISTALL");
     zmsg_addstr (listall_msg, zuuid_str_canonical (uuid));
+    zmsg_addstr (listall_msg, "LISTALL");
     zmsg_addstr (listall_msg, "ALL");
     rv = mlm_client_sendto (ui, alert_list_test_address, RFC_ALERTS_LIST_SUBJECT, NULL, 5000, &listall_msg);
 
     zmsg_t *reply = mlm_client_recv (ui);
     char *str = zmsg_popstr (reply);
-    assert (streq (str, "LISTALL"));
+    assert (streq (str, zuuid_str_canonical (uuid)));
     zstr_free (&str);
     str = zmsg_popstr (reply);
-    assert (streq (str, zuuid_str_canonical (uuid)));
+    assert (streq (str, "LISTALL"));
     zstr_free (&str);
     zuuid_destroy (&uuid);
     str = zmsg_popstr (reply);
