@@ -497,6 +497,90 @@ dnl END of PKG_CHECK_MODULES and/or direct tests for libmlm
 dnl END of enabled attempts to search for libmlm
 
 
+was_cxxtools_check_lib_detected=no
+
+search_cxxtools="yes"
+
+AC_ARG_WITH([cxxtools],
+    [
+        AS_HELP_STRING([--with-cxxtools],
+        [yes or no. Optionally specify cxxtools prefix (directory where its include/ and lib/ are located), but that is only used if pkgconfig metadata is not found first])
+    ],
+    [
+        search_cxxtools="yes"
+    ],
+    [
+        search_cxxtools="yes"
+    ])
+AS_CASE([x"${with_cxxtools}"],
+    [xyes], [search_cxxtools="yes"],
+    [xno],  [search_cxxtools="no"])
+
+dnl We do not abort right now, because the maintainer/developer may have
+dnl something particular in mind, e.g. to build just parts of a project.
+AS_IF([test x"${search_cxxtools}" = xno],
+    [AC_MSG_WARN([Required dependency on cxxtools was explicitly disabled during configuration by '--with-cxxtools=no'; subsequent full build of fty-alert-list may fail])])
+
+AS_IF([test x"${search_cxxtools}" = xyes], [
+    # Archive previously detected and supplied flags
+    PRE_SEARCH_CFLAGS="${CFLAGS}"
+    PRE_SEARCH_LIBS="${LIBS}"
+
+    found_pkgconfig=""
+    PKG_CHECK_MODULES([cxxtools], [cxxtools >= 0.0.0],
+    [
+        was_cxxtools_check_lib_detected=pkgcfg
+        found_pkgconfig="cxxtools"
+    ],
+    [
+        AC_MSG_NOTICE([Package cxxtools not found; falling back to defined compilability tests])
+
+        cxxtools_synthetic_cflags=""
+        cxxtools_synthetic_libs="-lcxxtools"
+
+        if test -n "${with_cxxtools}" && test x"${with_cxxtools}" != xyes && test x"${with_cxxtools}" != xno; then
+            if test -r "${with_cxxtools}/include/cxxtools/allocator.h"; then
+                cxxtools_synthetic_cflags="-I${with_cxxtools}/include"
+                cxxtools_synthetic_libs="-L${with_cxxtools}/lib -lcxxtools"
+            else
+            AC_MSG_ERROR([Header file ${with_cxxtools}/include/cxxtools/allocator.h was not found. Please check cxxtools prefix])
+            fi
+        else
+            AC_CHECK_HEADER([cxxtools/allocator.h], [],
+            AC_MSG_ERROR([Header file cxxtools/allocator.h was not found in default search paths])
+                )
+        fi
+
+        AC_CHECK_LIB([cxxtools], [cxxtools::Utf8Codec::Utf8Codec],
+            [
+                was_cxxtools_check_lib_detected=yes
+                PKGCFG_LIBS_PRIVATE="$PKGCFG_LIBS_PRIVATE -lcxxtools"
+            ],
+            [AC_MSG_ERROR([cannot link with -lcxxtools, install cxxtools])])
+    ])
+
+dnl END of PKG_CHECK_MODULES and/or direct tests for cxxtools
+    AS_CASE(["x${was_cxxtools_check_lib_detected}"],
+        [xpkgcfg], [
+                PKGCFG_NAMES_PRIVATE="$PKGCFG_NAMES_PRIVATE ${found_pkgconfig}"
+                CFLAGS="${cxxtools_CFLAGS} ${CFLAGS}"
+                LIBS="${cxxtools_LIBS} ${LIBS}"
+            ],
+        [xyes], [
+                CFLAGS="${cxxtools_synthetic_cflags} ${CFLAGS}"
+                LDFLAGS="${cxxtools_synthetic_libs} ${LDFLAGS}"
+                LIBS="${cxxtools_synthetic_libs} ${LIBS}"
+
+                AC_SUBST([cxxtools_CFLAGS],[${cxxtools_synthetic_cflags}])
+                AC_SUBST([cxxtools_LIBS],[${cxxtools_synthetic_libs}])
+            ],
+        [xno], [
+            AC_MSG_ERROR([Cannot find pkg-config metadata for cxxtools 0.0.0 or higher])
+    ])
+])
+dnl END of enabled attempts to search for cxxtools
+
+
 was_log4cplus_check_lib_detected=no
 
 search_log4cplus="yes"
@@ -663,6 +747,90 @@ dnl END of PKG_CHECK_MODULES and/or direct tests for libfty_common_logging
     ])
 ])
 dnl END of enabled attempts to search for libfty_common_logging
+
+
+was_fty_common_check_lib_detected=no
+
+search_libfty_common="yes"
+
+AC_ARG_WITH([libfty_common],
+    [
+        AS_HELP_STRING([--with-libfty_common],
+        [yes or no. Optionally specify libfty_common prefix (directory where its include/ and lib/ are located), but that is only used if pkgconfig metadata is not found first])
+    ],
+    [
+        search_libfty_common="yes"
+    ],
+    [
+        search_libfty_common="yes"
+    ])
+AS_CASE([x"${with_libfty_common}"],
+    [xyes], [search_libfty_common="yes"],
+    [xno],  [search_libfty_common="no"])
+
+dnl We do not abort right now, because the maintainer/developer may have
+dnl something particular in mind, e.g. to build just parts of a project.
+AS_IF([test x"${search_libfty_common}" = xno],
+    [AC_MSG_WARN([Required dependency on fty_common was explicitly disabled during configuration by '--with-libfty_common=no'; subsequent full build of fty-alert-list may fail])])
+
+AS_IF([test x"${search_libfty_common}" = xyes], [
+    # Archive previously detected and supplied flags
+    PRE_SEARCH_CFLAGS="${CFLAGS}"
+    PRE_SEARCH_LIBS="${LIBS}"
+
+    found_pkgconfig=""
+    PKG_CHECK_MODULES([fty_common], [libfty_common >= 0.0.0],
+    [
+        was_fty_common_check_lib_detected=pkgcfg
+        found_pkgconfig="libfty_common"
+    ],
+    [
+        AC_MSG_NOTICE([Package libfty_common not found; falling back to defined compilability tests])
+
+        fty_common_synthetic_cflags=""
+        fty_common_synthetic_libs="-lfty-common"
+
+        if test -n "${with_libfty_common}" && test x"${with_libfty_common}" != xyes && test x"${with_libfty_common}" != xno; then
+            if test -r "${with_libfty_common}/include/fty_common.h"; then
+                fty_common_synthetic_cflags="-I${with_libfty_common}/include"
+                fty_common_synthetic_libs="-L${with_libfty_common}/lib -lfty-common"
+            else
+            AC_MSG_ERROR([Header file ${with_libfty_common}/include/fty_common.h was not found. Please check libfty_common prefix])
+            fi
+        else
+            AC_CHECK_HEADER([fty_common.h], [],
+            AC_MSG_ERROR([Header file fty_common.h was not found in default search paths])
+                )
+        fi
+
+        AC_CHECK_LIB([fty-common], [fty_common_selftest],
+            [
+                was_fty_common_check_lib_detected=yes
+                PKGCFG_LIBS_PRIVATE="$PKGCFG_LIBS_PRIVATE -lfty-common"
+            ],
+            [AC_MSG_ERROR([cannot link with -lfty-common, install libfty_common])])
+    ])
+
+dnl END of PKG_CHECK_MODULES and/or direct tests for libfty_common
+    AS_CASE(["x${was_fty_common_check_lib_detected}"],
+        [xpkgcfg], [
+                PKGCFG_NAMES_PRIVATE="$PKGCFG_NAMES_PRIVATE ${found_pkgconfig}"
+                CFLAGS="${fty_common_CFLAGS} ${CFLAGS}"
+                LIBS="${fty_common_LIBS} ${LIBS}"
+            ],
+        [xyes], [
+                CFLAGS="${fty_common_synthetic_cflags} ${CFLAGS}"
+                LDFLAGS="${fty_common_synthetic_libs} ${LDFLAGS}"
+                LIBS="${fty_common_synthetic_libs} ${LIBS}"
+
+                AC_SUBST([fty_common_CFLAGS],[${fty_common_synthetic_cflags}])
+                AC_SUBST([fty_common_LIBS],[${fty_common_synthetic_libs}])
+            ],
+        [xno], [
+            AC_MSG_ERROR([Cannot find pkg-config metadata for libfty_common 0.0.0 or higher])
+    ])
+])
+dnl END of enabled attempts to search for libfty_common
 
 
 was_fty_proto_check_lib_detected=no
@@ -892,174 +1060,6 @@ dnl END of PKG_CHECK_MODULES and/or direct tests for libfty_common_mlm
     ])
 ])
 dnl END of enabled attempts to search for libfty_common_mlm
-
-
-was_cxxtools_check_lib_detected=no
-
-search_cxxtools="yes"
-
-AC_ARG_WITH([cxxtools],
-    [
-        AS_HELP_STRING([--with-cxxtools],
-        [yes or no. Optionally specify cxxtools prefix (directory where its include/ and lib/ are located), but that is only used if pkgconfig metadata is not found first])
-    ],
-    [
-        search_cxxtools="yes"
-    ],
-    [
-        search_cxxtools="yes"
-    ])
-AS_CASE([x"${with_cxxtools}"],
-    [xyes], [search_cxxtools="yes"],
-    [xno],  [search_cxxtools="no"])
-
-dnl We do not abort right now, because the maintainer/developer may have
-dnl something particular in mind, e.g. to build just parts of a project.
-AS_IF([test x"${search_cxxtools}" = xno],
-    [AC_MSG_WARN([Required dependency on cxxtools was explicitly disabled during configuration by '--with-cxxtools=no'; subsequent full build of fty-alert-list may fail])])
-
-AS_IF([test x"${search_cxxtools}" = xyes], [
-    # Archive previously detected and supplied flags
-    PRE_SEARCH_CFLAGS="${CFLAGS}"
-    PRE_SEARCH_LIBS="${LIBS}"
-
-    found_pkgconfig=""
-    PKG_CHECK_MODULES([cxxtools], [cxxtools >= 0.0.0],
-    [
-        was_cxxtools_check_lib_detected=pkgcfg
-        found_pkgconfig="cxxtools"
-    ],
-    [
-        AC_MSG_NOTICE([Package cxxtools not found; falling back to defined compilability tests])
-
-        cxxtools_synthetic_cflags=""
-        cxxtools_synthetic_libs="-lcxxtools"
-
-        if test -n "${with_cxxtools}" && test x"${with_cxxtools}" != xyes && test x"${with_cxxtools}" != xno; then
-            if test -r "${with_cxxtools}/include/cxxtools/allocator.h"; then
-                cxxtools_synthetic_cflags="-I${with_cxxtools}/include"
-                cxxtools_synthetic_libs="-L${with_cxxtools}/lib -lcxxtools"
-            else
-            AC_MSG_ERROR([Header file ${with_cxxtools}/include/cxxtools/allocator.h was not found. Please check cxxtools prefix])
-            fi
-        else
-            AC_CHECK_HEADER([cxxtools/allocator.h], [],
-            AC_MSG_ERROR([Header file cxxtools/allocator.h was not found in default search paths])
-                )
-        fi
-
-        AC_CHECK_LIB([cxxtools], [cxxtools::Utf8Codec::Utf8Codec],
-            [
-                was_cxxtools_check_lib_detected=yes
-                PKGCFG_LIBS_PRIVATE="$PKGCFG_LIBS_PRIVATE -lcxxtools"
-            ],
-            [AC_MSG_ERROR([cannot link with -lcxxtools, install cxxtools])])
-    ])
-
-dnl END of PKG_CHECK_MODULES and/or direct tests for cxxtools
-    AS_CASE(["x${was_cxxtools_check_lib_detected}"],
-        [xpkgcfg], [
-                PKGCFG_NAMES_PRIVATE="$PKGCFG_NAMES_PRIVATE ${found_pkgconfig}"
-                CFLAGS="${cxxtools_CFLAGS} ${CFLAGS}"
-                LIBS="${cxxtools_LIBS} ${LIBS}"
-            ],
-        [xyes], [
-                CFLAGS="${cxxtools_synthetic_cflags} ${CFLAGS}"
-                LDFLAGS="${cxxtools_synthetic_libs} ${LDFLAGS}"
-                LIBS="${cxxtools_synthetic_libs} ${LIBS}"
-
-                AC_SUBST([cxxtools_CFLAGS],[${cxxtools_synthetic_cflags}])
-                AC_SUBST([cxxtools_LIBS],[${cxxtools_synthetic_libs}])
-            ],
-        [xno], [
-            AC_MSG_ERROR([Cannot find pkg-config metadata for cxxtools 0.0.0 or higher])
-    ])
-])
-dnl END of enabled attempts to search for cxxtools
-
-
-was_fty_common_check_lib_detected=no
-
-search_libfty_common="yes"
-
-AC_ARG_WITH([libfty_common],
-    [
-        AS_HELP_STRING([--with-libfty_common],
-        [yes or no. Optionally specify libfty_common prefix (directory where its include/ and lib/ are located), but that is only used if pkgconfig metadata is not found first])
-    ],
-    [
-        search_libfty_common="yes"
-    ],
-    [
-        search_libfty_common="yes"
-    ])
-AS_CASE([x"${with_libfty_common}"],
-    [xyes], [search_libfty_common="yes"],
-    [xno],  [search_libfty_common="no"])
-
-dnl We do not abort right now, because the maintainer/developer may have
-dnl something particular in mind, e.g. to build just parts of a project.
-AS_IF([test x"${search_libfty_common}" = xno],
-    [AC_MSG_WARN([Required dependency on fty_common was explicitly disabled during configuration by '--with-libfty_common=no'; subsequent full build of fty-alert-list may fail])])
-
-AS_IF([test x"${search_libfty_common}" = xyes], [
-    # Archive previously detected and supplied flags
-    PRE_SEARCH_CFLAGS="${CFLAGS}"
-    PRE_SEARCH_LIBS="${LIBS}"
-
-    found_pkgconfig=""
-    PKG_CHECK_MODULES([fty_common], [libfty_common >= 0.0.0],
-    [
-        was_fty_common_check_lib_detected=pkgcfg
-        found_pkgconfig="libfty_common"
-    ],
-    [
-        AC_MSG_NOTICE([Package libfty_common not found; falling back to defined compilability tests])
-
-        fty_common_synthetic_cflags=""
-        fty_common_synthetic_libs="-lfty-common"
-
-        if test -n "${with_libfty_common}" && test x"${with_libfty_common}" != xyes && test x"${with_libfty_common}" != xno; then
-            if test -r "${with_libfty_common}/include/fty_common.h"; then
-                fty_common_synthetic_cflags="-I${with_libfty_common}/include"
-                fty_common_synthetic_libs="-L${with_libfty_common}/lib -lfty-common"
-            else
-            AC_MSG_ERROR([Header file ${with_libfty_common}/include/fty_common.h was not found. Please check libfty_common prefix])
-            fi
-        else
-            AC_CHECK_HEADER([fty_common.h], [],
-            AC_MSG_ERROR([Header file fty_common.h was not found in default search paths])
-                )
-        fi
-
-        AC_CHECK_LIB([fty-common], [fty_common_selftest],
-            [
-                was_fty_common_check_lib_detected=yes
-                PKGCFG_LIBS_PRIVATE="$PKGCFG_LIBS_PRIVATE -lfty-common"
-            ],
-            [AC_MSG_ERROR([cannot link with -lfty-common, install libfty_common])])
-    ])
-
-dnl END of PKG_CHECK_MODULES and/or direct tests for libfty_common
-    AS_CASE(["x${was_fty_common_check_lib_detected}"],
-        [xpkgcfg], [
-                PKGCFG_NAMES_PRIVATE="$PKGCFG_NAMES_PRIVATE ${found_pkgconfig}"
-                CFLAGS="${fty_common_CFLAGS} ${CFLAGS}"
-                LIBS="${fty_common_LIBS} ${LIBS}"
-            ],
-        [xyes], [
-                CFLAGS="${fty_common_synthetic_cflags} ${CFLAGS}"
-                LDFLAGS="${fty_common_synthetic_libs} ${LDFLAGS}"
-                LIBS="${fty_common_synthetic_libs} ${LIBS}"
-
-                AC_SUBST([fty_common_CFLAGS],[${fty_common_synthetic_cflags}])
-                AC_SUBST([fty_common_LIBS],[${fty_common_synthetic_libs}])
-            ],
-        [xno], [
-            AC_MSG_ERROR([Cannot find pkg-config metadata for libfty_common 0.0.0 or higher])
-    ])
-])
-dnl END of enabled attempts to search for libfty_common
 
 
 was_fty_shm_check_lib_detected=no

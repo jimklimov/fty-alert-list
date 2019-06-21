@@ -40,9 +40,9 @@ typedef struct {
 static test_item_t
 all_tests [] = {
 // Tests for stable public classes:
+    { "alert", alert_test, true, true, NULL },
     { "fty_alert_actions", fty_alert_actions_test, true, true, NULL },
-    { "alert", alert_test, false, true, NULL },
-    { "alert_list", alert_list_test, false, true, NULL },
+    { "alert_list", alert_list_test, true, true, NULL },
     {NULL, NULL, 0, 0, NULL}          //  Sentinel
 };
 

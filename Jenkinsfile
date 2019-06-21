@@ -1,5 +1,5 @@
 /*
-    fty-alert-list - Daemon evaluating rules and producing alerts
+    fty-alert-list - Provides information about active alerts
 
     Copyright (C) 2014 - 2018 Eaton
 
