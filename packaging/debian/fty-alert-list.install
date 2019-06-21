@@ -1,5 +1,4 @@
 usr/bin/fty-alert-list
-usr/bin/generate_alert
-usr/bin/fty-alert-list-convert
+etc/fty-alert-list/fty-alert-list.cfg
 lib/systemd/system/fty-alert-list.service
 

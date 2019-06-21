@@ -32,9 +32,12 @@
 //  External dependencies
 #include <czmq.h>
 #include <malamute.h>
+#include <cxxtools/allocator.h>
 #include <fty_log.h>
-#include <ftyproto.h>
 #include <fty_common.h>
+#include <ftyproto.h>
+#include <fty_common_mlm.h>
+#include <fty_shm.h>
 
 //  FTY_ALERT_LIST version macros for compile-time API detection
 #define FTY_ALERT_LIST_VERSION_MAJOR 1
@@ -74,23 +77,28 @@
 #   endif
 #endif
 
-//  Project has no stable classes, so we build the draft API
-#undef  FTY_ALERT_LIST_BUILD_DRAFT_API
-#define FTY_ALERT_LIST_BUILD_DRAFT_API
-
 //  Opaque class structures to allow forward references
 //  These classes are stable or legacy and built in all releases
-//  Draft classes are by default not built in stable releases
-#ifdef FTY_ALERT_LIST_BUILD_DRAFT_API
-typedef struct _fty_alert_list_server_t fty_alert_list_server_t;
-#define FTY_ALERT_LIST_SERVER_T_DEFINED
-#endif // FTY_ALERT_LIST_BUILD_DRAFT_API
+typedef struct _alert_t alert_t;
+#define ALERT_T_DEFINED
+typedef struct _asset_t asset_t;
+#define ASSET_T_DEFINED
+typedef struct _rule_t rule_t;
+#define RULE_T_DEFINED
+typedef struct _fty_alert_actions_t fty_alert_actions_t;
+#define FTY_ALERT_ACTIONS_T_DEFINED
+typedef struct _alert_list_t alert_list_t;
+#define ALERT_LIST_T_DEFINED
 
 
 //  Public classes, each with its own header file
-#ifdef FTY_ALERT_LIST_BUILD_DRAFT_API
-#include "fty_alert_list_server.h"
-#endif // FTY_ALERT_LIST_BUILD_DRAFT_API
+#include "asset_database.h"
+#include "database.h"
+#include "alert.h"
+#include "asset.h"
+#include "rule.h"
+#include "fty_alert_actions.h"
+#include "alert_list.h"
 
 #ifdef FTY_ALERT_LIST_BUILD_DRAFT_API
 
