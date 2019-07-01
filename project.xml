@@ -24,15 +24,7 @@
         <option name = "test_cppcheck" value = "1" />
         <option name = "build_docs" value = "1" />
         <option name = "dist_docs" value = "1" />
-        <option name = "check_sequential" value = "0" />
-        <option name = "use_test_retry" value = "3" />
         <option name = "use_test_timeout" value = "30" />
-        <option name = "use_deleteDir_rm_first" value = "1" />
-        <!-- Note: Jenkinsfile is amended for longer test timeouts and 'rm -rf'
-             before deleteDir() due to non-ASCII filenames used in tests.
-             This selftest job generates files with non-ASCII names which
-             upset the Jenkins remote file IO agent, in our version at least
-         -->
 
         <!-- Try to avoid avalanche rebuilds of same code on our CI -->
         <option name = "use_earlymilestone" value = "1" />
@@ -43,7 +35,6 @@
 
     <include filename = "license.xml" />
     <version major = "1" minor = "0" patch = "0" />
-    <abi current = "0" revision = "0" age = "0" />
 
     <use project = "czmq"
         repository = "https://github.com/42ity/czmq.git"
@@ -67,13 +58,6 @@
         release = "1.0-FTY-master"
         />
 
-    <use project = "cxxtools"
-        test = "cxxtools::Utf8Codec::Utf8Codec"
-        header = "cxxtools/allocator.h"
-        repository = "https://github.com/42ity/cxxtools.git"
-        release = "2.2-FTY-master"
-        />
-
     <!-- Note: pure C projects should use fty-log/fty_logger.h, C++ use fty_log.h -->
     <use project = "fty-common-logging" libname = "libfty_common_logging"
         header = "fty_log.h"
@@ -88,23 +72,6 @@
             repository = "https://github.com/42ity/log4cplus.git"
             release = "1.1.2-FTY-master"
             />
-    </use>
-
-    <use project = "fty-common" libname = "libfty_common" header = "fty_common.h"
-        repository = "https://github.com/42ity/fty-common.git"
-        release = "master"
-        test = "fty_common_selftest" >
-
-        <use project = "fty-common-logging" libname = "libfty_common_logging" header = "fty_log.h"
-            repository = "https://github.com/42ity/fty-common-logging.git"
-            release = "master"
-            test = "fty_common_logging_selftest" >
-
-            <use project = "log4cplus" header = "log4cplus/logger.h" test = "appender_test"
-                repository = "https://github.com/42ity/log4cplus.git"
-                release = "1.1.2-FTY-master"
-                />
-        </use>
     </use>
 
     <use project = "fty-proto" libname = "libfty_proto" header = "ftyproto.h" prefix = "fty_proto"
@@ -147,57 +114,10 @@
         </use>
     </use>
 
-    <use project = "fty-common-mlm" libname = "libfty_common_mlm" header = "fty_common_mlm.h"
-        repository = "https://github.com/42ity/fty-common-mlm.git"
+    <use project = "fty-common" libname = "libfty_common" header = "fty_common.h"
+        repository = "https://github.com/42ity/fty-common.git"
         release = "master"
-        test = "fty_common_mlm_selftest" >
-
-        <use project = "czmq"
-            repository = "https://github.com/42ity/czmq.git"
-            release = "v3.0.2-FTY-master"
-            min_major = "3" min_minor = "0" min_patch = "2" >
-
-            <use project = "libzmq"
-                repository = "https://github.com/42ity/libzmq.git"
-                release = "4.2.0-FTY-master" >
-
-                <use project = "libsodium" prefix = "sodium"
-                    repository = "https://github.com/42ity/libsodium.git"
-                    release = "1.0.5-FTY-master"
-                    test = "sodium_init"
-                    />
-            </use>
-        </use>
-
-        <use project = "cxxtools"
-            test = "cxxtools::Utf8Codec::Utf8Codec"
-            header = "cxxtools/allocator.h"
-            repository = "https://github.com/42ity/cxxtools.git"
-            release = "2.2-FTY-master"
-            />
-
-        <use project = "malamute" min_major = "1" test = "mlm_server_test"
-            repository = "https://github.com/42ity/malamute.git"
-            release = "1.0-FTY-master"
-            />
-
-        <use project = "openssl" header = "openssl/sha.h" debian_name = "libssl-dev"/>
-        <use project = "fty-common" libname = "libfty_common" header = "fty_common.h"
-            repository = "https://github.com/42ity/fty-common.git"
-            release = "master"
-            test = "fty_common_selftest" >
-
-            <use project = "fty-common-logging" libname = "libfty_common_logging" header = "fty_log.h"
-                repository = "https://github.com/42ity/fty-common-logging.git"
-                release = "master"
-                test = "fty_common_logging_selftest" >
-
-                <use project = "log4cplus" header = "log4cplus/logger.h" test = "appender_test"
-                    repository = "https://github.com/42ity/log4cplus.git"
-                    release = "1.1.2-FTY-master"
-                    />
-            </use>
-        </use>
+        test = "fty_common_selftest" >
 
         <use project = "fty-common-logging" libname = "libfty_common_logging" header = "fty_log.h"
             repository = "https://github.com/42ity/fty-common-logging.git"
@@ -211,22 +131,10 @@
         </use>
     </use>
 
-    <use project = "fty_shm" libname = "libfty_shm" header="fty_shm.h" min_major = "1" test = "fty_shm_test"
-        repository = "https://github.com/42ity/fty-shm.git"/>
-
-    <!--TODO FIXME : duplicated class -->
-    <class name = "alert" state = "stable">Alert representation</class>
-    <!--TODO FIXME : duplicated class -->
-    <class name = "asset" state = "stable" selftest = "0">Asset representation</class>
-    <!--TODO FIXME : duplicated class -->
-    <class name = "rule" state = "stable" selftest = "0">Rule represenation</class>
-    <!--TODO FIXME : duplicated class -->
-    <header name = "asset_database">Asset database</header>
-    <!--TODO FIXME : duplicated class -->
-    <header name = "database">Generic database</header>
-    <class name = "fty_alert_actions" state = "stable" >Actor performing actions on alert (sending notifications)</class>
-    <class name = "alert_list" state = "stable">Actor to serve REST API requests about alerts</class>
-    <main name = "fty-alert-list" service = "1">
-        Daemon evaluating rules and producing alerts
-    </main>
+    <class name = "alerts_utils" private = "1">Helper functions</class>
+    <class name = "fty_alert_list_server">Providing information about active alerts</class>
+    <class name = "bios_proto" private = "1">0d2e5e8 rev of biosproto, old system protocols</class>
+    <main name = "fty-alert-list" service = "1" no_config = "1" />
+    <main name = "generate_alert" />
+    <main name = "fty-alert-list-convert"> Converts bios_proto state file to fty_proto state.</main>
 </project>

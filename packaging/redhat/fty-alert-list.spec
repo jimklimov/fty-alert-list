@@ -1,5 +1,6 @@
 #
 #    fty-alert-list - Provides information about active alerts
+# Note: this file was amended after generation, take care to keep that
 #
 #    Copyright (C) 2014 - 2018 Eaton
 #
@@ -53,16 +54,12 @@ BuildRequires:  xmlto
 BuildRequires:  gcc-c++
 BuildRequires:  libsodium-devel
 BuildRequires:  zeromq-devel
-BuildRequires:  czmq-devel >= 3.0.2
-BuildRequires:  malamute-devel >= 1.0.0
-BuildRequires:  cxxtools-devel
+BuildRequires:  czmq-devel
+BuildRequires:  malamute-devel
 BuildRequires:  log4cplus-devel
 BuildRequires:  fty-common-logging-devel
+BuildRequires:  fty-proto-devel
 BuildRequires:  fty-common-devel
-BuildRequires:  fty-proto-devel >= 1.0.0
-BuildRequires:  openssl-devel
-BuildRequires:  fty-common-mlm-devel
-BuildRequires:  fty_shm-devel >= 1.0.0
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 
 %description
@@ -89,16 +86,12 @@ Group:          System/Libraries
 Requires:       libfty_alert_list0 = %{version}
 Requires:       libsodium-devel
 Requires:       zeromq-devel
-Requires:       czmq-devel >= 3.0.2
-Requires:       malamute-devel >= 1.0.0
-Requires:       cxxtools-devel
+Requires:       czmq-devel
+Requires:       malamute-devel
 Requires:       log4cplus-devel
 Requires:       fty-common-logging-devel
+Requires:       fty-proto-devel
 Requires:       fty-common-devel
-Requires:       fty-proto-devel >= 1.0.0
-Requires:       openssl-devel
-Requires:       fty-common-mlm-devel
-Requires:       fty_shm-devel >= 1.0.0
 
 %description devel
 provides information about active alerts development tools
@@ -121,8 +114,10 @@ sh autogen.sh
 %{configure} --enable-drafts=%{DRAFTS} --with-systemd-units
 make %{_smp_mflags}
 
+# NOTE: File was edited below (to install the delivered etc dir in the build root)
 %install
 make install DESTDIR=%{buildroot} %{?_smp_mflags}
+mkdir -p %{buildroot}/%{_sysconfdir}/fty-alert-list
 
 # remove static libraries
 find %{buildroot} -name '*.a' | xargs rm -f
@@ -134,7 +129,10 @@ find %{buildroot} -name '*.la' | xargs rm -f
 %doc COPYING
 %{_bindir}/fty-alert-list
 %{_mandir}/man1/fty-alert-list*
-%config(noreplace) %{_sysconfdir}/fty-alert-list/fty-alert-list.cfg
+%{_bindir}/generate_alert
+%{_mandir}/man1/generate_alert*
+%{_bindir}/fty-alert-list-convert
+%{_mandir}/man1/fty-alert-list-convert*
 %{SYSTEMD_UNIT_DIR}/fty-alert-list.service
 %dir %{_sysconfdir}/fty-alert-list
 %if 0%{?suse_version} > 1315

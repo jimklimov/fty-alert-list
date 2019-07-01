@@ -4,7 +4,7 @@ Name(7)
 
 NAME
 ----
-fty-alert-list - Overview of Daemon evaluating rules and producing alerts
+fty-alert-list - Overview of Provides information about active alerts
 
 
 SYNOPSIS
@@ -13,9 +13,9 @@ SYNOPSIS
 Project fty-alert-list aims to ... (short marketing pitch)
 
 It delivers several programs with their respective man pages:
- fty-alert-list.1
+ fty-alert-list.1 generate_alert.1
 and public classes in a shared library:
- alert.3 asset.3 rule.3 extended_rules.3 alert_list.3
+ fty_alert_list_server.3
 
 Generally you can compile and link against it like this:
 ----
