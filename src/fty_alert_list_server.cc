@@ -169,15 +169,6 @@ s_handle_stream_deliver (mlm_client_t *client, zmsg_t** msg_p, zhash_t *expirati
         bool sameSeverity = streq (fty_proto_severity (newAlert), fty_proto_severity (cursor));
         time_t lastSent = alertsLastSent[cursor];
         fty_proto_set_severity (cursor, "%s", fty_proto_severity (newAlert));
-        fty_proto_set_description (cursor, "%s", fty_proto_description (newAlert));
-        zlist_t *actions;
-        if (NULL == fty_proto_action (newAlert)) {
-            actions = zlist_new ();
-            zlist_autofree (actions);
-        } else {
-            actions = zlist_dup (fty_proto_action (newAlert));
-        }
-        fty_proto_set_action (cursor, &actions);
 
         // Wasn't specified, but common sense applied, it should be:
         // RESOLVED comes from _ALERTS_SYS
@@ -203,6 +194,9 @@ s_handle_stream_deliver (mlm_client_t *client, zmsg_t** msg_p, zhash_t *expirati
 
         } else { // state (alert) == ACTIVE
             s_set_alert_lifetime (expirations, newAlert);
+
+            //copy the description only if the alert is active
+            fty_proto_set_description (cursor, "%s", fty_proto_description (newAlert));
 
             if (streq (fty_proto_state (cursor), "RESOLVED")) {
                 // Record reactivation time
@@ -232,6 +226,17 @@ s_handle_stream_deliver (mlm_client_t *client, zmsg_t** msg_p, zhash_t *expirati
                 }
             }
         }
+
+        //let's do the action at the end of the processing
+        zlist_t *actions;
+        if (NULL == fty_proto_action (newAlert)) {
+            actions = zlist_new ();
+            zlist_autofree (actions);
+        } else {
+            actions = zlist_dup (fty_proto_action (newAlert));
+        }
+        fty_proto_set_action (cursor, &actions);
+
     }
     alertMtx.unlock ();
 
