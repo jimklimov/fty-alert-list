@@ -72,9 +72,9 @@ fty_alert_list_server.txt: $(top_srcdir)/src/fty_alert_list_server.cc
 ### so that the manpages for binary programs match their name, at expense
 ### of perhaps being built in a subdirectory under doc/.
 GENERATED_DOCS += fty-alert-list.txt fty-alert-list.doc
-fty-alert-list.txt: $(top_srcdir)/src/fty_alert_list.cc
+fty-alert-list.txt: $(top_srcdir)/src/fty-alert-list.cc
 	mkdir -p "$(builddir)/$(@D)"
-	"$(srcdir)/mkman" "fty_alert_list" "$(builddir)/fty-alert-list.txt" "$(srcdir)/.."
+	"$(srcdir)/mkman" "fty-alert-list" "$(builddir)/fty-alert-list.txt" "$(srcdir)/.."
 
 GENERATED_DOCS += generate_alert.txt generate_alert.doc
 generate_alert.txt: $(top_srcdir)/src/generate_alert.cc
@@ -82,9 +82,9 @@ generate_alert.txt: $(top_srcdir)/src/generate_alert.cc
 	"$(srcdir)/mkman" "generate_alert" "$(builddir)/generate_alert.txt" "$(srcdir)/.."
 
 GENERATED_DOCS += fty-alert-list-convert.txt fty-alert-list-convert.doc
-fty-alert-list-convert.txt: $(top_srcdir)/src/fty_alert_list_convert.cc
+fty-alert-list-convert.txt: $(top_srcdir)/src/fty-alert-list-convert.cc
 	mkdir -p "$(builddir)/$(@D)"
-	"$(srcdir)/mkman" "fty_alert_list_convert" "$(builddir)/fty-alert-list-convert.txt" "$(srcdir)/.."
+	"$(srcdir)/mkman" "fty-alert-list-convert" "$(builddir)/fty-alert-list-convert.txt" "$(srcdir)/.."
 
 
 clean-local:

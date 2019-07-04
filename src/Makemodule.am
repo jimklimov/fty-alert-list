@@ -57,7 +57,7 @@ if ENABLE_FTY_ALERT_LIST
 bin_PROGRAMS += src/fty-alert-list
 src_fty_alert_list_CPPFLAGS = ${AM_CPPFLAGS}
 src_fty_alert_list_LDADD = ${program_libs}
-src_fty_alert_list_SOURCES = src/fty_alert_list.cc
+src_fty_alert_list_SOURCES = src/fty-alert-list.cc
 src_fty_alert_list_config_DATA =
 src_fty_alert_list_configdir = $(sysconfdir)/fty-alert-list
 if WITH_SYSTEMD_UNITS
@@ -76,7 +76,7 @@ if ENABLE_FTY_ALERT_LIST_CONVERT
 bin_PROGRAMS += src/fty-alert-list-convert
 src_fty_alert_list_convert_CPPFLAGS = ${AM_CPPFLAGS}
 src_fty_alert_list_convert_LDADD = ${program_libs}
-src_fty_alert_list_convert_SOURCES = src/fty_alert_list_convert.cc
+src_fty_alert_list_convert_SOURCES = src/fty-alert-list-convert.cc
 endif #ENABLE_FTY_ALERT_LIST_CONVERT
 
 if ENABLE_FTY_ALERT_LIST_SELFTEST
@@ -231,6 +231,16 @@ else
 coverage: src/fty_alert_list_selftest
 	@echo "call make clean && configure --with-gcov to enable code coverage"
 	@exit 1
+endif
+
+bindings: python-bindings
+
+python-bindings:
+if ENABLE_BINDINGS_PYTHON
+	-( cd bindings/python && python setup.py install )
+else
+	@echo "Python Bindings not enabled or missing setup.py... skipping"
+
 endif
 
 # A series of tests that the codebase and recipes are pretty, easy

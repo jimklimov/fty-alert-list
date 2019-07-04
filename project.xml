@@ -17,6 +17,8 @@
         <option name = "clangformat_allow_failures" value = "1" />
         <option name = "use_pkg_deps_prereqs_source" value = "0" />
         <option name = "require_gitignore" value = "1" />
+        <option name = "dist" value = "trusty" />
+        <option name = "shadow_gcc" value = "2" />
     </target>
     <target name = "jenkins" >
         <option name = "agent_label" value = "devel-image &amp;&amp; x86_64" />
@@ -32,6 +34,10 @@
         <option name = "use_build_nonconcurrent" value = "1" />
         <option name = "use_checkout_explicit" value = "1" />
     </target>
+    
+    <classfilename use-cxx = "true" use-cxx-gcc-4-9 = "true"
+		source-extension = "cc" header-extension = "h"
+        pretty-print = "no" keep-tree = "true" />
 
     <include filename = "license.xml" />
     <version major = "1" minor = "0" patch = "0" />

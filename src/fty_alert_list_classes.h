@@ -30,9 +30,7 @@
 #include "platform.h"
 
 //  External API
-#include "../include/fty_alert_list.h"
-
-//  Extra headers
+#include "../include/fty-alert-list.h"
 
 //  Opaque class structures to allow forward references
 #ifndef ALERTS_UTILS_T_DEFINED
@@ -43,6 +41,8 @@ typedef struct _alerts_utils_t alerts_utils_t;
 typedef struct _bios_proto_t bios_proto_t;
 #define BIOS_PROTO_T_DEFINED
 #endif
+
+//  Extra headers
 
 //  Internal API
 
