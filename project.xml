@@ -13,12 +13,12 @@
     <target name = "travis" >
         <!-- option name = "clangformat_implem" value = "autotools" / -->
         <option name = "use_cmake" value = "0" />
+        <option name = "dist" value = "trusty" />
+        <option name = "shadow_gcc" value = "2" />
         <!-- option name = "clangformat_require_good" value = "1" / -->
         <option name = "clangformat_allow_failures" value = "1" />
         <option name = "use_pkg_deps_prereqs_source" value = "0" />
         <option name = "require_gitignore" value = "1" />
-        <option name = "dist" value = "trusty" />
-        <option name = "shadow_gcc" value = "2" />
     </target>
     <target name = "jenkins" >
         <option name = "agent_label" value = "devel-image &amp;&amp; x86_64" />
@@ -34,9 +34,9 @@
         <option name = "use_build_nonconcurrent" value = "1" />
         <option name = "use_checkout_explicit" value = "1" />
     </target>
-    
+
     <classfilename use-cxx = "true" use-cxx-gcc-4-9 = "true"
-		source-extension = "cc" header-extension = "h"
+        source-extension = "cc" header-extension = "h"
         pretty-print = "no" keep-tree = "true" />
 
     <include filename = "license.xml" />
@@ -120,10 +120,18 @@
         </use>
     </use>
 
-    <use project = "fty-common" libname = "libfty_common" header = "fty_common.h"
+    <use project = "fty-common" libname = "libfty_common"
+        header = "fty_common.h"
         repository = "https://github.com/42ity/fty-common.git"
         release = "master"
         test = "fty_common_selftest" >
+
+        <use project = "cxxtools"
+            test = "cxxtools::Utf8Codec::Utf8Codec"
+            header = "cxxtools/allocator.h"
+            repository = "https://github.com/42ity/cxxtools.git"
+            release = "2.2-FTY-master"
+            />
 
         <use project = "fty-common-logging" libname = "libfty_common_logging" header = "fty_log.h"
             repository = "https://github.com/42ity/fty-common-logging.git"
@@ -140,6 +148,7 @@
     <class name = "alerts_utils" private = "1">Helper functions</class>
     <class name = "fty_alert_list_server">Providing information about active alerts</class>
     <class name = "bios_proto" private = "1">0d2e5e8 rev of biosproto, old system protocols</class>
+
     <main name = "fty-alert-list" service = "1" no_config = "1" />
     <main name = "generate_alert" />
     <main name = "fty-alert-list-convert"> Converts bios_proto state file to fty_proto state.</main>
