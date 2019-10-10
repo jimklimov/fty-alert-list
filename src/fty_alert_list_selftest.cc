@@ -40,15 +40,15 @@ typedef struct {
 static test_item_t
 all_tests [] = {
 #ifdef FTY_ALERT_LIST_BUILD_DRAFT_API
-// Tests for draft public classes:
-    { "fty_alert_list_server", fty_alert_list_server_test, false, true, NULL },
-#endif // FTY_ALERT_LIST_BUILD_DRAFT_API
-#ifdef FTY_ALERT_LIST_BUILD_DRAFT_API
 // Tests for stable/draft private classes:
 // Now built only with --enable-drafts, so even stable builds are hidden behind the flag
     { "alerts_utils", NULL, true, false, "alerts_utils_test" },
     { "bios_proto", NULL, true, false, "bios_proto_test" },
     { "private_classes", NULL, false, false, "$ALL" }, // compat option for older projects
+#endif // FTY_ALERT_LIST_BUILD_DRAFT_API
+#ifdef FTY_ALERT_LIST_BUILD_DRAFT_API
+// Tests for draft public classes:
+    { "fty_alert_list_server", fty_alert_list_server_test, false, true, NULL },
 #endif // FTY_ALERT_LIST_BUILD_DRAFT_API
     {NULL, NULL, 0, 0, NULL}          //  Sentinel
 };
