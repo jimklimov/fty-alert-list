@@ -2,8 +2,6 @@
    fty-alert-list -> libzmq;
    fty-alert-list -> czmq;
    fty-alert-list -> malamute;
-   fty-alert-list -> log4cplus;
    fty-alert-list -> fty-common-logging;
    fty-alert-list -> fty-proto;
-   fty-alert-list -> cxxtools;
    fty-alert-list -> fty-common;
