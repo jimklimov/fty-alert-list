@@ -1,6 +1,7 @@
    fty-alert-list -> libsodium;
    fty-alert-list -> libzmq;
    fty-alert-list -> czmq;
+   fty-alert-list -> cxxtools;
    fty-alert-list -> malamute;
    fty-alert-list -> fty-common-logging;
    fty-alert-list -> fty-proto;
