@@ -2,7 +2,7 @@
 #    fty-alert-list - Provides information about active alerts
 # Note: this file was amended after generation, take care to keep that
 #
-#    Copyright (C) 2014 - 2019 Eaton
+#    Copyright (C) 2014 - 2020 Eaton
 #
 #    This program is free software; you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
