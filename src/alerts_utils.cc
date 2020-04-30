@@ -30,6 +30,66 @@
 #include <fty_common_utf8.h>
 #include "fty_alert_list_classes.h"
 
+// encode a c-string S (z85 encoding)
+// returns the encoded buffer (c-string)
+// returns NULL if error or if input S string is NULL
+// Note: returned ptr must be freed by caller
+
+static char *
+s_string_encode(const char *s)
+{
+    if (!s) return NULL;
+    size_t s_size = strlen (s);
+
+    // z85 padding, new size is the next bigger or equal multiple of 4
+    size_t padded_size = (s_size + 3) & 0xFFFFFFFC;
+    uint8_t *s_padded = (uint8_t *) zmalloc (padded_size);
+    if (!s_padded)
+        { log_error("allocation failed"); return NULL; }
+    memcpy (s_padded, s, s_size);
+    if (padded_size > s_size) // pad with ZEROs
+        memset (s_padded + s_size, 0, padded_size - s_size);
+
+    size_t encoded_size = 1 + (5 * padded_size) / 4;
+    char *s_encoded = (char *) zmalloc (encoded_size);
+    if (!s_encoded)
+        { free(s_padded); log_error("allocation failed"); return NULL; }
+
+    zmq_z85_encode (s_encoded, s_padded, padded_size);
+    free(s_padded);
+
+    log_trace ("s_string_encode('%s') = '%s'", s, s_encoded);
+    return s_encoded;
+}
+
+// decode a c-string S (assume z85 encoded, see s_string_encode())
+// returns the decoded buffer (c-string)
+// returns NULL if error or if input S string is NULL
+// Note: returned ptr must be freed by caller
+
+static char *
+s_string_decode(const char *s)
+{
+    if (!s) return NULL;
+    size_t s_size = strlen (s);
+
+    size_t decoded_size = 1 + (5 * s_size) / 4;
+    char *s_decoded = (char *) zmalloc (decoded_size);
+    if (!s_decoded)
+        { log_error("alloc failed"); return NULL; }
+
+    zmq_z85_decode ((uint8_t*)s_decoded, s);
+
+    // remove end padding chars (if any)
+    //std::string str(s_decoded);
+    //std::string::size_type pos = str.find_last_not_of ("<padchar>");
+    //if (pos != std::string::npos)
+    //    s_decoded[pos + 1] = 0; // trim right
+
+    log_trace ("s_string_decode('%s') = '%s'", s, s_decoded);
+    return s_decoded;
+}
+
 int
 alert_id_comparator(fty_proto_t *alert1, fty_proto_t *alert2) {
     assert(alert1);
@@ -184,7 +244,7 @@ s_alerts_input_checks(zlistx_t *alerts, fty_proto_t *alert) {
 
 // load alert state from disk - legacy
 // 0 - success, -1 - error
-int
+static int
 s_alert_load_state_legacy (zlistx_t *alerts, const char *path, const char *filename)
 {
     assert(alerts);
@@ -278,7 +338,7 @@ s_alert_load_state_legacy (zlistx_t *alerts, const char *path, const char *filen
     return 0;
 }
 
-int
+static int
 s_alert_load_state_new (zlistx_t *alerts, const char *path, const char *filename) {
     if (!alerts || !path || !filename) {
         log_error ("cannot load state");
@@ -330,15 +390,17 @@ s_alert_load_state_new (zlistx_t *alerts, const char *path, const char *filename
             continue;
         }
 
-        const char *encoded_alert_desc = fty_proto_description (alert);
-        size_t encoded_alert_desc_size = strlen (encoded_alert_desc);
-        uint8_t *alert_desc = (uint8_t *) zmalloc (1 + (5 * encoded_alert_desc_size) / 4);
-        zmq_z85_decode (alert_desc, encoded_alert_desc);
+        // decode encoded attributes (see alert_save_state())
+        {
+            char* decoded;
+            decoded = s_string_decode (fty_proto_description (alert));
+            fty_proto_set_description (alert, "%s", decoded);
+            zstr_free (&decoded);
+            decoded = s_string_decode (fty_proto_metadata (alert));
+            fty_proto_set_metadata (alert, "%s", decoded);
+            zstr_free (&decoded);
+        }
 
-        std::string alert_desc_str ((char *) alert_desc);
-        size_t alert_desc_end = alert_desc_str.find_last_not_of (" ");
-
-        fty_proto_set_description (alert, "%s", alert_desc_str.substr (0, alert_desc_end + 1).c_str ());
         fty_proto_print (alert);
 
         if (s_alerts_input_checks (alerts, alert)) {
@@ -351,7 +413,6 @@ s_alert_load_state_new (zlistx_t *alerts, const char *path, const char *filename
             zlistx_add_end (alerts, alert);
         }
 
-        free (alert_desc);
         cursor = zconfig_next (cursor);
     }
 
@@ -363,27 +424,25 @@ s_alert_load_state_new (zlistx_t *alerts, const char *path, const char *filename
 int
 alert_load_state (zlistx_t *alerts, const char *path, const char *filename)
 {
+    log_info("loading alerts from %s/%s ...", path, filename);
+
+    if (!alerts || !path || !filename) {
+        log_error ("cannot load state");
+        return -1;
+    }
+
     int rv = s_alert_load_state_new (alerts, path, filename);
-    if (rv == -1)
+    if (rv != 0) {
+        log_warning("s_alert_load_state_new() failed (rv: %d)", rv);
+        log_info("retry using s_alert_load_state_legacy()...");
+
         rv = s_alert_load_state_legacy (alerts, path, filename);
+        if (rv != 0) {
+            log_error("s_alert_load_state_legacy() failed (rv: %d)", rv);
+        }
+    }
 
     return rv;
-}
-
-// right-pad the string with spaces to specified size
-uint8_t *
-s_pad (const char *src, size_t padded_size)
-{
-    size_t src_size = strlen (src);
-    if (padded_size < src_size)
-        return NULL;
-
-    uint8_t *padded = (uint8_t *) zmalloc ((padded_size) * sizeof (uint8_t));
-    memcpy (padded, src, src_size);
-    for (size_t i = src_size; i < padded_size; i++)
-        padded[i] = 0x20; // pad with SPACEs
-
-    return padded;
 }
 
 // save alert state to disk
@@ -391,6 +450,8 @@ s_pad (const char *src, size_t padded_size)
 int
 alert_save_state(zlistx_t *alerts, const char *path, const char *filename, bool verbose)
 {
+    log_info("saving alerts in %s/%s ...", path, filename);
+
     if (!alerts || !path || !filename) {
         log_error ("cannot save state");
         return -1;
@@ -402,23 +463,21 @@ alert_save_state(zlistx_t *alerts, const char *path, const char *filename, bool 
     while (cursor) {
         fty_proto_print (cursor);
 
-        const char *alert_desc = fty_proto_description (cursor);
-        size_t alert_desc_size = strlen (alert_desc);
-        // new size is the next bigger or equal multiple of 4
-        size_t padded_size = (alert_desc_size + 3) & 0xFFFFFFFC;
+        // encode -complex- attributes of alert,
+        // typically/mostly those who are json payloads or non ascii
+        // *needed* due to zconfig_save()/zconfig_chunk_load() weakness
+        {
+            char *encoded;
+            encoded = s_string_encode(fty_proto_description (cursor));
+            fty_proto_set_description (cursor, "%s", encoded);
+            zstr_free(&encoded);
+            encoded = s_string_encode(fty_proto_metadata (cursor));
+            fty_proto_set_metadata (cursor, "%s", encoded);
+            zstr_free(&encoded);
+        }
 
-        uint8_t *padded_alert_desc = s_pad (alert_desc, padded_size);
-        size_t encoded_alert_desc_size = 1 + (5 * padded_size) / 4;
-        char *encoded_alert_desc = (char *) zmalloc (encoded_alert_desc_size);
-        zmq_z85_encode (encoded_alert_desc, padded_alert_desc, padded_size);
-        log_debug ("encoded_alert_desc = %s", encoded_alert_desc);
-
-        fty_proto_set_description (cursor, "%s", encoded_alert_desc);
         fty_proto_zpl (cursor, state);
         cursor = (fty_proto_t *) zlistx_next (alerts);
-
-        zstr_free (&encoded_alert_desc);
-        free (padded_alert_desc);
     }
 
     char *state_file = zsys_sprintf ("%s/%s", path, filename);
@@ -451,6 +510,7 @@ alert_new(const char *rule,
     fty_proto_set_state(alert, "%s", state);
     fty_proto_set_severity(alert, "%s", severity);
     fty_proto_set_description(alert, "%s", description);
+    fty_proto_set_metadata(alert, "%s" , "");
     fty_proto_set_action(alert, action);
     fty_proto_set_time(alert, timestamp);
     fty_proto_aux_insert(alert, "TTL", "%" PRIi64, ttl);
@@ -466,6 +526,66 @@ alerts_utils_test(bool verbose) {
     //  @selftest
 
     log_debug(" * alerts_utils: ");
+
+    //  **************************************
+    //  *****   s_string_encode/decode   *****
+    //  **************************************
+
+    {
+        const char* test[] = {
+            "",
+            "0",
+            "01",
+            "012",
+            "0123",
+            "01234",
+            "012345",
+            "0123456",
+            "01234567",
+            "012345678",
+            "0123456789",
+
+            "UTF-8: HЯɅȤ",
+            "UTF-8: ሰማይ አይታረስ ንጉሥ አይከሰስ።",
+            "UTF-8: ⡍⠜⠇⠑⠹ ⠺⠁⠎ ⠙⠑⠁⠙⠒ ⠞⠕ ⠃",
+
+            "hello world!",
+            "hello world!    ",
+            "{ hello world! }",
+            "{ \"hello\": \"world!\" }",
+
+            "{"
+            "  \"name\": \"John\","
+            "  \"age\": 30,"
+            "  \"cars\": ["
+            "    { \"name\": \"Ford\", \"models\": [ \"Fiesta\", \"Focus\", \"Mustang\" ] },"
+            "    { \"name\": \"BMW\",  \"models\": [ \"320\", \"X3\", \"X5\" ] },"
+            "    { \"name\": \"Fiat\", \"models\": [ \"500\", \"Panda\" ] }"
+            "  ]"
+            "}",
+
+            NULL
+        };
+
+        assert(s_string_encode(NULL) == NULL);
+        assert(s_string_decode(NULL) == NULL);
+
+        for (int i = 0; test[i]; i++) {
+            const char* message = test[i];
+
+            char* encoded = s_string_encode(message);
+            assert(encoded);
+
+            char* decoded = s_string_decode(encoded);
+            assert(decoded);
+            assert(streq(message, decoded));
+
+            zstr_free(&encoded);
+            zstr_free(&decoded);
+        }
+
+        log_debug("s_string_encode/decode: OK");
+    }
 
     //  ************************************
     //  *****   is_acknowledge_state   *****

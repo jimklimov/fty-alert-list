@@ -630,11 +630,13 @@ void save_alerts () {
 void
 init_alert (bool verb) {
     alerts = zlistx_new ();
+    assert(alerts);
     zlistx_set_destructor (alerts, (czmq_destructor *) fty_proto_destroy);
     zlistx_set_duplicator (alerts, (czmq_duplicator *) fty_proto_dup);
 
     int rv = alert_load_state (alerts, STATE_PATH, STATE_FILE);
     log_debug ("alert_load_state () == %d", rv);
+
     verbose = verb;
 }
 
