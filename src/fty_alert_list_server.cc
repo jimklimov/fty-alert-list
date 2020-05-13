@@ -590,8 +590,8 @@ fty_alert_list_server_stream (zsock_t *pipe, void *args) {
             else {
                 log_warning ("Unknown command '%s'. Subject: '%s', Sender: '%s'.",
                         mlm_client_command (client), mlm_client_subject (client), mlm_client_sender (client));
+                zmsg_destroy (&msg);
             }
-            zmsg_destroy (&msg);
         }
     }
 
@@ -637,8 +637,8 @@ fty_alert_list_server_mailbox (zsock_t *pipe, void *args) {
             else {
                 log_warning ("Unknown command '%s'. Subject: '%s', Sender: '%s'.",
                         mlm_client_command (client), mlm_client_subject (client), mlm_client_sender (client));
+                zmsg_destroy (&msg);
             }
-            zmsg_destroy (&msg);
         }
     }
 
