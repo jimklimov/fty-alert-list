@@ -36,36 +36,45 @@ s_ttl_cleanup_timer(zloop_t *loop, int timer_id, void *output) {
 
 int main(int argc, char *argv []) {
     bool verbose = false;
+
     int argn;
-    ManageFtyLog::setInstanceFtylog ("fty-alert-list","/etc/fty/ftylog.cfg");
     for (argn = 1; argn < argc; argn++) {
         if (streq(argv [argn], "--help") ||
                 streq(argv [argn], "-h")) {
             puts("fty-alert-list [options] ...");
             puts("  --verbose / -v         verbose test output");
             puts("  --help / -h            this information");
-            return 0;
-        } else if (streq(argv [argn], "--verbose") ||
+            return EXIT_SUCCESS;
+        }
+        else if (streq(argv [argn], "--verbose") ||
                 streq(argv [argn], "-v")) {
             verbose = true;
-            ManageFtyLog::getInstanceFtylog()->setVeboseMode();
         }
         else {
             printf("Unknown option: %s\n", argv [argn]);
-            return 1;
+            return EXIT_FAILURE;
         }
     }
+
+    ManageFtyLog::setInstanceFtylog ("fty-alert-list", FTY_COMMON_LOGGING_DEFAULT_CFG);
+    if (verbose) ManageFtyLog::getInstanceFtylog()->setVerboseMode();
+
     //  Insert main code here
     log_debug("fty-alert-list - Agent providing information about active alerts"); // TODO: rewrite alerts_list_server to accept VERBOSE
     log_info("fty-alert-list starting");
-    const char *endpoint = "ipc://@/malamute";
-    //init the alert list (common with stream and mailbox treatment)
-    init_alert(verbose);
 
-    //initialize actor and timer for stream
+    const char *endpoint = "ipc://@/malamute";
+
+    //init the alert list (common with stream and mailbox treatment)
+
+    init_alert(verbose); // read alerts state_file
+
+    //initialize actors and timer for stream
+
     zactor_t *alert_list_server_mailbox = zactor_new(fty_alert_list_server_mailbox, (void *) endpoint);
 
     zactor_t *alert_list_server_stream = zactor_new(fty_alert_list_server_stream, (void *) endpoint);
+
     zloop_t *ttlcleanup_stream = zloop_new();
     zloop_timer(ttlcleanup_stream, 60 * 1000, 0, s_ttl_cleanup_timer, alert_list_server_stream);
     zloop_start(ttlcleanup_stream);

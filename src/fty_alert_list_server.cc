@@ -25,6 +25,7 @@
 @discuss
 @end
  */
+
 #include <string.h>
 #include <map>
 #include <mutex>
@@ -46,12 +47,14 @@ static bool verbose = false;
 static void
 s_set_alert_lifetime (zhash_t *exp, fty_proto_t *msg) {
     if (!exp || !msg) return;
+
     int64_t ttl = fty_proto_ttl (msg);
     if (!ttl) return;
     const char *rule = fty_proto_rule (msg);
     if (!rule) return;
     int64_t *time = (int64_t *) malloc (sizeof (int64_t));
     if (!time) return;
+
     *time = zclock_mono () / 1000 + ttl;
     zhash_update (exp, rule, time);
     log_debug (" ##### rule %s with ttl %" PRIi64, rule, ttl);
@@ -60,11 +63,11 @@ s_set_alert_lifetime (zhash_t *exp, fty_proto_t *msg) {
 
 static bool
 s_alert_expired (zhash_t *exp, fty_proto_t *msg) {
-    if (!exp || !msg) {
-        return false;
-    }
+    if (!exp || !msg) return false;
+
     const char *rule = fty_proto_rule (msg);
     if (!rule) return false;
+
     int64_t *time = (int64_t *) zhash_lookup (exp, rule);
     if (!time) {
         return false;
@@ -74,9 +77,7 @@ s_alert_expired (zhash_t *exp, fty_proto_t *msg) {
 
 static void
 s_clear_long_time_expired (zhash_t *exp) {
-    if (!exp) {
-        return;
-    }
+    if (!exp) return;
 
     zlist_t *keys = zhash_keys (exp);
     int64_t now = zclock_mono () / 1000;
@@ -92,9 +93,7 @@ s_clear_long_time_expired (zhash_t *exp) {
 
 static void
 s_resolve_expired_alerts (zhash_t *exp) {
-    if (!exp || !alerts) {
-        return;
-    }
+    if (!exp || !alerts) return;
 
     alertMtx.lock ();
     fty_proto_t *cursor = (fty_proto_t *) zlistx_first (alerts);
@@ -112,6 +111,7 @@ s_resolve_expired_alerts (zhash_t *exp) {
         cursor = (fty_proto_t *) zlistx_next (alerts);
     }
     alertMtx.unlock ();
+
     s_clear_long_time_expired (exp);
 }
 
@@ -119,7 +119,6 @@ static void
 s_handle_stream_deliver (mlm_client_t *client, zmsg_t** msg_p, zhash_t *expirations) {
     assert (client);
     assert (msg_p);
-    bool send = true;
 
     if (!is_fty_proto (*msg_p)) {
         log_error ("s_handle_stream_deliver (): Message not fty_proto");
@@ -132,28 +131,34 @@ s_handle_stream_deliver (mlm_client_t *client, zmsg_t** msg_p, zhash_t *expirati
         log_warning ("s_handle_stream_deliver (): Message not FTY_PROTO_ALERT.");
         return;
     }
+
+    // handle *only* ACTIVE or RESOLVED alerts
     if (!streq (fty_proto_state (newAlert), "ACTIVE") &&
             !streq (fty_proto_state (newAlert), "RESOLVED")) {
         fty_proto_destroy (&newAlert);
         log_warning ("s_handle_stream_deliver (): Message state not ACTIVE or RESOLVED. Not publishing any further.");
         return;
     }
+
     if (verbose) {
         log_debug ("----> printing alert ");
         fty_proto_print (newAlert);
     }
 
     alertMtx.lock ();
-    fty_proto_t *cursor = (fty_proto_t *) zlistx_first (alerts);
-    int found = 0;
 
+    fty_proto_t *cursor = (fty_proto_t *) zlistx_first (alerts);
+    bool found = false;
     while (cursor) {
         if (alert_id_comparator (cursor, newAlert) == 0) {
-            found = 1;
+            found = true;
             break;
         }
         cursor = (fty_proto_t *) zlistx_next (alerts);
     }
+
+    bool send = true; // default, publish
+
     if (!found) {
         // Record creation time
         fty_proto_aux_insert (newAlert, "ctime", "%" PRIu64, fty_proto_time (newAlert));
@@ -162,12 +167,12 @@ s_handle_stream_deliver (mlm_client_t *client, zmsg_t** msg_p, zhash_t *expirati
         cursor = (fty_proto_t *) zlistx_last (alerts);
         alertsLastSent[cursor] = 0;
         s_set_alert_lifetime (expirations, newAlert);
-    } else {
+    }
+    else {
         // Append creation time to new alert
         fty_proto_aux_insert (newAlert, "ctime", "%" PRIu64, fty_proto_aux_number (cursor, "ctime", 0));
 
         bool sameSeverity = streq (fty_proto_severity (newAlert), fty_proto_severity (cursor));
-        time_t lastSent = alertsLastSent[cursor];
         fty_proto_set_severity (cursor, "%s", fty_proto_severity (newAlert));
 
         // Wasn't specified, but common sense applied, it should be:
@@ -179,7 +184,8 @@ s_handle_stream_deliver (mlm_client_t *client, zmsg_t** msg_p, zhash_t *expirati
         //  * if stored RESOLVED -> update stored time/state, publish modified
         //  * if stored ACK-XXX -> Don't change state or time, don't publish
         //  * if stored ACTIVE -> update time
-        //                      -> if severity change => publish else don't publish
+        //                     -> if severity change => publish else don't publish
+
         if (streq (fty_proto_state (newAlert), "RESOLVED")) {
             if (!streq (fty_proto_state (cursor), "RESOLVED")) {
                 // Record resolved time
@@ -188,11 +194,13 @@ s_handle_stream_deliver (mlm_client_t *client, zmsg_t** msg_p, zhash_t *expirati
 
                 fty_proto_set_state (cursor, "%s", fty_proto_state (newAlert));
                 fty_proto_set_time (cursor, fty_proto_time (newAlert));
-            } else {
+                fty_proto_set_metadata (cursor, "%s", fty_proto_metadata (newAlert));
+            }
+            else {
                 send = false;
             }
-
-        } else { // state (alert) == ACTIVE
+        }
+        else { // state (newAlert) == ACTIVE
             s_set_alert_lifetime (expirations, newAlert);
 
             //copy the description only if the alert is active
@@ -205,16 +213,21 @@ s_handle_stream_deliver (mlm_client_t *client, zmsg_t** msg_p, zhash_t *expirati
 
                 fty_proto_set_time (cursor, fty_proto_time (newAlert));
                 fty_proto_set_state (cursor, "%s", fty_proto_state (newAlert));
-            } else if (!streq (fty_proto_state (cursor), "ACTIVE")) {
+                fty_proto_set_metadata (cursor, "%s", fty_proto_metadata (newAlert));
+            }
+            else if (!streq (fty_proto_state (cursor), "ACTIVE")) {
                 // fty_proto_state (cursor) ==  ACK-XXXX
                 if (sameSeverity) {
                     send = false;
                 }
-            } else { // state (cursor) == ACTIVE
+            }
+            else { // state (cursor) == ACTIVE
                 fty_proto_set_time (cursor, fty_proto_time (newAlert));
+
                 // Always active and same severity => don't publish...
                 if (sameSeverity) {
                     // ... if we're not at risk of timing out
+                    time_t lastSent = alertsLastSent[cursor];
                     if ((zclock_mono ()/1000) < (lastSent + fty_proto_ttl (cursor)/2)) {
                         send = false;
                     }
@@ -232,31 +245,35 @@ s_handle_stream_deliver (mlm_client_t *client, zmsg_t** msg_p, zhash_t *expirati
         if (NULL == fty_proto_action (newAlert)) {
             actions = zlist_new ();
             zlist_autofree (actions);
-        } else {
+        }
+        else {
             actions = zlist_dup (fty_proto_action (newAlert));
         }
         fty_proto_set_action (cursor, &actions);
-
     }
+
     alertMtx.unlock ();
 
     if (send) {
+        log_info("send %s (%s/%s)",
+            fty_proto_rule(newAlert), fty_proto_severity(newAlert), fty_proto_state(newAlert));
+
         fty_proto_t *alert_dup = fty_proto_dup (newAlert);
         zmsg_t *encoded = fty_proto_encode (&alert_dup);
+        fty_proto_destroy (&alert_dup);
         assert (encoded);
 
         int rv = mlm_client_send (client, mlm_client_subject (client), &encoded);
+        zmsg_destroy (&encoded);
+
         if (rv == -1) {
-            log_error ("mlm_client_send (subject = '%s') failed",
-                    mlm_client_subject (client));
-            zmsg_destroy (&encoded);
+            log_error ("mlm_client_send (subject = '%s') failed", mlm_client_subject (client));
         }
-        else {
-            // Update last sent time
-            alertsLastSent[cursor] = zclock_mono ()/1000;
+        else { // Update last sent time
+            alertsLastSent[cursor] = zclock_mono () / 1000;
         }
-        fty_proto_destroy (&alert_dup);
     }
+
     fty_proto_destroy (&newAlert);
 }
 
@@ -547,6 +564,7 @@ fty_alert_list_server_stream (zsock_t *pipe, void *args) {
     while (!zsys_interrupted) {
 
         void *which = zpoller_wait (poller, 1000);
+
         if (which == pipe) {
             zmsg_t *msg = zmsg_recv (pipe);
             char *cmd = zmsg_popstr (msg);
@@ -554,18 +572,22 @@ fty_alert_list_server_stream (zsock_t *pipe, void *args) {
                 zstr_free (&cmd);
                 zmsg_destroy (&msg);
                 break;
-            } else if (streq (cmd, "TTLCLEANUP")) {
+            }
+            else if (streq (cmd, "TTLCLEANUP")) {
                 s_resolve_expired_alerts (expirations);
             }
             zstr_free (&cmd);
             zmsg_destroy (&msg);
-        } else if (which == mlm_client_msgpipe (client)) {
+        }
+        else if (which == mlm_client_msgpipe (client)) {
             zmsg_t *msg = mlm_client_recv (client);
             if (!msg) {
                 break;
-            } else if (streq (mlm_client_command (client), "STREAM DELIVER")) {
+            }
+            else if (streq (mlm_client_command (client), "STREAM DELIVER")) {
                 s_handle_stream_deliver (client, &msg, expirations);
-            } else {
+            }
+            else {
                 log_warning ("Unknown command '%s'. Subject: '%s', Sender: '%s'.",
                         mlm_client_command (client), mlm_client_subject (client), mlm_client_sender (client));
                 zmsg_destroy (&msg);
@@ -603,14 +625,16 @@ fty_alert_list_server_mailbox (zsock_t *pipe, void *args) {
             }
             zstr_free (&cmd);
             zmsg_destroy (&msg);
-        } else if (which == mlm_client_msgpipe (client)) {
+        }
+        else if (which == mlm_client_msgpipe (client)) {
             zmsg_t *msg = mlm_client_recv (client);
             if (!msg) {
                 break;
             }
-            if (streq (mlm_client_command (client), "MAILBOX DELIVER")) {
+            else if (streq (mlm_client_command (client), "MAILBOX DELIVER")) {
                 s_handle_mailbox_deliver (client, &msg);
-            } else {
+            }
+            else {
                 log_warning ("Unknown command '%s'. Subject: '%s', Sender: '%s'.",
                         mlm_client_command (client), mlm_client_subject (client), mlm_client_sender (client));
                 zmsg_destroy (&msg);
@@ -630,11 +654,13 @@ void save_alerts () {
 void
 init_alert (bool verb) {
     alerts = zlistx_new ();
+    assert(alerts);
     zlistx_set_destructor (alerts, (czmq_destructor *) fty_proto_destroy);
     zlistx_set_duplicator (alerts, (czmq_duplicator *) fty_proto_dup);
 
     int rv = alert_load_state (alerts, STATE_PATH, STATE_FILE);
     log_debug ("alert_load_state () == %d", rv);
+
     verbose = verb;
 }
 
